@@ -125,8 +125,13 @@ export default function KindnessGraph({ data }) {
               ctx.restore();
             }
 
+            // Clear the shadow before stroking so it doesn't bleed into and cover the node's background color
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.shadowColor = 'rgba(0,0,0,0)';
+
             drawShape(ctx, node.x, node.y, nodeRadius, shape);
-            ctx.lineWidth = isGhost ? 2 : 4;
+            ctx.lineWidth = isGhost ? 1 : 1.5; // Made borders minimal
             ctx.strokeStyle = isGhost ? '#94a3b8' : '#000000';
             ctx.stroke();
             ctx.restore(); 
@@ -157,7 +162,7 @@ export default function KindnessGraph({ data }) {
               ctx.roundRect(node.x - badgeWidth / 2, badgeY, badgeWidth, badgeHeight, 6);
               ctx.fill();
               
-              ctx.lineWidth = 2;
+              ctx.lineWidth = 1; // Thinner minimal badge border
               ctx.strokeStyle = '#000000';
               ctx.stroke();
             }
