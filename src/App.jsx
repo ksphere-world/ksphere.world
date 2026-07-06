@@ -250,7 +250,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
                   {filteredTags.map(tag => (
                     <li 
                       key={tag} 
-                      onClick={() => selectTag(tag)} 
+                      // FIX: Changed onClick to onMouseDown so it fires before onBlur hides the list!
+                      onMouseDown={() => selectTag(tag)} 
                       className="p-3 border-b-2 border-black last:border-0 hover:bg-lime-300 cursor-pointer font-black text-sm uppercase transition-colors"
                     >
                       {tag}
