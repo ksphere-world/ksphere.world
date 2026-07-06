@@ -88,7 +88,10 @@ function LogKindnessForm({ onComplete, session }) {
       <div className="max-w-2xl mx-auto mt-12 p-8 bg-white rounded-3xl border border-slate-200 text-center shadow-sm">
         <h2 className="text-2xl font-bold mb-4">Sign in required</h2>
         <p className="text-slate-500 mb-6">You must be logged in to claim a node and join the chain.</p>
-        <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} 
+        <button onClick={() => supabase.auth.signInWithOAuth({ 
+    provider: 'google', 
+    options: { redirectTo: window.location.origin } 
+  })} 
           className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-8 rounded-xl">
           Sign in with Google
         </button>
@@ -266,8 +269,14 @@ function App() {
   };
 
   const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({ provider: 'google' });
-  };
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      // This automatically detects if you are on localhost or the live site
+      redirectTo: window.location.origin 
+    }
+  });
+};
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
