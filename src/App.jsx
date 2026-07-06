@@ -283,40 +283,175 @@ function NodeDetailsModal({ node, onClose }) {
     </div>
   );
 }
+// --- NODE MANAGER MODAL ---
+function NodeManagerModal({ session, onClose, onRefreshGraph }) {
+  const [myNodes, setMyNodes] = useState([]);
+  const [claimTag, setClaimTag] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [msg, setMsg] = useState('');
 
-// --- THE ADVANCED FORM ---
+  const fetchMyNodes = async () => {
+    if (!session?.user?.id) return;
+    const { data } = await supabase
+      .from('nodes')
+      .select('*')
+      .eq('user_id', session.user.id);
+    if (data) setMyNodes(data);
+  };
+
+  useEffect(() => {
+    fetchMyNodes();
+  }, [session]);
+
+  const handleMerge = async (e) => {
+    e.preventDefault();
+    if (!claimTag.trim()) return;
+    setIsLoading(true);
+    setMsg('');
+
+    const targetTag = myNodes[0]?.id; // Primary Node
+    const sourceTag = claimTag.toUpperCase().trim();
+
+    if (!targetTag) {
+      setMsg('⚠️ You must have a primary node to merge into.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (targetTag === sourceTag) {
+      setMsg('⚠️ Cannot merge your node into itself!');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Call PostgreSQL merge_nodes RPC
+      const { error } = await supabase.rpc('merge_nodes', {
+        target_node_id: targetTag,
+        source_node_id: sourceTag
+      });
+
+      if (error) throw error;
+
+      setMsg(`🎉 Successfully merged ${sourceTag} into your Primary Node (${targetTag})!`);
+      setClaimTag('');
+      fetchMyNodes();
+      if (onRefreshGraph) onRefreshGraph();
+    } catch (err) {
+      setMsg(`⚠️ Merge failed: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-lg relative transform rotate-1 max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-3 right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
+          ✖
+        </button>
+        
+        <h2 className="text-2xl font-black mb-6 uppercase tracking-tight transform -rotate-2 w-max bg-cyan-300 px-3 py-1 border-2 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] text-black">
+          🧩 Node Manager
+        </h2>
+
+        {msg && <p className="mb-4 text-xs font-bold text-slate-900 bg-yellow-200 p-2.5 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">{msg}</p>}
+
+        <div className="flex flex-col gap-6">
+          {/* MY OWNED NODES */}
+          <div>
+            <h3 className="font-black text-xs uppercase mb-2 text-black bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md w-max shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+              👑 My Active Nodes
+            </h3>
+            <div className="flex flex-col gap-2">
+              {myNodes.length > 0 ? (
+                myNodes.map((n, idx) => (
+                  <div key={n.id} className="flex items-center justify-between bg-slate-50 border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-sm uppercase text-black">{n.id}</span>
+                      {idx === 0 && <span className="text-[10px] bg-lime-300 border border-black px-1.5 py-0.5 rounded font-black">PRIMARY</span>}
+                    </div>
+                    <span className="text-xs font-bold text-slate-500 uppercase">{n.shape} • {n.type}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs font-bold text-slate-500 italic">No registered nodes found yet.</p>
+              )}
+            </div>
+          </div>
+
+          {/* MERGE / CLAIM UNCLAIMED NODE TOOL */}
+          <div className="border-t-4 border-black border-dashed pt-4">
+            <h3 className="font-black text-xs uppercase mb-2 text-black bg-pink-300 border-2 border-black px-2 py-0.5 rounded-md w-max shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+              🔗 Claim / Merge Unclaimed Node
+            </h3>
+            <p className="text-xs font-bold text-slate-600 mb-3">
+              Did someone log a deed crediting a temporary tag for you? Type that tag below to claim and merge all its links into your primary profile!
+            </p>
+
+            <form onSubmit={handleMerge} className="flex flex-col gap-3">
+              <input 
+                type="text" 
+                placeholder="e.g. SARAH-9921" 
+                value={claimTag} 
+                onChange={e => setClaimTag(e.target.value)}
+                required
+                className="w-full border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none focus:bg-pink-50 shadow-[3px_3px_0px_rgba(0,0,0,1)]"
+              />
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="bg-lime-400 hover:bg-lime-300 disabled:opacity-50 text-black font-black py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all uppercase tracking-wider cursor-pointer text-sm"
+              >
+                {isLoading ? 'Merging...' : 'Merge Into My Profile ⚡'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- UNIFIED LOG KINDNESS FORM ---
 function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const navigate = useNavigate();
-  const [isStartingNew, setIsStartingNew] = useState(false);
   const [helperId, setHelperId] = useState('');
   const [myId, setMyId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [claimModalUrl, setClaimModalUrl] = useState('');
   
   const [nodeShape, setNodeShape] = useState('circle');
-  const [nodeType, setNodeType] = useState('color'); 
-  const [nodeValue, setNodeValue] = useState('#10b981'); 
+  const [nodeType, setNodeType] = useState('image'); 
+  const [nodeValue, setNodeValue] = useState(session?.user?.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kindness'); 
   const [linkColor, setLinkColor] = useState('#cbd5e1'); 
 
-  // --- AUTOCOMPLETE FEATURE STATE ---
   const [existingTags, setExistingTags] = useState([]);
   const [filteredTags, setFilteredTags] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Fetch existing tags to use for the autocomplete search
   useEffect(() => {
     const fetchTags = async () => {
-      const { data } = await supabase.from('nodes').select('id');
-      if (data) setExistingTags(data.map(d => d.id));
+      const { data } = await supabase.from('nodes').select('id, is_claimed');
+      if (data) setExistingTags(data);
+
+      // Auto-fetch user's primary K-Tag
+      if (session?.user?.id) {
+        const { data: userNodes } = await supabase.from('nodes').select('id').eq('user_id', session.user.id);
+        if (userNodes && userNodes.length > 0) {
+          setMyId(userNodes[0].id);
+        }
+      }
     };
     fetchTags();
-  }, []);
+  }, [session]);
 
   const handleHelperIdChange = (e) => {
     const val = e.target.value.toUpperCase();
     setHelperId(val);
     if (val.trim()) {
-      const matches = existingTags.filter(tag => tag.includes(val));
+      const matches = existingTags.filter(n => n.id.includes(val)).map(n => n.id);
       setFilteredTags(matches);
       setShowSuggestions(true);
     } else {
@@ -324,15 +459,12 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
     }
   };
 
-  const selectTag = (tag) => {
-    setHelperId(tag);
-    setShowSuggestions(false);
-  };
+  const isNewHelper = helperId.trim() !== '' && !existingTags.some(n => n.id === helperId.trim().toUpperCase());
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!session) {
-      setErrorMsg("Please sign in to add to the chain!");
+      setErrorMsg("Please sign in to log a good deed!");
       return;
     }
 
@@ -342,46 +474,62 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
     const finalHelperId = helperId.toUpperCase().trim();
 
     try {
-      const { error: nodeError } = await supabase.from('nodes').insert({
+      // 1. Ensure / Upsert My Node
+      const { error: nodeError } = await supabase.from('nodes').upsert({
         id: finalMyId,
         user_id: session.user.id,
         shape: nodeShape,
         type: nodeType,
         value: nodeValue,
-        socials: session?.user?.user_metadata?.socials || {}
-      });
+        socials: session?.user?.user_metadata?.socials || {},
+        is_claimed: true
+      }, { onConflict: 'id' });
 
-      if (nodeError) {
-        if (nodeError.code === '23505') throw new Error("This K-Tag is already taken! Try another one.");
-        throw nodeError;
-      }
+      if (nodeError) throw nodeError;
 
-      if (!isStartingNew && finalHelperId) {
+      // 2. If Helper Specified, ensure Helper Node exists or auto-create Unclaimed Node
+      if (finalHelperId) {
+        if (isNewHelper) {
+          // Auto-create Unclaimed Helper Node
+          const claimCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const { error: unclaimedErr } = await supabase.from('nodes').insert({
+            id: finalHelperId,
+            shape: 'circle',
+            type: 'emoji',
+            value: '🌱',
+            is_claimed: false,
+            claim_code: claimCode
+          });
+
+          if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
+
+          // Set shareable link modal
+          setClaimModalUrl(`${window.location.origin}?claimTag=${finalHelperId}`);
+        }
+
+        // 3. Insert Link: Helper -> My Node
         const { error: linkError } = await supabase.from('links').insert({
           source: finalHelperId,
           target: finalMyId,
           custom_color: linkColor
         });
 
-        if (linkError) {
-          if (linkError.code === '23503') {
-             await supabase.from('nodes').delete().eq('id', finalMyId);
-             throw new Error("Helper's K-Tag not found! Please check the spelling or select it from the dropdown.");
-          }
-          throw linkError;
-        }
+        if (linkError && linkError.code !== '23505') throw linkError;
       }
 
       onComplete({
         myId: finalMyId,
-        helperId: isStartingNew ? null : finalHelperId,
-        isOriginator: isStartingNew,
+        helperId: finalHelperId || null,
+        isOriginator: !finalHelperId,
         customShape: nodeShape,
         customType: nodeType,
         customValue: nodeValue,
         customLinkColor: linkColor
       });
-      navigate('/dashboard');
+
+      if (!isNewHelper) {
+        navigate('/dashboard');
+      }
 
     } catch (error) {
       setErrorMsg(error.message || "Something went wrong.");
@@ -392,9 +540,9 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
 
   if (isAuthLoading) {
     return (
-      <div className="w-full max-w-xl mx-auto mt-12 sm:mt-20 p-8 text-center flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-black mb-4"></div>
-        <p className="text-xl font-black uppercase tracking-widest">Checking Auth...</p>
+      <div className="w-full max-w-xl mx-auto mt-12 text-center flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-black mb-4"></div>
+        <p className="text-sm font-black uppercase tracking-widest">Checking Auth...</p>
       </div>
     );
   }
@@ -403,12 +551,9 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
     return (
       <div className="w-full max-w-xl mx-auto mt-12 sm:mt-20 p-8 sm:p-12 bg-pink-300 rounded-3xl border-4 border-black text-center shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1 hover:rotate-0 transition-transform mb-20">
         <h2 className="text-3xl sm:text-4xl font-black mb-4 text-black uppercase tracking-tight">🔒 Hold Up!</h2>
-        <p className="text-black font-bold mb-8 text-lg">You need to sign in to claim your custom node and join the global chain.</p>
-        <button onClick={() => supabase.auth.signInWithOAuth({ 
-          provider: 'google', 
-          options: { redirectTo: window.location.origin } 
-        })} 
-          className="bg-lime-400 hover:bg-lime-300 text-black text-xl font-black py-4 px-8 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-3 mx-auto w-full sm:w-auto">
+        <p className="text-black font-bold mb-8 text-lg">Sign in to claim your node and log acts of kindness.</p>
+        <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })} 
+          className="bg-lime-400 hover:bg-lime-300 text-black text-xl font-black py-4 px-8 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all flex items-center justify-center gap-3 mx-auto cursor-pointer">
           <span>🚀</span> Sign in with Google
         </button>
       </div>
@@ -416,8 +561,10 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto mt-8 sm:mt-12 p-6 sm:p-8 bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,1)] mb-20">
-      <h1 className="text-3xl sm:text-4xl font-black mb-8 text-black text-center tracking-tight uppercase transform -rotate-1">🎨 Claim Your Node</h1>
+    <div className="w-full max-w-2xl mx-auto mt-8 p-6 sm:p-8 bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,1)] mb-20">
+      <h1 className="text-3xl sm:text-4xl font-black mb-6 text-black text-center tracking-tight uppercase transform -rotate-1">
+        🤝 Log an Act of Kindness
+      </h1>
       
       {errorMsg && (
         <div className="bg-red-400 text-white p-4 rounded-xl mb-6 text-sm font-black border-2 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)]">
@@ -425,134 +572,109 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row bg-white p-2 rounded-2xl mb-8 border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] gap-2">
-        <button type="button" onClick={() => setIsStartingNew(false)}
-          className={`flex-1 py-3 text-sm sm:text-base font-black rounded-xl border-2 transition-all ${!isStartingNew ? 'bg-pink-400 border-black text-black shadow-[2px_2px_0px_rgba(0,0,0,1)] translate-y-[2px]' : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-100'}`}>
-          🥺 I Was Helped
-        </button>
-        <button type="button" onClick={() => setIsStartingNew(true)}
-          className={`flex-1 py-3 text-sm sm:text-base font-black rounded-xl border-2 transition-all ${isStartingNew ? 'bg-lime-400 border-black text-black shadow-[2px_2px_0px_rgba(0,0,0,1)] translate-y-[2px]' : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-100'}`}>
-          🔥 Start a Chain
-        </button>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {!isStartingNew && (
-            <div className="relative">
-              <label className="block text-sm font-black text-black mb-2 uppercase">Helper's K-Tag</label>
-              
-              <input 
-                type="text" 
-                placeholder="Search name..." 
-                value={helperId} 
-                onChange={handleHelperIdChange} 
-                onFocus={() => { if (helperId) setShowSuggestions(true); }}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay so click event fires
-                required={!isStartingNew}
-                autoComplete="off"
-                className="w-full bg-blue-50 border-4 border-black rounded-xl p-4 uppercase font-black focus:outline-none focus:bg-blue-100 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" 
-              />
-              
-              {/* Autocomplete Dropdown */}
-              {showSuggestions && filteredTags.length > 0 && (
-                <ul className="absolute z-20 w-full bg-white border-4 border-black rounded-xl mt-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] max-h-48 overflow-y-auto">
-                  {filteredTags.map(tag => (
-                    <li 
-                      key={tag} 
-                      // FIX: Changed onClick to onMouseDown so it fires before onBlur hides the list!
-                      onMouseDown={() => selectTag(tag)} 
-                      className="p-3 border-b-2 border-black last:border-0 hover:bg-lime-300 cursor-pointer font-black text-sm uppercase transition-colors"
-                    >
-                      {tag}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {/* Warning if nothing matches */}
-              {showSuggestions && filteredTags.length === 0 && helperId.trim() !== '' && (
-                <div className="absolute z-20 w-full bg-red-100 border-4 border-red-500 rounded-xl mt-2 shadow-[4px_4px_0px_rgba(239,68,68,1)] p-3 text-red-700 font-black text-sm">
-                  No matching tags found!
-                </div>
-              )}
+      {/* SHAREABLE CLAIM MODAL FOR NEW UNCLAIMED HELPER */}
+      {claimModalUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-yellow-300 border-4 border-black rounded-3xl p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-md text-center transform -rotate-1">
+            <h2 className="text-2xl font-black uppercase mb-2 text-black">🎉 Deed Logged!</h2>
+            <p className="text-xs font-bold text-slate-800 mb-4">
+              We created a <b>🌱 Unclaimed Seed Node</b> for <b>{helperId}</b>. Share this claim link with them so they can claim their spot on the map!
+            </p>
+            <input type="text" readOnly value={claimModalUrl} className="w-full border-2 border-black rounded-xl p-2.5 font-bold text-xs bg-white mb-4 text-center select-all" />
+            <div className="flex gap-2">
+              <button onClick={() => { navigator.clipboard.writeText(claimModalUrl); alert('Claim link copied!'); }} className="flex-1 bg-lime-400 border-2 border-black rounded-xl py-2.5 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer">
+                📋 Copy Link
+              </button>
+              <button onClick={() => { setClaimModalUrl(''); navigate('/dashboard'); }} className="flex-1 bg-black text-white border-2 border-black rounded-xl py-2.5 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer">
+                Done 🚀
+              </button>
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
-          <div className={isStartingNew ? "md:col-span-2" : ""}>
-            <label className="block text-sm font-black text-black mb-2 uppercase">Create Your K-Tag</label>
-            <input type="text" placeholder="e.g., PUNE-ROCKY" value={myId} onChange={(e) => setMyId(e.target.value)} required
-              className="w-full bg-yellow-50 border-4 border-black rounded-xl p-4 uppercase font-black focus:outline-none focus:bg-yellow-100 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" />
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="relative">
+            <label className="block text-xs font-black text-black mb-1 uppercase">
+              Who Helped You? <span className="text-slate-500 font-normal">(Optional)</span>
+            </label>
+            <input 
+              type="text" 
+              placeholder="e.g. SARAH-9921 or Type New Name" 
+              value={helperId} 
+              onChange={handleHelperIdChange} 
+              onFocus={() => { if (helperId) setShowSuggestions(true); }}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              autoComplete="off"
+              className="w-full bg-blue-50 border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)]" 
+            />
+            
+            {showSuggestions && filteredTags.length > 0 && (
+              <ul className="absolute z-20 w-full bg-white border-4 border-black rounded-xl mt-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] max-h-40 overflow-y-auto">
+                {filteredTags.map(tag => (
+                  <li key={tag} onMouseDown={() => { setHelperId(tag); setShowSuggestions(false); }} className="p-3 border-b-2 border-black last:border-0 hover:bg-lime-300 cursor-pointer font-black text-xs uppercase">
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {isNewHelper && (
+              <p className="mt-2 text-[11px] font-black bg-yellow-200 border-2 border-black p-2 rounded-lg text-slate-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                ✨ New Helper! An Unclaimed Seed Node will be created for them with a shareable invite link.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-black mb-1 uppercase">Your K-Tag / Node Identity</label>
+            <input type="text" value={myId} onChange={(e) => setMyId(e.target.value)} required
+              className="w-full bg-yellow-50 border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)]" />
           </div>
         </div>
 
-        <div className="border-t-4 border-black border-dashed pt-8 mt-2">
-          <h2 className="text-2xl font-black text-black mb-6 flex items-center gap-2 transform -rotate-1 w-max bg-purple-300 px-4 py-2 border-2 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">✨ Customize</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-black text-black uppercase">Shape</label>
-              <select value={nodeShape} onChange={(e) => setNodeShape(e.target.value)} className="p-3 border-4 border-black rounded-xl bg-white font-bold shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:outline-none cursor-pointer">
+        <div className="border-t-4 border-black border-dashed pt-6">
+          <h2 className="text-lg font-black text-black mb-4 uppercase bg-purple-300 px-3 py-1 border-2 border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] w-max">✨ Node Customization</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black text-black uppercase">Shape</label>
+              <select value={nodeShape} onChange={(e) => setNodeShape(e.target.value)} className="p-2.5 border-2 border-black rounded-xl bg-white font-bold text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer">
                 <option value="circle">Circle 🟡</option>
                 <option value="square">Square 🟦</option>
                 <option value="hexagon">Hexagon ⬢</option>
               </select>
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-black text-black uppercase">Content</label>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black text-black uppercase">Type</label>
               <select value={nodeType} onChange={(e) => {
                   setNodeType(e.target.value);
                   if (e.target.value === 'color') setNodeValue('#10b981');
                   if (e.target.value === 'emoji') setNodeValue('💖');
-                  if (e.target.value === 'image') setNodeValue(session?.user?.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix');
+                  if (e.target.value === 'image') setNodeValue(session?.user?.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kindness');
                 }} 
-                className="p-3 border-4 border-black rounded-xl bg-white font-bold shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:outline-none cursor-pointer"
+                className="p-2.5 border-2 border-black rounded-xl bg-white font-bold text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer"
               >
                 <option value="color">Solid Color 🎨</option>
                 <option value="emoji">Emoji 😎</option>
                 <option value="image">Avatar / Img 🖼️</option>
               </select>
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-black text-black uppercase">
-                {nodeType === 'color' ? 'Pick Color' : nodeType === 'emoji' ? 'Type Emoji' : 'Image URL'}
-              </label>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black text-black uppercase">Value</label>
               {nodeType === 'color' ? (
-                <input type="color" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="w-full h-[56px] p-1 border-4 border-black rounded-xl cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)]" />
+                <input type="color" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="w-full h-[42px] p-1 border-2 border-black rounded-xl cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
               ) : nodeType === 'emoji' ? (
-                <input type="text" maxLength="2" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-3 h-[56px] border-4 border-black rounded-xl bg-white text-center text-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:outline-none" />
+                <input type="text" maxLength="2" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-2 h-[42px] border-2 border-black rounded-xl bg-white text-center text-xl shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
               ) : (
-                <div className="flex flex-col gap-2">
-                  <input type="url" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-3 h-[56px] border-4 border-black rounded-xl bg-white text-xs font-bold shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:outline-none" placeholder="https://..." />
-                  {session?.user?.user_metadata?.avatar_url && (
-                    <button 
-                      type="button" 
-                      onClick={() => setNodeValue(session.user.user_metadata.avatar_url)} 
-                      className="text-xs font-black bg-yellow-300 hover:bg-yellow-200 border-2 border-black rounded-lg p-1.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer text-black"
-                    >
-                      👤 Use My Profile Picture
-                    </button>
-                  )}
-                </div>
+                <input type="url" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-2 h-[42px] border-2 border-black rounded-xl bg-white text-xs font-bold shadow-[2px_2px_0px_rgba(0,0,0,1)]" placeholder="https://..." />
               )}
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-col gap-3">
-            <label className="text-xs font-black text-black uppercase">Arrow Color (Your Outgoing Chain)</label>
-            <div className="flex flex-wrap gap-3">
-              {['#000000', '#f43f5e', '#a855f7', '#3b82f6', '#facc15', '#22c55e'].map(color => (
-                <button type="button" key={color} onClick={() => setLinkColor(color)}
-                  className={`w-12 h-12 rounded-full border-4 shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-all ${linkColor === color ? 'border-black scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)]' : 'border-black/20 hover:scale-105'}`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
             </div>
           </div>
         </div>
 
-        <button type="submit" disabled={isLoading} className="w-full mt-6 bg-cyan-400 hover:bg-cyan-300 active:bg-cyan-500 disabled:opacity-50 text-black text-xl font-black py-5 px-4 rounded-xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all uppercase tracking-widest">
-          {isLoading ? 'Processing... 🌀' : (isStartingNew ? 'Launch My Chain 🚀' : 'Connect Me ⚡')}
+        <button type="submit" disabled={isLoading} className="w-full mt-2 bg-cyan-400 hover:bg-cyan-300 text-black text-lg font-black py-4 px-4 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all uppercase tracking-widest cursor-pointer">
+          {isLoading ? 'Saving... 🌀' : 'Log Good Deed ⚡'}
         </button>
       </form>
     </div>
@@ -602,6 +724,7 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true); 
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showNodeManager, setShowNodeManager] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
@@ -682,6 +805,7 @@ function App() {
         
         {showSettings && <SettingsModal session={session} onClose={() => setShowSettings(false)} />}
         {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
+        {showNodeManager && <NodeManagerModal session={session} onClose={() => setShowNodeManager(false)} onRefreshGraph={fetchGlobalGraph} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
@@ -737,7 +861,13 @@ function App() {
               </button>
             )}
             
-            <button onClick={() => setShowTutorial(true)} className="hidden md:block bg-cyan-300 hover:bg-cyan-200 text-black text-sm md:text-base font-black py-2.5 px-4 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all">
+            {session && (
+              <button onClick={() => setShowNodeManager(true)} className="bg-yellow-300 hover:bg-yellow-200 text-black text-sm font-black py-2.5 px-3 md:px-4 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer flex items-center gap-1">
+                🧩 <span className="hidden sm:inline">Node Manager</span>
+              </button>
+            )}
+
+            <button onClick={() => setShowTutorial(true)} className="hidden md:block bg-cyan-300 hover:bg-cyan-200 text-black text-sm md:text-base font-black py-2.5 px-4 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer">
               How it works 📖
             </button>
 

@@ -131,10 +131,20 @@ export default function KindnessGraph({ data, onNodeClick }) {
             ctx.shadowOffsetY = 0;
             ctx.shadowColor = 'rgba(0,0,0,0)';
 
+            const isUnclaimed = node.is_claimed === false;
             drawShape(ctx, node.x, node.y, nodeRadius, shape);
-            ctx.lineWidth = isGhost ? 1 : 1.5; // Made borders minimal
-            ctx.strokeStyle = isGhost ? '#94a3b8' : '#000000';
+            ctx.lineWidth = isGhost ? 1 : isUnclaimed ? 2 : 1.5;
+            
+            if (isUnclaimed) {
+              ctx.setLineDash([4, 4]); // Dashed line for unclaimed nodes
+              ctx.strokeStyle = '#f59e0b'; // Amber outline
+            } else {
+              ctx.setLineDash([]); // Solid line for claimed
+              ctx.strokeStyle = isGhost ? '#94a3b8' : '#000000';
+            }
+            
             ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
             ctx.restore(); 
 
             if (!isGhost && type === 'emoji') {
