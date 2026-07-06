@@ -1081,68 +1081,61 @@ function App() {
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
 
-        <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:p-6 lg:px-12 bg-white/80 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-y-4">
-          <Link to="/" className="text-lg sm:text-xl md:text-2xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform shrink-0">
-            <span className="text-2xl sm:text-3xl md:text-4xl">🫶</span>
+        <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-white/90 backdrop-blur-md border-b-4 border-black sticky top-0 z-40 gap-3">
+          <Link to="/" className="text-xl sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform shrink-0">
+            <span className="text-3xl sm:text-4xl">🫶</span>
             <div className="flex flex-col leading-none justify-center">
               <span>KINDNESS<span className="text-pink-500">SPHERE</span></span>
-              <span className="text-[10px] sm:text-xs md:text-sm text-cyan-500 uppercase tracking-[0.3em] mt-1">world</span>
+              <span className="text-[10px] sm:text-xs text-cyan-500 uppercase tracking-[0.3em] mt-1">world</span>
             </div>
           </Link>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 md:gap-6">
+          
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end">
             
             {isAuthLoading ? (
                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
             ) : session ? (
-  <div className="flex items-center gap-2 sm:gap-3">
-    <div className="hidden sm:flex items-center gap-2 bg-yellow-300 px-3 py-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-      <img 
-        src={session.user.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
-        alt="avatar" 
-        className="w-6 h-6 rounded-full border border-black bg-white object-cover" 
-      />
-      <span className="text-sm font-bold text-black max-w-[100px] truncate">
-        {session.user.user_metadata?.full_name || 'User'}
-      </span>
-    </div>
-    
-    <button 
-      onClick={() => setShowSettings(true)} 
-      className="bg-cyan-300 hover:bg-cyan-200 px-3 py-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)] text-sm font-bold text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
-    >
-      ⚙️ <span className="hidden sm:inline">Settings</span>
-    </button>
-    
-    <button 
-      onClick={handleLogout} 
-      className="bg-pink-300 hover:bg-pink-200 px-3 py-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)] text-sm font-bold text-black hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
-    >
-      Logout
-    </button>
-  </div>
+              <>
+                <div className="hidden lg:flex items-center gap-2 bg-yellow-300 px-3 py-1.5 border-[3px] border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] shrink-0">
+                  <img 
+                    src={session.user.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
+                    alt="avatar" 
+                    className="w-6 h-6 rounded-full border-2 border-black bg-white object-cover" 
+                  />
+                  <span className="text-sm font-black text-black max-w-[90px] truncate">
+                    {session.user.user_metadata?.full_name?.split(' ')[0] || 'User'}
+                  </span>
+                </div>
+                
+                <button onClick={() => setShowSettings(true)} className="bg-cyan-300 hover:bg-cyan-200 px-2.5 py-2 sm:px-3 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
+                  ⚙️ <span className="hidden xl:inline">Settings</span>
+                </button>
+                
+                <button onClick={() => setShowRequests(true)} className="bg-pink-300 hover:bg-pink-200 px-2.5 py-2 sm:px-3 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
+                  🔔 <span className="hidden md:inline">Requests</span>
+                </button>
+                
+                <button onClick={() => setShowNodeManager(true)} className="bg-purple-300 hover:bg-purple-200 px-2.5 py-2 sm:px-3 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
+                  🧩 <span className="hidden md:inline">Nodes</span>
+                </button>
+
+                <button onClick={handleLogout} className="bg-slate-200 hover:bg-red-400 px-2.5 py-2 sm:px-3 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
+                  <span className="md:hidden">🚪</span>
+                  <span className="hidden md:inline">Logout</span>
+                </button>
+              </>
             ) : (
-              <button onClick={handleGoogleLogin} className="text-sm font-bold text-black hover:text-pink-600 transition-colors">
+              <button onClick={handleGoogleLogin} className="bg-white hover:bg-slate-100 px-3 py-2 sm:px-4 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black transition-transform hover:-translate-y-0.5 shrink-0 whitespace-nowrap">
                 Sign In
               </button>
             )}
-            
-            {session && (
-              <>
-                <button onClick={() => setShowRequests(true)} className="bg-pink-300 hover:bg-pink-200 text-black text-sm font-black py-2.5 px-3 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-1">
-                  🔔 <span className="hidden sm:inline">Requests</span>
-                </button>
-                <button onClick={() => setShowNodeManager(true)} className="bg-yellow-300 hover:bg-yellow-200 text-black text-sm font-black py-2.5 px-3 md:px-4 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-1">
-                  🧩 <span className="hidden sm:inline">Node Manager</span>
-                </button>
-              </>
-            )}
 
-            <button onClick={() => setShowTutorial(true)} className="hidden md:block bg-cyan-300 hover:bg-cyan-200 text-black text-sm md:text-base font-black py-2.5 px-4 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer">
-              How it works 📖
+            <button onClick={() => setShowTutorial(true)} className="hidden xl:flex bg-white hover:bg-slate-100 text-black text-sm font-black py-2 px-3 border-[3px] border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
+              📖 How it works
             </button>
 
-            <Link to="/join" className="bg-lime-400 hover:bg-lime-300 text-black text-sm md:text-base font-black py-2.5 px-4 md:px-6 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all">
-              Join Chain 🚀
+            <Link to="/join" className="bg-lime-400 hover:bg-lime-300 text-black text-xs sm:text-sm font-black py-2 px-3 sm:px-4 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 active:translate-y-0 transition-transform shrink-0 whitespace-nowrap flex items-center gap-1">
+              🚀 <span className="ml-0.5">Join Chain</span>
             </Link>
           </div>
         </nav>
