@@ -1,10 +1,9 @@
 // frontend/src/App.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import KindnessGraph from './components/KindnessGraph';
 import { supabase } from './supabaseClient';
 
-// 1. Defined safely outside of all components
 const mockFallbackTree = {
   nodes: [
     { id: 'SEED-NODE', shape: 'hexagon', type: 'emoji', value: '🌱' }
@@ -89,6 +88,37 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const [nodeValue, setNodeValue] = useState('#10b981'); 
   const [linkColor, setLinkColor] = useState('#cbd5e1'); 
 
+  // --- AUTOCOMPLETE FEATURE STATE ---
+  const [existingTags, setExistingTags] = useState([]);
+  const [filteredTags, setFilteredTags] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Fetch existing tags to use for the autocomplete search
+  useEffect(() => {
+    const fetchTags = async () => {
+      const { data } = await supabase.from('nodes').select('id');
+      if (data) setExistingTags(data.map(d => d.id));
+    };
+    fetchTags();
+  }, []);
+
+  const handleHelperIdChange = (e) => {
+    const val = e.target.value.toUpperCase();
+    setHelperId(val);
+    if (val.trim()) {
+      const matches = existingTags.filter(tag => tag.includes(val));
+      setFilteredTags(matches);
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectTag = (tag) => {
+    setHelperId(tag);
+    setShowSuggestions(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!session) {
@@ -125,7 +155,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
         if (linkError) {
           if (linkError.code === '23503') {
              await supabase.from('nodes').delete().eq('id', finalMyId);
-             throw new Error("Helper's K-Tag not found! Please check the spelling.");
+             throw new Error("Helper's K-Tag not found! Please check the spelling or select it from the dropdown.");
           }
           throw linkError;
         }
@@ -197,13 +227,47 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
       
       <form onSubmit={handleSubmit} className="flex flex-col gap-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
           {!isStartingNew && (
-            <div>
+            <div className="relative">
               <label className="block text-sm font-black text-black mb-2 uppercase">Helper's K-Tag</label>
-              <input type="text" placeholder="e.g., DELHI-MAX" value={helperId} onChange={(e) => setHelperId(e.target.value)} required={!isStartingNew}
-                className="w-full bg-blue-50 border-4 border-black rounded-xl p-4 uppercase font-black focus:outline-none focus:bg-blue-100 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" />
+              
+              <input 
+                type="text" 
+                placeholder="Search name..." 
+                value={helperId} 
+                onChange={handleHelperIdChange} 
+                onFocus={() => { if (helperId) setShowSuggestions(true); }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay so click event fires
+                required={!isStartingNew}
+                autoComplete="off"
+                className="w-full bg-blue-50 border-4 border-black rounded-xl p-4 uppercase font-black focus:outline-none focus:bg-blue-100 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" 
+              />
+              
+              {/* Autocomplete Dropdown */}
+              {showSuggestions && filteredTags.length > 0 && (
+                <ul className="absolute z-20 w-full bg-white border-4 border-black rounded-xl mt-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] max-h-48 overflow-y-auto">
+                  {filteredTags.map(tag => (
+                    <li 
+                      key={tag} 
+                      onClick={() => selectTag(tag)} 
+                      className="p-3 border-b-2 border-black last:border-0 hover:bg-lime-300 cursor-pointer font-black text-sm uppercase transition-colors"
+                    >
+                      {tag}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Warning if nothing matches */}
+              {showSuggestions && filteredTags.length === 0 && helperId.trim() !== '' && (
+                <div className="absolute z-20 w-full bg-red-100 border-4 border-red-500 rounded-xl mt-2 shadow-[4px_4px_0px_rgba(239,68,68,1)] p-3 text-red-700 font-black text-sm">
+                  No matching tags found!
+                </div>
+              )}
             </div>
           )}
+
           <div className={isStartingNew ? "md:col-span-2" : ""}>
             <label className="block text-sm font-black text-black mb-2 uppercase">Create Your K-Tag</label>
             <input type="text" placeholder="e.g., PUNE-ROCKY" value={myId} onChange={(e) => setMyId(e.target.value)} required
@@ -317,7 +381,6 @@ function App() {
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
   useEffect(() => {
-    // Check initial auth state
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setIsAuthLoading(false); 
@@ -328,7 +391,6 @@ function App() {
       setIsAuthLoading(false);
     });
 
-    // 2. Fetch function safely enclosed INSIDE the useEffect
     const fetchGlobalGraph = async () => {
       const { data: dbNodes, error: nodesError } = await supabase.from('nodes').select('*');
       const { data: dbLinks, error: linksError } = await supabase.from('links').select('*');
@@ -343,10 +405,8 @@ function App() {
       }
     };
     
-    // Call it immediately on load
     fetchGlobalGraph();
 
-    // 3. Supabase Real-Time setup
     const channel = supabase.channel('schema-db-changes')
       .on(
         'postgres_changes',
@@ -370,7 +430,7 @@ function App() {
       authSub.unsubscribe();
       supabase.removeChannel(channel); 
     };
-  }, []); // 4. Clean, empty dependency array! Zero ESLint warnings!
+  }, []); 
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
