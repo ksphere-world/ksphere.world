@@ -509,26 +509,32 @@ function App() {
             {isAuthLoading ? (
                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
             ) : session ? (
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:flex items-center gap-2 bg-yellow-300 px-3 py-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                  <img 
-                    src={session.user.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
-                    alt="avatar" 
-                    className="w-6 h-6 rounded-full border border-black bg-white object-cover" 
-                  />
-                  <span className="text-sm font-bold text-black max-w-[100px] truncate">
-                    {session.user.user_metadata?.full_name || 'User'}
-                  </span>
-                </div>
-                
-                <button onClick={() => setShowSettings(true)} className="text-sm font-bold text-black hover:text-blue-600 transition-colors flex items-center gap-1">
-                  ⚙️ <span className="hidden sm:inline">Settings</span>
-                </button>
-                
-                <button onClick={handleLogout} className="text-sm font-bold text-black hover:text-pink-600 transition-colors">
-                  Logout
-                </button>
-              </div>
+  <div className="flex items-center gap-2 sm:gap-3">
+    <div className="hidden sm:flex items-center gap-2 bg-yellow-300 px-3 py-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+      <img 
+        src={session.user.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
+        alt="avatar" 
+        className="w-6 h-6 rounded-full border border-black bg-white object-cover" 
+      />
+      <span className="text-sm font-bold text-black max-w-[100px] truncate">
+        {session.user.user_metadata?.full_name || 'User'}
+      </span>
+    </div>
+    
+    <button 
+      onClick={() => setShowSettings(true)} 
+      className="bg-cyan-300 hover:bg-cyan-200 px-3 py-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)] text-sm font-bold text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
+    >
+      ⚙️ <span className="hidden sm:inline">Settings</span>
+    </button>
+    
+    <button 
+      onClick={handleLogout} 
+      className="bg-pink-300 hover:bg-pink-200 px-3 py-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)] text-sm font-bold text-black hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
+    >
+      Logout
+    </button>
+  </div>
             ) : (
               <button onClick={handleGoogleLogin} className="text-sm font-bold text-black hover:text-pink-600 transition-colors">
                 Sign In
@@ -569,9 +575,6 @@ function App() {
                       <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-black border-dashed">
                         <span className="font-black uppercase text-sm tracking-wide flex items-center gap-2 text-black">
                           📊 Live Network Analytics
-                        </span>
-                        <span className="text-xs font-black bg-lime-300 border-2 border-black px-2 py-0.5 rounded-md shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase">
-                          Unlocked 🔓
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-3">
