@@ -334,6 +334,8 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
     };
   }, [fetchMyNodes]);
 
+  const [claimPin, setClaimPin] = useState('');
+
   const handleMerge = async (e) => {
     e.preventDefault();
     if (!claimTag.trim()) return;
@@ -356,20 +358,22 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
     }
 
     try {
-      // Call PostgreSQL merge_nodes RPC
-      const { error } = await supabase.rpc('merge_nodes', {
+      // Call secure_merge_node requiring PIN
+      const { error } = await supabase.rpc('secure_merge_node', {
         target_node_id: targetTag,
-        source_node_id: sourceTag
+        source_node_id: sourceTag,
+        input_pin: claimPin
       });
 
       if (error) throw error;
 
-      setMsg(`🎉 Successfully merged ${sourceTag} into your Primary Node (${targetTag})!`);
+      setMsg(`🎉 Successfully verified and merged ${sourceTag} into your Primary Node (${targetTag})!`);
       setClaimTag('');
+      setClaimPin('');
       fetchMyNodes();
       if (onRefreshGraph) onRefreshGraph();
     } catch (err) {
-      setMsg(`⚠️ Merge failed: ${err.message}`);
+      setMsg(`⚠️ ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -423,21 +427,122 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
             <form onSubmit={handleMerge} className="flex flex-col gap-3">
               <input 
                 type="text" 
-                placeholder="e.g. SARAH-9921" 
+                placeholder="Unclaimed K-Tag (e.g. SARAH-9921)" 
                 value={claimTag} 
                 onChange={e => setClaimTag(e.target.value)}
                 required
                 className="w-full border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none focus:bg-pink-50 shadow-[3px_3px_0px_rgba(0,0,0,1)]"
+              />
+              <input 
+                type="text" 
+                placeholder="Secret Security PIN (e.g. PIN-982134)" 
+                value={claimPin} 
+                onChange={e => setClaimPin(e.target.value)}
+                required
+                className="w-full border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none focus:bg-yellow-50 shadow-[3px_3px_0px_rgba(0,0,0,1)]"
               />
               <button 
                 type="submit" 
                 disabled={isLoading}
                 className="bg-lime-400 hover:bg-lime-300 disabled:opacity-50 text-black font-black py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all uppercase tracking-wider cursor-pointer text-sm"
               >
-                {isLoading ? 'Merging...' : 'Merge Into My Profile ⚡'}
+                {isLoading ? 'Verifying...' : 'Verify & Merge Into My Profile ⚡'}
               </button>
             </form>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- VERIFICATION REQUESTS MODAL ---
+function RequestsModal({ session, onClose, onRefreshGraph }) {
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchRequests = useCallback(async () => {
+    if (!session?.user?.id) return;
+    
+    // 1. Get user's owned nodes
+    const { data: myNodes } = await supabase
+      .from('nodes')
+      .select('id')
+      .or(`user_id.eq.${session.user.id},created_by.eq.${session.user.id}`);
+    
+    if (!myNodes || myNodes.length === 0) return;
+    const myNodeIds = myNodes.map(n => n.id);
+
+    // 2. Query pending links targeting user's nodes
+    const { data: pendingLinks } = await supabase
+      .from('links')
+      .select('*')
+      .in('source', myNodeIds)
+      .eq('status', 'pending');
+
+    if (pendingLinks) setPendingRequests(pendingLinks);
+  }, [session]);
+
+  useEffect(() => {
+    let isMounted = true;
+    queueMicrotask(() => { if (isMounted) fetchRequests(); });
+    return () => { isMounted = false; };
+  }, [fetchRequests]);
+
+  const handleApprove = async (req) => {
+    setIsLoading(true);
+    await supabase.rpc('approve_link_request', {
+      link_source: req.source,
+      link_target: req.target
+    });
+    fetchRequests();
+    if (onRefreshGraph) onRefreshGraph();
+    setIsLoading(false);
+  };
+
+  const handleDecline = async (req) => {
+    setIsLoading(true);
+    await supabase.rpc('decline_link_request', {
+      link_source: req.source,
+      link_target: req.target
+    });
+    fetchRequests();
+    if (onRefreshGraph) onRefreshGraph();
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white border-4 border-black rounded-3xl p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-md relative transform -rotate-1">
+        <button onClick={onClose} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer">
+          ✖
+        </button>
+        <h2 className="text-2xl font-black mb-4 uppercase tracking-tight text-black bg-yellow-300 px-3 py-1 border-2 border-black rounded-xl w-max shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          🔔 Pending Deed Requests
+        </h2>
+
+        <div className="flex flex-col gap-3 max-h-60 overflow-y-auto">
+          {pendingRequests.length > 0 ? (
+            pendingRequests.map((req) => (
+              <div key={`${req.source}-${req.target}`} className="bg-blue-50 border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
+                <p className="text-xs font-bold text-slate-800">
+                  <span className="font-black text-black uppercase">{req.target}</span> logged a deed saying you helped them! Connect this to your node (<span className="font-black uppercase">{req.source}</span>)?
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={() => handleApprove(req)} disabled={isLoading} className="flex-1 bg-lime-400 border-2 border-black rounded-lg py-1.5 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-lime-300 cursor-pointer">
+                    ✅ Verify & Connect
+                  </button>
+                  <button onClick={() => handleDecline(req)} disabled={isLoading} className="flex-1 bg-red-400 border-2 border-black rounded-lg py-1.5 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-red-300 cursor-pointer">
+                    ❌ Decline
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs font-bold text-slate-500 italic p-4 text-center bg-slate-50 border-2 border-black border-dashed rounded-xl">
+              No pending verification requests right now.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -521,31 +626,41 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
       // 2. If Helper Specified, ensure Helper Node exists or auto-create Unclaimed Node
       if (finalHelperId) {
         if (isNewHelper) {
-          // Auto-create Unclaimed Helper Node
-          const claimCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+          // Generate Secret Security PIN for unregistered helper
+          const secretPin = 'PIN-' + Math.floor(100000 + Math.random() * 900000);
+
           const { error: unclaimedErr } = await supabase.from('nodes').insert({
             id: finalHelperId,
             shape: 'circle',
             type: 'emoji',
             value: '🌱',
             is_claimed: false,
-            claim_code: claimCode
+            claim_pin: secretPin
           });
 
           if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
 
-          // Set shareable link modal
-          setClaimModalUrl(`${window.location.origin}?claimTag=${finalHelperId}`);
+          // Insert link (Approved since helper node is pending)
+          await supabase.from('links').insert({
+            source: finalHelperId,
+            target: finalMyId,
+            custom_color: linkColor,
+            status: 'approved'
+          });
+
+          // Show claim modal with PIN!
+          setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
+        } else {
+          // Insert Link for existing user in 'pending' status requiring approval
+          const { error: linkError } = await supabase.from('links').insert({
+            source: finalHelperId,
+            target: finalMyId,
+            custom_color: linkColor,
+            status: 'pending'
+          });
+
+          if (linkError && linkError.code !== '23505') throw linkError;
         }
-
-        // 3. Insert Link: Helper -> My Node
-        const { error: linkError } = await supabase.from('links').insert({
-          source: finalHelperId,
-          target: finalMyId,
-          custom_color: linkColor
-        });
-
-        if (linkError && linkError.code !== '23505') throw linkError;
       }
 
       onComplete({
@@ -770,6 +885,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showNodeManager, setShowNodeManager] = useState(false);
+  const [showRequests, setShowRequests] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
@@ -779,11 +895,11 @@ function App() {
     const { data: dbLinks, error: linksError } = await supabase.from('links').select('*');
 
     if (!nodesError && !linksError && dbNodes.length > 0) {
-      setGlobalGraph({
-        nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value, socials: n.socials, is_claimed: n.is_claimed })),
-        links: dbLinks.map(l => ({ source: l.source, target: l.target, customColor: l.custom_color }))
-      });
-    } else {
+        setGlobalGraph({
+          nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value, socials: n.socials, is_claimed: n.is_claimed })),
+          links: dbLinks.filter(l => l.status === 'approved' || !l.status).map(l => ({ source: l.source, target: l.target, customColor: l.custom_color }))
+        });
+      } else {
       setGlobalGraph(mockFallbackTree);
     }
   }, []);
@@ -884,6 +1000,7 @@ function App() {
         
         {showSettings && <SettingsModal session={session} onClose={() => setShowSettings(false)} />}
         {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
+        {showRequests && <RequestsModal session={session} onClose={() => setShowRequests(false)} onRefreshGraph={fetchGlobalGraph} />}
         {showNodeManager && <NodeManagerModal session={session} onClose={() => setShowNodeManager(false)} onRefreshGraph={fetchGlobalGraph} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
@@ -941,9 +1058,14 @@ function App() {
             )}
             
             {session && (
-              <button onClick={() => setShowNodeManager(true)} className="bg-yellow-300 hover:bg-yellow-200 text-black text-sm font-black py-2.5 px-3 md:px-4 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer flex items-center gap-1">
-                🧩 <span className="hidden sm:inline">Node Manager</span>
-              </button>
+              <>
+                <button onClick={() => setShowRequests(true)} className="bg-pink-300 hover:bg-pink-200 text-black text-sm font-black py-2.5 px-3 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-1">
+                  🔔 <span className="hidden sm:inline">Requests</span>
+                </button>
+                <button onClick={() => setShowNodeManager(true)} className="bg-yellow-300 hover:bg-yellow-200 text-black text-sm font-black py-2.5 px-3 md:px-4 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-1">
+                  🧩 <span className="hidden sm:inline">Node Manager</span>
+                </button>
+              </>
             )}
 
             <button onClick={() => setShowTutorial(true)} className="hidden md:block bg-cyan-300 hover:bg-cyan-200 text-black text-sm md:text-base font-black py-2.5 px-4 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer">
