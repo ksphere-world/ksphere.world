@@ -16,7 +16,43 @@ function SettingsModal({ session, onClose }) {
   const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
   const [avatarUrl, setAvatarUrl] = useState(session?.user?.user_metadata?.avatar_url || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [msg, setMsg] = useState('');
+
+  // Handle image upload to Supabase Storage 'avatars' bucket
+  const handleAvatarUpload = async (event) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      setIsUploading(true);
+      setMsg('');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session?.user?.id || 'user'}-${Date.now()}.${fileExt}`;
+
+      // Upload file to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public CDN URL
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      if (data?.publicUrl) {
+        setAvatarUrl(data.publicUrl);
+        setMsg('✅ Image uploaded successfully!');
+      }
+    } catch (error) {
+      setMsg(`⚠️ Upload failed: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -38,33 +74,47 @@ function SettingsModal({ session, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-md relative transform rotate-1">
-        <button onClick={onClose} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10">
+        <button onClick={onClose} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
           ✖
         </button>
         <h2 className="text-2xl font-black mb-6 uppercase tracking-tight transform -rotate-2 w-max bg-blue-300 px-3 py-1 border-2 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
           ⚙️ Edit Profile
         </h2>
         
-        {msg && <p className="mb-4 text-sm font-bold text-red-600 bg-red-100 p-2 border-2 border-red-600 rounded-lg">{msg}</p>}
+        {msg && <p className="mb-4 text-xs font-bold text-slate-900 bg-yellow-200 p-2.5 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">{msg}</p>}
         
-        <form onSubmit={handleSave} className="flex flex-col gap-5 transform -rotate-1">
+        <form onSubmit={handleSave} className="flex flex-col gap-4 transform -rotate-1">
           <div>
-            <label className="block text-sm font-black uppercase mb-1">Display Name</label>
+            <label className="block text-xs font-black uppercase mb-1">Display Name</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} required
               className="w-full border-4 border-black rounded-xl p-3 font-bold focus:outline-none focus:bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" />
           </div>
+
           <div>
-            <label className="block text-sm font-black uppercase mb-1">Profile Picture URL</label>
-            <input type="url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} required
-              className="w-full border-4 border-black rounded-xl p-3 font-bold focus:outline-none focus:bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" />
-          </div>
-          
-          <div className="flex items-center gap-4 bg-slate-100 p-3 rounded-xl border-2 border-black border-dashed mt-2">
-            <img src={avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} alt="Preview" className="w-12 h-12 rounded-full border-2 border-black bg-white object-cover" />
-            <p className="text-xs font-bold text-slate-500">Google loaded this automatically. You can paste any image URL to change it!</p>
+            <label className="block text-xs font-black uppercase mb-1">Upload New Picture 🖼️</label>
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={handleAvatarUpload}
+              disabled={isUploading}
+              className="w-full border-4 border-black rounded-xl p-2 font-bold focus:outline-none bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-2 file:border-black file:bg-yellow-300 file:font-black file:cursor-pointer hover:file:bg-yellow-200 text-xs cursor-pointer" 
+            />
           </div>
 
-          <button type="submit" disabled={isLoading} className="mt-2 bg-lime-400 hover:bg-lime-300 disabled:opacity-50 text-black text-lg font-black py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all uppercase tracking-widest">
+          <div>
+            <label className="block text-xs font-black uppercase mb-1">Or Image URL</label>
+            <input type="url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} required
+              className="w-full border-4 border-black rounded-xl p-2.5 font-bold focus:outline-none focus:bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors text-xs" />
+          </div>
+          
+          <div className="flex items-center gap-3 bg-slate-100 p-3 rounded-xl border-2 border-black border-dashed mt-1">
+            <img src={avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} alt="Preview" className="w-12 h-12 rounded-full border-2 border-black bg-white object-cover" />
+            <p className="text-xs font-bold text-slate-600">
+              {isUploading ? 'Uploading file...' : 'Preview of your active profile picture used across nodes and the map.'}
+            </p>
+          </div>
+
+          <button type="submit" disabled={isLoading || isUploading} className="mt-2 bg-lime-400 hover:bg-lime-300 disabled:opacity-50 text-black text-lg font-black py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all uppercase tracking-widest cursor-pointer">
             {isLoading ? 'Saving...' : 'Save Profile'}
           </button>
         </form>
@@ -329,7 +379,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
                   setNodeType(e.target.value);
                   if (e.target.value === 'color') setNodeValue('#10b981');
                   if (e.target.value === 'emoji') setNodeValue('💖');
-                  if (e.target.value === 'image') setNodeValue('https://api.dicebear.com/7.x/avataaars/svg?seed=Felix');
+                  if (e.target.value === 'image') setNodeValue(session?.user?.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix');
                 }} 
                 className="p-3 border-4 border-black rounded-xl bg-white font-bold shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:outline-none cursor-pointer"
               >
@@ -347,7 +397,18 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
               ) : nodeType === 'emoji' ? (
                 <input type="text" maxLength="2" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-3 h-[56px] border-4 border-black rounded-xl bg-white text-center text-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:outline-none" />
               ) : (
-                <input type="url" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-3 h-[56px] border-4 border-black rounded-xl bg-white text-sm font-bold shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:outline-none" placeholder="https://..." />
+                <div className="flex flex-col gap-2">
+                  <input type="url" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-3 h-[56px] border-4 border-black rounded-xl bg-white text-xs font-bold shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:outline-none" placeholder="https://..." />
+                  {session?.user?.user_metadata?.avatar_url && (
+                    <button 
+                      type="button" 
+                      onClick={() => setNodeValue(session.user.user_metadata.avatar_url)} 
+                      className="text-xs font-black bg-yellow-300 hover:bg-yellow-200 border-2 border-black rounded-lg p-1.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer text-black"
+                    >
+                      👤 Use My Profile Picture
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
