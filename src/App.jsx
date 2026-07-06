@@ -651,12 +651,12 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
           // Show claim modal with PIN!
           setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
         } else {
-          // Insert Link for existing user in 'pending' status requiring approval
+          // Insert Link for existing user as 'approved' so it shows up automatically
           const { error: linkError } = await supabase.from('links').insert({
             source: finalHelperId,
             target: finalMyId,
             custom_color: linkColor,
-            status: 'pending'
+            status: 'approved'
           });
 
           if (linkError && linkError.code !== '23505') throw linkError;
