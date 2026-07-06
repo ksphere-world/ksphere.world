@@ -1,6 +1,6 @@
 // frontend/src/App.jsx
 import { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import KindnessGraph from './components/KindnessGraph';
 import { supabase } from './supabaseClient';
 
