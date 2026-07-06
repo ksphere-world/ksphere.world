@@ -73,18 +73,18 @@ export default function KindnessGraph({ data }) {
           backgroundColor="transparent"
           
           // --- CUSTOM LINKS (ARROWS) ---
-          linkColor={(link) => link.customColor || '#cbd5e1'}
-          linkWidth={3}
-          linkDirectionalArrowLength={8}
+          linkColor={(link) => link.customColor || '#000000'}
+          linkWidth={4}
+          linkDirectionalArrowLength={12}
           linkDirectionalArrowRelPos={0.5}
-          linkDirectionalArrowColor={(link) => link.customColor || '#cbd5e1'}
+          linkDirectionalArrowColor={(link) => link.customColor || '#000000'}
           
           d3VelocityDecay={0.8}
           warmupTicks={100}
           cooldownTicks={50}
           enableZoom={true}
           
-          // --- TOTAL NODE CUSTOMIZATION ---
+          // --- TOTAL NODE CUSTOMIZATION (NEO-BRUTALISM) ---
           nodeCanvasObject={(node, ctx) => {
             const isGhost = node.ghost;
             const nodeRadius = isGhost ? 6 : 14 + (node.impactCount * 3);
@@ -94,15 +94,17 @@ export default function KindnessGraph({ data }) {
 
             ctx.save();
 
-            // 1. Draw the Base Shape & Shadow
+            // 1. Draw the Base Shape & Hard Shadow
             if (!isGhost) {
-              ctx.shadowColor = 'rgba(0,0,0,0.1)';
-              ctx.shadowBlur = 10;
+              ctx.shadowColor = '#000000';
+              ctx.shadowBlur = 0;
+              ctx.shadowOffsetX = 4;
+              ctx.shadowOffsetY = 4;
             }
             
             drawShape(ctx, node.x, node.y, nodeRadius, shape);
             
-            // 2. Fill based on Type (Color, Image, or Emoji)
+            // 2. Fill based on Type
             if (isGhost) {
               ctx.fillStyle = '#e2e8f0';
               ctx.fill();
@@ -110,16 +112,14 @@ export default function KindnessGraph({ data }) {
               ctx.fillStyle = value;
               ctx.fill();
             } else if (type === 'emoji') {
-              ctx.fillStyle = '#ffffff'; // White bg for emojis
+              ctx.fillStyle = '#ffffff'; 
               ctx.fill();
             } else if (type === 'image') {
-              // Image Clipping Magic
               ctx.fillStyle = '#ffffff';
-              ctx.fill(); // Background fallback
+              ctx.fill(); 
               ctx.save();
-              ctx.clip(); // Clip everything to the shape!
+              ctx.clip(); 
               
-              // Load and cache image on the fly
               if (!node.imgCache) {
                 const img = new Image();
                 img.src = value;
@@ -132,14 +132,14 @@ export default function KindnessGraph({ data }) {
               ctx.restore();
             }
 
-            // 3. Outline
+            // 3. Outline (Thick Black Borders!)
             drawShape(ctx, node.x, node.y, nodeRadius, shape);
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = isGhost ? '#cbd5e1' : '#ffffff';
+            ctx.lineWidth = isGhost ? 2 : 4;
+            ctx.strokeStyle = isGhost ? '#94a3b8' : '#000000';
             ctx.stroke();
-            ctx.restore(); // Drop shadow off
+            ctx.restore(); // Turn off shadow
 
-            // 4. Draw Emoji Text if needed
+            // 4. Draw Emoji Text
             if (!isGhost && type === 'emoji') {
               ctx.font = `${nodeRadius * 1.2}px Arial`;
               ctx.textAlign = 'center';
@@ -150,25 +150,34 @@ export default function KindnessGraph({ data }) {
             // 5. Draw the Label Badge
             const label = node.id;
             const fontSize = isGhost ? 10 : 12;
-            ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
+            ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
             const textWidth = ctx.measureText(label).width;
             const badgeWidth = textWidth + 16;
             const badgeHeight = fontSize + 10;
             const badgeY = node.y + nodeRadius + 8;
             
             if (!isGhost) {
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+              // Badge Hard Shadow
+              ctx.fillStyle = '#000000';
+              ctx.beginPath();
+              ctx.roundRect((node.x - badgeWidth / 2) + 2, badgeY + 2, badgeWidth, badgeHeight, 6);
+              ctx.fill();
+
+              // Badge Background
+              ctx.fillStyle = '#ffffff';
               ctx.beginPath();
               ctx.roundRect(node.x - badgeWidth / 2, badgeY, badgeWidth, badgeHeight, 6);
               ctx.fill();
-              ctx.lineWidth = 1;
-              ctx.strokeStyle = '#e2e8f0';
+              
+              // Badge Border
+              ctx.lineWidth = 2;
+              ctx.strokeStyle = '#000000';
               ctx.stroke();
             }
 
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = isGhost ? '#94a3b8' : '#334155';
+            ctx.fillStyle = isGhost ? '#94a3b8' : '#000000';
             ctx.fillText(label, node.x, badgeY + badgeHeight / 2 + 1); 
           }}
         />

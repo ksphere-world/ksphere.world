@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
 body {
-  background-color: #0f172a; 
+  background-color: #fdfbf7;
+  color: #111827;
+  background-image: radial-gradient(#cbd5e1 2px, transparent 0);
+  background-size: 30px 30px;
+}
+
+::selection {
+  background-color: #f472b6; /* Hot pink selection */
   color: white;
 }
