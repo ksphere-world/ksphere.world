@@ -15,6 +15,15 @@ const mockFallbackTree = {
 function SettingsModal({ session, onClose }) {
   const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
   const [avatarUrl, setAvatarUrl] = useState(session?.user?.user_metadata?.avatar_url || '');
+  
+  // Social Links State
+  const initialSocials = session?.user?.user_metadata?.socials || {};
+  const [instagram, setInstagram] = useState(initialSocials.instagram || '');
+  const [twitter, setTwitter] = useState(initialSocials.twitter || '');
+  const [youtube, setYoutube] = useState(initialSocials.youtube || '');
+  const [facebook, setFacebook] = useState(initialSocials.facebook || '');
+  const [website, setWebsite] = useState(initialSocials.website || '');
+
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [msg, setMsg] = useState('');
@@ -31,14 +40,12 @@ function SettingsModal({ session, onClose }) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${session?.user?.id || 'user'}-${Date.now()}.${fileExt}`;
 
-      // Upload file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public CDN URL
       const { data } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
@@ -59,8 +66,14 @@ function SettingsModal({ session, onClose }) {
     setIsLoading(true);
     setMsg('');
 
+    const socials = { instagram, twitter, youtube, facebook, website };
+
     const { error } = await supabase.auth.updateUser({
-      data: { full_name: name, avatar_url: avatarUrl }
+      data: { 
+        full_name: name, 
+        avatar_url: avatarUrl,
+        socials
+      }
     });
 
     setIsLoading(false);
@@ -73,25 +86,25 @@ function SettingsModal({ session, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-md relative transform rotate-1">
-        <button onClick={onClose} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
+      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-lg relative transform rotate-1 max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-3 right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
           ✖
         </button>
-        <h2 className="text-2xl font-black mb-6 uppercase tracking-tight transform -rotate-2 w-max bg-blue-300 px-3 py-1 border-2 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-          ⚙️ Edit Profile
+        <h2 className="text-2xl font-black mb-6 uppercase tracking-tight transform -rotate-2 w-max bg-blue-300 px-3 py-1 border-2 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] text-black">
+          ⚙️ Edit Profile & Links
         </h2>
         
         {msg && <p className="mb-4 text-xs font-bold text-slate-900 bg-yellow-200 p-2.5 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">{msg}</p>}
         
-        <form onSubmit={handleSave} className="flex flex-col gap-4 transform -rotate-1">
+        <form onSubmit={handleSave} className="flex flex-col gap-5 transform -rotate-1">
           <div>
-            <label className="block text-xs font-black uppercase mb-1">Display Name</label>
+            <label className="block text-xs font-black uppercase mb-1 text-black">Display Name</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} required
               className="w-full border-4 border-black rounded-xl p-3 font-bold focus:outline-none focus:bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" />
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase mb-1">Upload New Picture 🖼️</label>
+            <label className="block text-xs font-black uppercase mb-1 text-black">Upload New Avatar 🖼️</label>
             <input 
               type="file" 
               accept="image/*" 
@@ -102,15 +115,51 @@ function SettingsModal({ session, onClose }) {
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase mb-1">Or Image URL</label>
+            <label className="block text-xs font-black uppercase mb-1 text-black">Or Image URL</label>
             <input type="url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} required
               className="w-full border-4 border-black rounded-xl p-2.5 font-bold focus:outline-none focus:bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors text-xs" />
+          </div>
+
+          {/* SOCIAL LINKS SECTION */}
+          <div className="border-t-4 border-black border-dashed pt-4 flex flex-col gap-3">
+            <h3 className="font-black uppercase text-sm bg-pink-300 px-3 py-1 border-2 border-black rounded-xl w-max shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+              🌐 Social Media Handles
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-700">📸 Instagram</label>
+                <input type="text" placeholder="https://instagram.com/yourhandle" value={instagram} onChange={e => setInstagram(e.target.value)}
+                  className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-pink-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-700">🐦 Twitter / X</label>
+                <input type="text" placeholder="https://x.com/yourhandle" value={twitter} onChange={e => setTwitter(e.target.value)}
+                  className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-cyan-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-700">🔴 YouTube</label>
+                <input type="text" placeholder="https://youtube.com/@channel" value={youtube} onChange={e => setYoutube(e.target.value)}
+                  className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-red-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-700">📘 Facebook</label>
+                <input type="text" placeholder="https://facebook.com/profile" value={facebook} onChange={e => setFacebook(e.target.value)}
+                  className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-blue-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-700">🔗 Website / Portfolio</label>
+              <input type="url" placeholder="https://yourwebsite.com" value={website} onChange={e => setWebsite(e.target.value)}
+                className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-lime-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
+            </div>
           </div>
           
           <div className="flex items-center gap-3 bg-slate-100 p-3 rounded-xl border-2 border-black border-dashed mt-1">
             <img src={avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} alt="Preview" className="w-12 h-12 rounded-full border-2 border-black bg-white object-cover" />
             <p className="text-xs font-bold text-slate-600">
-              {isUploading ? 'Uploading file...' : 'Preview of your active profile picture used across nodes and the map.'}
+              {isUploading ? 'Uploading file...' : 'Preview of your active avatar & social badges.'}
             </p>
           </div>
 
@@ -154,6 +203,81 @@ function TutorialModal({ onClose }) {
           <button onClick={onClose} className="mt-4 bg-black text-white text-xl font-black py-4 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all uppercase tracking-widest">
             Got it, let's go! 🚀
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+// --- NODE DETAILS & SOCIAL LINKS MODAL ---
+function NodeDetailsModal({ node, onClose }) {
+  if (!node || node.ghost) return null;
+  const socials = node.socials || {};
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-sm relative transform -rotate-1">
+        <button onClick={onClose} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
+          ✖
+        </button>
+        
+        <div className="flex flex-col items-center text-center">
+          <div className="w-20 h-20 rounded-full border-4 border-black bg-yellow-300 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center justify-center overflow-hidden mb-3">
+            {node.type === 'emoji' ? (
+              <span className="text-4xl">{node.value}</span>
+            ) : node.type === 'image' ? (
+              <img src={node.value} alt={node.id} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full" style={{ backgroundColor: node.value }}></div>
+            )}
+          </div>
+
+          <p className="bg-lime-300 border-2 border-black rounded-lg px-3 py-1 font-black text-lg uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] tracking-wide mb-1">
+            {node.id}
+          </p>
+          <p className="text-xs font-bold text-slate-600 mb-6 uppercase tracking-wider">
+            Kindness Impact: {node.impactCount || 0} Connected
+          </p>
+
+          <h3 className="font-black text-sm uppercase mb-3 text-black">🌐 Connect with Helper</h3>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 w-full">
+            {socials.instagram && (
+              <a href={socials.instagram} target="_blank" rel="noopener noreferrer" 
+                className="bg-pink-400 hover:bg-pink-300 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
+                📸 Instagram
+              </a>
+            )}
+            {socials.twitter && (
+              <a href={socials.twitter} target="_blank" rel="noopener noreferrer" 
+                className="bg-cyan-300 hover:bg-cyan-200 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
+                🐦 Twitter / X
+              </a>
+            )}
+            {socials.youtube && (
+              <a href={socials.youtube} target="_blank" rel="noopener noreferrer" 
+                className="bg-red-400 hover:bg-red-300 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
+                🔴 YouTube
+              </a>
+            )}
+            {socials.facebook && (
+              <a href={socials.facebook} target="_blank" rel="noopener noreferrer" 
+                className="bg-blue-400 hover:bg-blue-300 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
+                📘 Facebook
+              </a>
+            )}
+            {socials.website && (
+              <a href={socials.website} target="_blank" rel="noopener noreferrer" 
+                className="bg-yellow-300 hover:bg-yellow-200 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
+                🌐 Website
+              </a>
+            )}
+
+            {!socials.instagram && !socials.twitter && !socials.youtube && !socials.facebook && !socials.website && (
+              <p className="text-xs font-bold text-slate-500 italic bg-slate-100 p-3 rounded-xl border-2 border-black border-dashed w-full">
+                No social links added by this user yet.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -223,7 +347,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
         user_id: session.user.id,
         shape: nodeShape,
         type: nodeType,
-        value: nodeValue
+        value: nodeValue,
+        socials: session?.user?.user_metadata?.socials || {}
       });
 
       if (nodeError) {
@@ -477,6 +602,7 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true); 
   const [showSettings, setShowSettings] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [selectedNode, setSelectedNode] = useState(null);
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
   useEffect(() => {
@@ -496,7 +622,7 @@ function App() {
 
       if (!nodesError && !linksError && dbNodes.length > 0) {
         setGlobalGraph({
-          nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value })),
+          nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value, socials: n.socials })),
           links: dbLinks.map(l => ({ source: l.source, target: l.target, customColor: l.custom_color }))
         });
       } else {
@@ -556,6 +682,15 @@ function App() {
         
         {showSettings && <SettingsModal session={session} onClose={() => setShowSettings(false)} />}
         {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
+        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
+        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
+        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
+        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
+        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
+        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
+        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
+        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
+        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
 
         <nav className="flex justify-between items-center p-4 md:p-6 lg:px-12 bg-white/80 backdrop-blur-md border-b-4 border-black sticky top-0 z-40">
           <Link to="/" className="text-xl md:text-2xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform">
@@ -659,7 +794,7 @@ function App() {
                   <div className="absolute top-4 left-4 z-10 bg-white border-2 border-black px-3 py-1 rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] font-bold text-xs flex items-center gap-2">
                     <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span> LIVE
                   </div>
-                  <KindnessGraph data={globalGraph} /> 
+                  <KindnessGraph data={globalGraph} onNodeClick={setSelectedNode} /> 
                 </div>
               </div>
             } />
