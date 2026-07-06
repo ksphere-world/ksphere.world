@@ -401,7 +401,10 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
             <div className="flex flex-col gap-3">
               {myNodes.length > 0 ? (
                 myNodes.map((n, idx) => {
-                  const isUnclaimed = n.is_claimed === false;
+                  // Fix: correctly identify unclaimed nodes even if is_claimed is null in DB
+                  const isUnclaimed = !n.is_claimed || !!n.claim_pin;
+                  const isPrimary = !isUnclaimed && n.user_id === session?.user?.id;
+                  
                   return (
                     <div key={n.id} className="flex flex-col gap-2 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                       <div className="flex items-center justify-between">
@@ -410,13 +413,13 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
                           {isUnclaimed ? (
                             <span className="text-[10px] bg-yellow-300 border border-black px-1.5 py-0.5 rounded font-black">UNCLAIMED</span>
                           ) : (
-                            idx === 0 && <span className="text-[10px] bg-lime-300 border border-black px-1.5 py-0.5 rounded font-black">PRIMARY</span>
+                            isPrimary && <span className="text-[10px] bg-lime-300 border border-black px-1.5 py-0.5 rounded font-black">PRIMARY</span>
                           )}
                         </div>
                         <span className="text-xs font-bold text-slate-500 uppercase">{n.shape} • {n.type}</span>
                       </div>
                       
-                      {isUnclaimed && (
+                      {isUnclaimed ? (
                         <div className="bg-white border-2 border-dashed border-black rounded-lg p-2 text-xs font-bold flex justify-between items-center mt-1">
                           <span>PIN: <span className="text-pink-600 font-black tracking-widest">{n.claim_pin || 'MISSING'}</span></span>
                           {n.claim_pin && (
@@ -428,7 +431,11 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
                             </button>
                           )}
                         </div>
-                      )}
+                      ) : isPrimary ? (
+                        <div className="bg-lime-50 border-2 border-dashed border-black rounded-lg p-2 text-[10px] font-bold text-slate-700 mt-1">
+                          🔒 Secure. Others must send a Request to link to your Tag!
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })
@@ -659,6 +666,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
 
           if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
 
+          // You created this unclaimed node, so the link is automatically approved
           await supabase.from('links').insert({
             source: finalHelperId,
             target: finalMyId,
@@ -668,11 +676,13 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
 
           setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
         } else {
+          // Linking to an EXISTING user's node! 
+          // Status MUST be pending so they can approve it in their Requests Modal, preventing unknown claims.
           const { error: linkError } = await supabase.from('links').insert({
             source: finalHelperId,
             target: finalMyId,
             custom_color: linkColor,
-            status: 'approved'
+            status: 'pending' 
           });
 
           if (linkError && linkError.code !== '23505') throw linkError;
