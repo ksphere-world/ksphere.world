@@ -13,8 +13,8 @@ if (-not (Test-Path $outputDir)) {
     Write-Host "Created missing directory: $outputDir" -ForegroundColor Yellow
 }
 
-# 2. Define what files to grab (only code files)
-$validExtensions = @('.js', '.jsx', '.css', '.json', '.html')
+# 2. Define what files to grab (ADDED .yml, .yaml, and .md)
+$validExtensions = @('.js', '.jsx', '.css', '.json', '.html', '.yml', '.yaml', '.md')
 
 # 3. Find all files, ignoring node_modules, .git, and lock files
 $files = Get-ChildItem -Path $projectPath -Recurse -File | Where-Object {
@@ -22,8 +22,9 @@ $files = Get-ChildItem -Path $projectPath -Recurse -File | Where-Object {
     $isNotNodeModules = $_.FullName -notmatch '\\node_modules\\'
     $isNotGit = $_.FullName -notmatch '\\.git\\'
     $isNotLock = $_.Name -ne 'package-lock.json'
+    $isNotEnv = $_.Name -ne '.env' # Added this to protect your Supabase keys!
     
-    $isValidExt -and $isNotNodeModules -and $isNotGit -and $isNotLock
+    $isValidExt -and $isNotNodeModules -and $isNotGit -and $isNotLock -and $isNotEnv
 }
 
 # 4. Build the output text
