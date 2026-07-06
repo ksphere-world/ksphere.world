@@ -6,7 +6,6 @@ import { supabase } from './supabaseClient';
 
 // --- SETTINGS MODAL ---
 function SettingsModal({ session, onClose }) {
-  // Grab automatic Google data from session metadata, or fallback to empty
   const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
   const [avatarUrl, setAvatarUrl] = useState(session?.user?.user_metadata?.avatar_url || '');
   const [isLoading, setIsLoading] = useState(false);
@@ -17,7 +16,6 @@ function SettingsModal({ session, onClose }) {
     setIsLoading(true);
     setMsg('');
 
-    // Update user metadata in Supabase
     const { error } = await supabase.auth.updateUser({
       data: { full_name: name, avatar_url: avatarUrl }
     });
@@ -26,7 +24,7 @@ function SettingsModal({ session, onClose }) {
     if (error) {
       setMsg(`⚠️ ${error.message}`);
     } else {
-      onClose(); // Close modal on success
+      onClose(); 
     }
   };
 
@@ -70,7 +68,7 @@ function SettingsModal({ session, onClose }) {
 
 
 // --- THE ADVANCED FORM ---
-function LogKindnessForm({ onComplete, session }) {
+function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const navigate = useNavigate();
   const [isStartingNew, setIsStartingNew] = useState(false);
   const [helperId, setHelperId] = useState('');
@@ -143,14 +141,25 @@ function LogKindnessForm({ onComplete, session }) {
     }
   };
 
- if (!session) {
+  // Add a loading state so the app doesn't flash "Hold up" before session arrives
+  if (isAuthLoading) {
+    return (
+      <div className="w-full max-w-xl mx-auto mt-12 sm:mt-20 p-8 text-center flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-black mb-4"></div>
+        <p className="text-xl font-black uppercase tracking-widest">Checking Auth...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
     return (
       <div className="w-full max-w-xl mx-auto mt-12 sm:mt-20 p-8 sm:p-12 bg-pink-300 rounded-3xl border-4 border-black text-center shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1 hover:rotate-0 transition-transform mb-20">
         <h2 className="text-3xl sm:text-4xl font-black mb-4 text-black uppercase tracking-tight">🔒 Hold Up!</h2>
         <p className="text-black font-bold mb-8 text-lg">You need to sign in to claim your custom node and join the global chain.</p>
         <button onClick={() => supabase.auth.signInWithOAuth({ 
           provider: 'google', 
-          options: { redirectTo: `${window.location.origin}/join` } 
+          // FIX 1: Redirect to root origin to prevent the 404.html from stripping our OAuth token!
+          options: { redirectTo: window.location.origin } 
         })} 
           className="bg-lime-400 hover:bg-lime-300 text-black text-xl font-black py-4 px-8 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-3 mx-auto w-full sm:w-auto">
           <span>🚀</span> Sign in with Google
@@ -159,6 +168,7 @@ function LogKindnessForm({ onComplete, session }) {
     );
   }
 
+  // ... rest of the form stays identical
   return (
     <div className="w-full max-w-2xl mx-auto mt-8 sm:mt-12 p-6 sm:p-8 bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,1)] mb-20">
       <h1 className="text-3xl sm:text-4xl font-black mb-8 text-black text-center tracking-tight uppercase transform -rotate-1">🎨 Claim Your Node</h1>
@@ -297,7 +307,8 @@ function Dashboard({ userData }) {
 function App() {
   const [userData, setUserData] = useState(null);
   const [session, setSession] = useState(null);
-  const [showSettings, setShowSettings] = useState(false); // Controls our new settings modal
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // FIX 2: Loading State Added
+  const [showSettings, setShowSettings] = useState(false);
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
   const mockFallbackTree = {
@@ -308,8 +319,18 @@ function App() {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsAuthLoading(false); // Stop loading once checked
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setIsAuthLoading(false);
+    });
+    
     fetchGlobalGraph();
     return () => subscription.unsubscribe();
   }, []);
@@ -331,8 +352,9 @@ function App() {
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
+      // FIX 3: Always redirect to the root domain. This stops the 404 router from erasing the OAuth tokens.
       options: {
-        redirectTo: `${window.location.origin}/join` 
+        redirectTo: window.location.origin
       }
     });
   };
@@ -345,7 +367,6 @@ function App() {
     <Router>
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
         
-        {/* Render Settings Modal conditionally */}
         {showSettings && <SettingsModal session={session} onClose={() => setShowSettings(false)} />}
 
         <nav className="flex justify-between items-center p-4 md:p-6 lg:px-12 bg-white/80 backdrop-blur-md border-b-4 border-black sticky top-0 z-40">
@@ -353,9 +374,12 @@ function App() {
             <span>🫶</span> KINDNESS<span className="text-pink-500">CHAIN</span>
           </Link>
           <div className="flex items-center gap-4 md:gap-6">
-            {session ? (
+            
+            {/* Show a mini loading spinner on the nav if it's checking session */}
+            {isAuthLoading ? (
+               <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+            ) : session ? (
               <div className="flex items-center gap-3">
-                {/* Visual User Profile populated automatically from Google */}
                 <div className="hidden sm:flex items-center gap-2 bg-yellow-300 px-3 py-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                   <img 
                     src={session.user.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
@@ -367,7 +391,6 @@ function App() {
                   </span>
                 </div>
                 
-                {/* Settings Button */}
                 <button onClick={() => setShowSettings(true)} className="text-sm font-bold text-black hover:text-blue-600 transition-colors flex items-center gap-1">
                   ⚙️ <span className="hidden sm:inline">Settings</span>
                 </button>
@@ -381,6 +404,7 @@ function App() {
                 Sign In
               </button>
             )}
+            
             <Link to="/join" className="bg-lime-400 hover:bg-lime-300 text-black text-sm md:text-base font-black py-2.5 px-4 md:px-6 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all">
               Join Chain 🚀
             </Link>
@@ -413,7 +437,7 @@ function App() {
                 </div>
               </div>
             } />
-            <Route path="/join" element={<LogKindnessForm onComplete={setUserData} session={session} />} />
+            <Route path="/join" element={<LogKindnessForm onComplete={setUserData} session={session} isAuthLoading={isAuthLoading} />} />
             <Route path="/dashboard" element={<Dashboard userData={userData} />} />
           </Routes>
         </main>
