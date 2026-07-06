@@ -290,18 +290,49 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
   const [isLoading, setIsLoading] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const fetchMyNodes = async () => {
+  const fetchMyNodes = useCallback(async () => {
     if (!session?.user?.id) return;
+    const userId = session.user.id;
+
     const { data } = await supabase
       .from('nodes')
       .select('*')
-      .eq('user_id', session.user.id);
-    if (data) setMyNodes(data);
-  };
+      .or(`user_id.eq.${userId},created_by.eq.${userId}`);
+
+    if (data && data.length > 0) {
+      setMyNodes(data);
+    } else {
+      const rawName = session.user.user_metadata?.full_name || 'KIND';
+      const cleanName = rawName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10) || 'MEMBER';
+      const primaryTag = `${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const { data: newNode } = await supabase.from('nodes').insert({
+        id: primaryTag,
+        user_id: userId,
+        created_by: userId,
+        shape: 'circle',
+        type: 'image',
+        value: session.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+        socials: session.user.user_metadata?.socials || {},
+        is_claimed: true
+      }).select();
+
+      if (newNode) setMyNodes(newNode);
+      if (onRefreshGraph) onRefreshGraph();
+    }
+  }, [session, onRefreshGraph]);
 
   useEffect(() => {
-    fetchMyNodes();
-  }, [session]);
+    let isMounted = true;
+
+    queueMicrotask(() => {
+      if (isMounted) fetchMyNodes();
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchMyNodes]);
 
   const handleMerge = async (e) => {
     e.preventDefault();
@@ -597,11 +628,11 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="relative">
             <label className="block text-xs font-black text-black mb-1 uppercase">
-              Who Helped You? <span className="text-slate-500 font-normal">(Optional)</span>
+              Who Helped You? <span className="text-slate-500 font-normal">(Leave blank to start new chain)</span>
             </label>
             <input 
               type="text" 
-              placeholder="e.g. SARAH-9921 or Type New Name" 
+              placeholder="Search or Type Helper's Name..." 
               value={helperId} 
               onChange={handleHelperIdChange} 
               onFocus={() => { if (helperId) setShowSuggestions(true); }}
@@ -622,13 +653,15 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
 
             {isNewHelper && (
               <p className="mt-2 text-[11px] font-black bg-yellow-200 border-2 border-black p-2 rounded-lg text-slate-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                ✨ New Helper! An Unclaimed Seed Node will be created for them with a shareable invite link.
+                ✨ Unregistered Helper! We will auto-create a 🌱 Seed Node for them with a shareable claim link.
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-black text-black mb-1 uppercase">Your K-Tag / Node Identity</label>
+            <label className="block text-xs font-black text-black mb-1 uppercase">
+              Your Primary K-Tag <span className="text-lime-600 font-bold">(Auto-filled)</span>
+            </label>
             <input type="text" value={myId} onChange={(e) => setMyId(e.target.value)} required
               className="w-full bg-yellow-50 border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)]" />
           </div>
@@ -669,6 +702,18 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
               ) : (
                 <input type="url" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-2 h-[42px] border-2 border-black rounded-xl bg-white text-xs font-bold shadow-[2px_2px_0px_rgba(0,0,0,1)]" placeholder="https://..." />
               )}
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2">
+            <label className="text-[10px] font-black text-black uppercase">Outgoing Arrow Color</label>
+            <div className="flex flex-wrap gap-2">
+              {['#cbd5e1', '#000000', '#f43f5e', '#a855f7', '#3b82f6', '#facc15', '#22c55e'].map(color => (
+                <button type="button" key={color} onClick={() => setLinkColor(color)}
+                  className={`w-7 h-7 rounded-full border-2 border-black transition-all cursor-pointer ${linkColor === color ? 'scale-110 shadow-[2px_2px_0px_rgba(0,0,0,1)] ring-2 ring-black' : 'opacity-60 hover:opacity-100'}`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -728,57 +773,91 @@ function App() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
+  // 1. Fetch Global Graph wrapped in useCallback so it's globally available
+  const fetchGlobalGraph = useCallback(async () => {
+    const { data: dbNodes, error: nodesError } = await supabase.from('nodes').select('*');
+    const { data: dbLinks, error: linksError } = await supabase.from('links').select('*');
+
+    if (!nodesError && !linksError && dbNodes.length > 0) {
+      setGlobalGraph({
+        nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value, socials: n.socials, is_claimed: n.is_claimed })),
+        links: dbLinks.map(l => ({ source: l.source, target: l.target, customColor: l.custom_color }))
+      });
+    } else {
+      setGlobalGraph(mockFallbackTree);
+    }
+  }, []);
+
+  // 2. Helper to ensure every signed-in user HAS a Primary Node
+  const ensurePrimaryNode = useCallback(async (userSession) => {
+    if (!userSession?.user?.id) return;
+    const userId = userSession.user.id;
+
+    const { data: existingNodes } = await supabase
+      .from('nodes')
+      .select('*')
+      .or(`user_id.eq.${userId},created_by.eq.${userId}`);
+
+    if (!existingNodes || existingNodes.length === 0) {
+      const rawName = userSession.user.user_metadata?.full_name || userSession.user.email?.split('@')[0] || 'KIND';
+      const cleanName = rawName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10) || 'MEMBER';
+      const primaryTag = `${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      await supabase.from('nodes').insert({
+        id: primaryTag,
+        user_id: userId,
+        created_by: userId,
+        shape: 'circle',
+        type: 'image',
+        value: userSession.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+        socials: userSession.user.user_metadata?.socials || {},
+        is_claimed: true
+      });
+      fetchGlobalGraph();
+    }
+  }, [fetchGlobalGraph]);
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let isMounted = true;
+
+    queueMicrotask(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!isMounted) return;
       setSession(session);
-      setIsAuthLoading(false); 
+      setIsAuthLoading(false);
+      if (session) ensurePrimaryNode(session);
     });
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       setSession(session);
       setIsAuthLoading(false);
+      if (session) ensurePrimaryNode(session);
     });
 
-    const fetchGlobalGraph = async () => {
-      const { data: dbNodes, error: nodesError } = await supabase.from('nodes').select('*');
-      const { data: dbLinks, error: linksError } = await supabase.from('links').select('*');
-
-      if (!nodesError && !linksError && dbNodes.length > 0) {
-        setGlobalGraph({
-          nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value, socials: n.socials })),
-          links: dbLinks.map(l => ({ source: l.source, target: l.target, customColor: l.custom_color }))
-        });
-      } else {
-        setGlobalGraph(mockFallbackTree);
-      }
-    };
-    
-    fetchGlobalGraph();
+    queueMicrotask(() => {
+      if (isMounted) fetchGlobalGraph();
+    });
 
     const channel = supabase.channel('schema-db-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'nodes' },
-        (payload) => {
-          console.log("Realtime Node change detected!", payload);
-          fetchGlobalGraph(); 
-        }
+        () => { fetchGlobalGraph(); }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'links' },
-        (payload) => {
-          console.log("Realtime Link change detected!", payload);
-          fetchGlobalGraph(); 
-        }
+        () => { fetchGlobalGraph(); }
       )
       .subscribe();
 
     return () => {
+      isMounted = false;
       authSub.unsubscribe();
       supabase.removeChannel(channel); 
     };
-  }, []); 
+  }, [ensurePrimaryNode, fetchGlobalGraph]); 
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
