@@ -354,33 +354,21 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
     }
 
     try {
-      // 1. Fetch the unclaimed node directly to verify PIN securely on frontend
       const { data: nodeData, error: fetchError } = await supabase
         .from('nodes')
         .select('*')
         .eq('id', sourceTag)
         .single();
 
-      if (fetchError || !nodeData) {
-        throw new Error("Node not found! Double check the tag.");
-      }
+      if (fetchError || !nodeData) throw new Error("Node not found! Double check the tag.");
+      if (nodeData.is_claimed) throw new Error("This node has already been claimed.");
+      if (nodeData.claim_pin !== enteredPin) throw new Error("Incorrect PIN! Access denied.");
 
-      if (nodeData.is_claimed) {
-        throw new Error("This node has already been claimed.");
-      }
-
-      if (nodeData.claim_pin !== enteredPin) {
-        throw new Error("Incorrect PIN! Access denied.");
-      }
-
-      // 2. PIN matches! Move all links over to your primary node
       await supabase.from('links').update({ source: targetTag }).eq('source', sourceTag);
       await supabase.from('links').update({ target: targetTag }).eq('target', sourceTag);
-
-      // 3. Safely delete the old unclaimed node now that links are transferred
       await supabase.from('nodes').delete().eq('id', sourceTag);
 
-      setMsg(`🎉 Successfully verified and merged ${sourceTag} into your Primary Node (${targetTag})!`);
+      setMsg(`🎉 Successfully verified and merged ${sourceTag} into your profile!`);
       setClaimTag('');
       setClaimPin('');
       fetchMyNodes();
@@ -406,56 +394,57 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
         {msg && <p className="mb-4 text-xs font-bold text-slate-900 bg-yellow-200 p-2.5 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">{msg}</p>}
 
         <div className="flex flex-col gap-6">
-          {/* MY OWNED NODES */}
           <div>
             <h3 className="font-black text-xs uppercase mb-2 text-black bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md w-max shadow-[1px_1px_0px_rgba(0,0,0,1)]">
               👑 My Active Nodes
             </h3>
             <div className="flex flex-col gap-3">
               {myNodes.length > 0 ? (
-                myNodes.map((n, idx) => (
-                  <div key={n.id} className="flex flex-col gap-2 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-sm uppercase text-black">{n.id}</span>
-                        {n.is_claimed ? (
-                          idx === 0 && <span className="text-[10px] bg-lime-300 border border-black px-1.5 py-0.5 rounded font-black">PRIMARY</span>
-                        ) : (
-                          <span className="text-[10px] bg-yellow-300 border border-black px-1.5 py-0.5 rounded font-black">UNCLAIMED</span>
-                        )}
+                myNodes.map((n, idx) => {
+                  const isUnclaimed = n.is_claimed === false;
+                  return (
+                    <div key={n.id} className="flex flex-col gap-2 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-sm uppercase text-black">{n.id}</span>
+                          {isUnclaimed ? (
+                            <span className="text-[10px] bg-yellow-300 border border-black px-1.5 py-0.5 rounded font-black">UNCLAIMED</span>
+                          ) : (
+                            idx === 0 && <span className="text-[10px] bg-lime-300 border border-black px-1.5 py-0.5 rounded font-black">PRIMARY</span>
+                          )}
+                        </div>
+                        <span className="text-xs font-bold text-slate-500 uppercase">{n.shape} • {n.type}</span>
                       </div>
-                      <span className="text-xs font-bold text-slate-500 uppercase">{n.shape} • {n.type}</span>
+                      
+                      {isUnclaimed && (
+                        <div className="bg-white border-2 border-dashed border-black rounded-lg p-2 text-xs font-bold flex justify-between items-center mt-1">
+                          <span>PIN: <span className="text-pink-600 font-black tracking-widest">{n.claim_pin || 'MISSING'}</span></span>
+                          {n.claim_pin && (
+                            <button 
+                              onClick={() => { navigator.clipboard.writeText(`Tag: ${n.id} | PIN: ${n.claim_pin}`); alert('Copied!'); }}
+                              className="bg-black text-white px-2 py-1 rounded-md hover:-translate-y-0.5 transition-transform cursor-pointer"
+                            >
+                              Copy
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    
-                    {/* VISIBLE PIN FOR UNCLAIMED NODES */}
-                    {!n.is_claimed && (
-                      <div className="bg-white border-2 border-dashed border-black rounded-lg p-2 text-xs font-bold flex justify-between items-center mt-1">
-                        <span>PIN: <span className="text-pink-600 font-black tracking-widest">{n.claim_pin || 'N/A'}</span></span>
-                        <button 
-                          onClick={() => { navigator.clipboard.writeText(`Tag: ${n.id} | PIN: ${n.claim_pin}`); alert('Copied!'); }}
-                          className="bg-black text-white px-2 py-1 rounded-md hover:-translate-y-0.5 transition-transform cursor-pointer"
-                        >
-                          Copy
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="text-xs font-bold text-slate-500 italic">No registered nodes found yet.</p>
               )}
             </div>
           </div>
 
-          {/* MERGE TOOL */}
           <div className="border-t-4 border-black border-dashed pt-4">
             <h3 className="font-black text-xs uppercase mb-2 text-black bg-pink-300 border-2 border-black px-2 py-0.5 rounded-md w-max shadow-[1px_1px_0px_rgba(0,0,0,1)]">
               🔗 Claim / Merge Unclaimed Node
             </h3>
             <p className="text-xs font-bold text-slate-600 mb-3">
-              Did someone log a deed crediting a temporary tag for you? Type that tag below to claim and merge all its links into your primary profile!
+              Type the tag & PIN of a temporary node to claim and merge it into your primary profile!
             </p>
-
             <form onSubmit={handleMerge} className="flex flex-col gap-3">
               <input 
                 type="text" 
@@ -467,7 +456,7 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
               />
               <input 
                 type="text" 
-                placeholder="Secret Security PIN (e.g. PIN-982134)" 
+                placeholder="Secret Security PIN (e.g. 1234)" 
                 value={claimPin} 
                 onChange={e => setClaimPin(e.target.value)}
                 required
@@ -588,6 +577,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [claimModalUrl, setClaimModalUrl] = useState('');
+  const [helperPin, setHelperPin] = useState(''); // Added custom PIN state back!
   
   const [nodeShape, setNodeShape] = useState('circle');
   const [nodeType, setNodeType] = useState('image'); 
@@ -603,7 +593,6 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
       const { data } = await supabase.from('nodes').select('id, is_claimed');
       if (data) setExistingTags(data);
 
-      // Auto-fetch user's primary K-Tag
       if (session?.user?.id) {
         const { data: userNodes } = await supabase.from('nodes').select('id').eq('user_id', session.user.id);
         if (userNodes && userNodes.length > 0) {
@@ -641,7 +630,6 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
     const finalHelperId = helperId.toUpperCase().trim();
 
     try {
-      // 1. Ensure / Upsert My Node
       const { error: nodeError } = await supabase.from('nodes').upsert({
         id: finalMyId,
         user_id: session.user.id,
@@ -654,11 +642,10 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
 
       if (nodeError) throw nodeError;
 
-      // 2. If Helper Specified, ensure Helper Node exists or auto-create Unclaimed Node
       if (finalHelperId) {
         if (isNewHelper) {
-          // Generate Secret Security PIN for unregistered helper
-          const secretPin = 'PIN-' + Math.floor(100000 + Math.random() * 900000);
+          // Uses the PIN you typed, or generates one if you left it blank
+          const secretPin = helperPin.trim() ? helperPin.toUpperCase().trim() : 'PIN-' + Math.floor(100000 + Math.random() * 900000);
 
           const { error: unclaimedErr } = await supabase.from('nodes').insert({
             id: finalHelperId,
@@ -667,12 +654,11 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
             value: '🌱',
             is_claimed: false,
             claim_pin: secretPin,
-            created_by: session.user.id // IMPORTANT: Allows it to show up in YOUR Node Manager
+            created_by: session.user.id
           });
 
           if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
 
-          // Insert link (Approved automatically since helper node is pending/empty)
           await supabase.from('links').insert({
             source: finalHelperId,
             target: finalMyId,
@@ -680,15 +666,13 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
             status: 'approved'
           });
 
-          // Show claim modal with PIN!
           setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
         } else {
-          // Insert Link for existing user as 'approved' automatically so it shows on graph immediately
           const { error: linkError } = await supabase.from('links').insert({
             source: finalHelperId,
             target: finalMyId,
             custom_color: linkColor,
-            status: 'approved' 
+            status: 'approved'
           });
 
           if (linkError && linkError.code !== '23505') throw linkError;
@@ -750,7 +734,6 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
         </div>
       )}
 
-      {/* SHAREABLE CLAIM MODAL FOR NEW UNCLAIMED HELPER */}
       {claimModalUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-yellow-300 border-4 border-black rounded-3xl p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-md text-center transform -rotate-1">
@@ -798,10 +781,23 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
               </ul>
             )}
 
+            {/* THE PIN CREATOR BOX NOW APPEARS WHEN YOU TYPE A NEW NAME! */}
             {isNewHelper && (
-              <p className="mt-2 text-[11px] font-black bg-yellow-200 border-2 border-black p-2 rounded-lg text-slate-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                ✨ Unregistered Helper! We will auto-create an Unclaimed Node for them. Once created, you can grab the secret PIN from your Node Manager!
-              </p>
+              <div className="mt-3 bg-yellow-200 border-2 border-black p-3 rounded-xl text-slate-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
+                <p className="text-[11px] font-black">
+                  ✨ Unregistered Helper! We'll auto-create an Unclaimed Node for them.
+                </p>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-black uppercase text-black">Set a Secret PIN (Optional)</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. 1234 or leave blank to auto-generate" 
+                    value={helperPin}
+                    onChange={(e) => setHelperPin(e.target.value)}
+                    className="w-full bg-white border-2 border-black rounded-lg p-2 uppercase font-black text-xs focus:outline-none shadow-[2px_2px_0px_rgba(0,0,0,1)]" 
+                  />
+                </div>
+              </div>
             )}
           </div>
 
