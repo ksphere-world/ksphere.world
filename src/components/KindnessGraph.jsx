@@ -1,0 +1,180 @@
+// frontend/src/components/KindnessGraph.jsx
+import { useRef, useEffect, useState, useMemo } from 'react';
+import ForceGraph2D from 'react-force-graph-2d';
+
+// Helper function to draw different shapes
+const drawShape = (ctx, x, y, r, shape) => {
+  ctx.beginPath();
+  if (shape === 'square') {
+    ctx.roundRect(x - r, y - r, r * 2, r * 2, 4);
+  } else if (shape === 'hexagon') {
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 6; // Offset by 30 deg to stand flat
+      const hx = x + (r * 1.1) * Math.cos(angle);
+      const hy = y + (r * 1.1) * Math.sin(angle);
+      if (i === 0) ctx.moveTo(hx, hy);
+      else ctx.lineTo(hx, hy);
+    }
+    ctx.closePath();
+  } else {
+    // Default: Circle
+    ctx.arc(x, y, r, 0, 2 * Math.PI, false);
+  }
+};
+
+export default function KindnessGraph({ data }) {
+  const containerRef = useRef(null);
+  const fgRef = useRef();
+  const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight
+        });
+      }
+    };
+    window.addEventListener('resize', updateDimensions);
+    updateDimensions();
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
+  const processedData = useMemo(() => {
+    if (!data) return null;
+    const helpCount = {};
+    data.nodes.forEach(n => helpCount[n.id] = 0);
+    data.links.forEach(l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      if (helpCount[sourceId] !== undefined) helpCount[sourceId] += 1;
+    });
+    const nodes = data.nodes.map(n => ({ ...n, impactCount: helpCount[n.id] || 0 }));
+    return { nodes, links: data.links };
+  }, [data]);
+
+  useEffect(() => {
+    if (fgRef.current) {
+      fgRef.current.d3Force('charge').strength(-500); // Stronger repulsion for bigger custom nodes
+      fgRef.current.d3Force('link').distance(70);
+    }
+  }, [processedData]);
+
+  return (
+    <div ref={containerRef} className="w-full h-full rounded-3xl flex items-center justify-center bg-transparent">
+      {processedData ? (
+        <ForceGraph2D
+          ref={fgRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          graphData={processedData}
+          dagMode="radialout"
+          dagLevelDistance={100}
+          backgroundColor="transparent"
+          
+          // --- CUSTOM LINKS (ARROWS) ---
+          linkColor={(link) => link.customColor || '#cbd5e1'}
+          linkWidth={3}
+          linkDirectionalArrowLength={8}
+          linkDirectionalArrowRelPos={0.5}
+          linkDirectionalArrowColor={(link) => link.customColor || '#cbd5e1'}
+          
+          d3VelocityDecay={0.8}
+          warmupTicks={100}
+          cooldownTicks={50}
+          enableZoom={true}
+          
+          // --- TOTAL NODE CUSTOMIZATION ---
+          nodeCanvasObject={(node, ctx) => {
+            const isGhost = node.ghost;
+            const nodeRadius = isGhost ? 6 : 14 + (node.impactCount * 3);
+            const shape = node.shape || 'circle';
+            const type = node.type || 'color'; // 'color', 'emoji', 'image'
+            const value = node.value || '#10b981'; 
+
+            ctx.save();
+
+            // 1. Draw the Base Shape & Shadow
+            if (!isGhost) {
+              ctx.shadowColor = 'rgba(0,0,0,0.1)';
+              ctx.shadowBlur = 10;
+            }
+            
+            drawShape(ctx, node.x, node.y, nodeRadius, shape);
+            
+            // 2. Fill based on Type (Color, Image, or Emoji)
+            if (isGhost) {
+              ctx.fillStyle = '#e2e8f0';
+              ctx.fill();
+            } else if (type === 'color') {
+              ctx.fillStyle = value;
+              ctx.fill();
+            } else if (type === 'emoji') {
+              ctx.fillStyle = '#ffffff'; // White bg for emojis
+              ctx.fill();
+            } else if (type === 'image') {
+              // Image Clipping Magic
+              ctx.fillStyle = '#ffffff';
+              ctx.fill(); // Background fallback
+              ctx.save();
+              ctx.clip(); // Clip everything to the shape!
+              
+              // Load and cache image on the fly
+              if (!node.imgCache) {
+                const img = new Image();
+                img.src = value;
+                img.crossOrigin = "Anonymous";
+                node.imgCache = img;
+              }
+              if (node.imgCache.complete) {
+                ctx.drawImage(node.imgCache, node.x - nodeRadius, node.y - nodeRadius, nodeRadius * 2, nodeRadius * 2);
+              }
+              ctx.restore();
+            }
+
+            // 3. Outline
+            drawShape(ctx, node.x, node.y, nodeRadius, shape);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = isGhost ? '#cbd5e1' : '#ffffff';
+            ctx.stroke();
+            ctx.restore(); // Drop shadow off
+
+            // 4. Draw Emoji Text if needed
+            if (!isGhost && type === 'emoji') {
+              ctx.font = `${nodeRadius * 1.2}px Arial`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(value, node.x, node.y + 1);
+            }
+
+            // 5. Draw the Label Badge
+            const label = node.id;
+            const fontSize = isGhost ? 10 : 12;
+            ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
+            const textWidth = ctx.measureText(label).width;
+            const badgeWidth = textWidth + 16;
+            const badgeHeight = fontSize + 10;
+            const badgeY = node.y + nodeRadius + 8;
+            
+            if (!isGhost) {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+              ctx.beginPath();
+              ctx.roundRect(node.x - badgeWidth / 2, badgeY, badgeWidth, badgeHeight, 6);
+              ctx.fill();
+              ctx.lineWidth = 1;
+              ctx.strokeStyle = '#e2e8f0';
+              ctx.stroke();
+            }
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = isGhost ? '#94a3b8' : '#334155';
+            ctx.fillText(label, node.x, badgeY + badgeHeight / 2 + 1); 
+          }}
+        />
+      ) : (
+        <p className="text-slate-400 font-medium">Loading network...</p>
+      )}
+    </div>
+  );
+}
