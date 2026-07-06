@@ -73,6 +73,42 @@ function SettingsModal({ session, onClose }) {
   );
 }
 
+// --- TUTORIAL MODAL ---
+function TutorialModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-2xl relative transform -rotate-1 max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-3 right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10">
+          ✖
+        </button>
+        <h2 className="text-2xl sm:text-3xl font-black mb-6 uppercase tracking-tight w-max bg-yellow-300 px-4 py-2 border-2 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-2">
+          📖 How It Works
+        </h2>
+        
+        <div className="flex flex-col gap-6 transform rotate-1 mt-4">
+          <div className="bg-lime-100 p-5 border-4 border-black rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+            <h3 className="text-xl font-black mb-2 uppercase">1️⃣ Start a Chain</h3>
+            <p className="font-bold text-slate-700">Do something nice for someone! Then, click "Join Chain" and select <b>"🔥 Start a Chain"</b>. Customize your node and get your unique <b>K-Tag</b> (like PUNE-ROCKY).</p>
+          </div>
+          
+          <div className="bg-cyan-100 p-5 border-4 border-black rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+            <h3 className="text-xl font-black mb-2 uppercase">2️⃣ Pass it On</h3>
+            <p className="font-bold text-slate-700">Tell the person you helped to pay it forward. Give them your <b>K-Tag</b> so they can link their good deed to yours on the global map.</p>
+          </div>
+          
+          <div className="bg-pink-100 p-5 border-4 border-black rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+            <h3 className="text-xl font-black mb-2 uppercase">3️⃣ I Was Helped</h3>
+            <p className="font-bold text-slate-700">If someone helped you, click "Join Chain" then <b>"🥺 I Was Helped"</b>. Enter their K-Tag, then create your own. Watch the network grow!</p>
+          </div>
+          
+          <button onClick={onClose} className="mt-4 bg-black text-white text-xl font-black py-4 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all uppercase tracking-widest">
+            Got it, let's go! 🚀
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // --- THE ADVANCED FORM ---
 function LogKindnessForm({ onComplete, session, isAuthLoading }) {
@@ -379,6 +415,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true); 
   const [showSettings, setShowSettings] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
   useEffect(() => {
@@ -451,6 +488,7 @@ function App() {
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
         
         {showSettings && <SettingsModal session={session} onClose={() => setShowSettings(false)} />}
+        {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
 
         <nav className="flex justify-between items-center p-4 md:p-6 lg:px-12 bg-white/80 backdrop-blur-md border-b-4 border-black sticky top-0 z-40">
           <Link to="/" className="text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform">
@@ -487,6 +525,10 @@ function App() {
               </button>
             )}
             
+            <button onClick={() => setShowTutorial(true)} className="hidden md:block bg-cyan-300 hover:bg-cyan-200 text-black text-sm md:text-base font-black py-2.5 px-4 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all">
+              How it works 📖
+            </button>
+
             <Link to="/join" className="bg-lime-400 hover:bg-lime-300 text-black text-sm md:text-base font-black py-2.5 px-4 md:px-6 rounded-xl border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all">
               Join Chain 🚀
             </Link>
