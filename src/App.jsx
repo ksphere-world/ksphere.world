@@ -400,7 +400,7 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
             </h3>
             <div className="flex flex-col gap-3">
               {myNodes.length > 0 ? (
-                myNodes.map((n, idx) => {
+                myNodes.map((n) => {
                   // Fix: correctly identify unclaimed nodes even if is_claimed is null in DB
                   const isUnclaimed = !n.is_claimed || !!n.claim_pin;
                   const isPrimary = !isUnclaimed && n.user_id === session?.user?.id;
@@ -580,11 +580,12 @@ function RequestsModal({ session, onClose, onRefreshGraph }) {
 function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const navigate = useNavigate();
   const [helperId, setHelperId] = useState('');
+  const [isAnonymousHelper, setIsAnonymousHelper] = useState(false); // Added Anon State
   const [myId, setMyId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [claimModalUrl, setClaimModalUrl] = useState('');
-  const [helperPin, setHelperPin] = useState(''); // Added custom PIN state back!
+  const [helperPin, setHelperPin] = useState(''); 
   
   const [nodeShape, setNodeShape] = useState('circle');
   const [nodeType, setNodeType] = useState('image'); 
@@ -622,7 +623,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
     }
   };
 
-  const isNewHelper = helperId.trim() !== '' && !existingTags.some(n => n.id === helperId.trim().toUpperCase());
+  const isNewHelper = isAnonymousHelper || (helperId.trim() !== '' && !existingTags.some(n => n.id === helperId.trim().toUpperCase()));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -634,7 +635,14 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
     setIsLoading(true);
     setErrorMsg('');
     const finalMyId = myId.toUpperCase().trim();
-    const finalHelperId = helperId.toUpperCase().trim();
+    
+    // Generate Anonymous Tag if checked, otherwise use typed text
+    let finalHelperId = isAnonymousHelper 
+      ? `ANON-${Math.floor(10000 + Math.random() * 90000)}` 
+      : helperId.toUpperCase().trim();
+      
+    // Re-calculate inline for safety inside submit
+    let submittingNewHelper = isAnonymousHelper || (finalHelperId !== '' && !existingTags.some(n => n.id === finalHelperId));
 
     try {
       const { error: nodeError } = await supabase.from('nodes').upsert({
@@ -650,15 +658,15 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
       if (nodeError) throw nodeError;
 
       if (finalHelperId) {
-        if (isNewHelper) {
-          // Uses the PIN you typed, or generates one if you left it blank
+        if (submittingNewHelper) {
           const secretPin = helperPin.trim() ? helperPin.toUpperCase().trim() : 'PIN-' + Math.floor(100000 + Math.random() * 900000);
 
           const { error: unclaimedErr } = await supabase.from('nodes').insert({
             id: finalHelperId,
+            user_id: session.user.id, // ✅ FIXED RLS VIOLATION: Assign temp ownership to creator
             shape: 'circle',
             type: 'emoji',
-            value: '🌱',
+            value: isAnonymousHelper ? '🕵️‍♂️' : '🌱', // Spy Emoji for Anon!
             is_claimed: false,
             claim_pin: secretPin,
             created_by: session.user.id
@@ -773,15 +781,33 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
             <input 
               type="text" 
               placeholder="Search or Type Helper's Name..." 
-              value={helperId} 
+              value={isAnonymousHelper ? 'ANONYMOUS HELPER 🕵️‍♂️' : helperId} 
               onChange={handleHelperIdChange} 
-              onFocus={() => { if (helperId) setShowSuggestions(true); }}
+              onFocus={() => { if (helperId && !isAnonymousHelper) setShowSuggestions(true); }}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               autoComplete="off"
-              className="w-full bg-blue-50 border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)]" 
+              disabled={isAnonymousHelper}
+              className={`w-full border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)] ${isAnonymousHelper ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-blue-50'}`} 
             />
             
-            {showSuggestions && filteredTags.length > 0 && (
+            {/* Added Anonymous Checkbox Feature */}
+            <div className="mt-3 flex items-center gap-2 bg-slate-50 p-2 rounded-lg border-2 border-slate-300 border-dashed">
+              <input 
+                type="checkbox" 
+                id="anonHelper" 
+                checked={isAnonymousHelper} 
+                onChange={(e) => {
+                  setIsAnonymousHelper(e.target.checked);
+                  if (e.target.checked) setHelperId(''); // Clear text if switching to anon
+                }} 
+                className="w-5 h-5 cursor-pointer accent-pink-500 rounded border-black" 
+              />
+              <label htmlFor="anonHelper" className="text-[11px] font-black uppercase text-slate-700 cursor-pointer select-none">
+                Don't know the person? (Create Anonymous Node)
+              </label>
+            </div>
+            
+            {showSuggestions && filteredTags.length > 0 && !isAnonymousHelper && (
               <ul className="absolute z-20 w-full bg-white border-4 border-black rounded-xl mt-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] max-h-40 overflow-y-auto">
                 {filteredTags.map(tag => (
                   <li key={tag} onMouseDown={() => { setHelperId(tag); setShowSuggestions(false); }} className="p-3 border-b-2 border-black last:border-0 hover:bg-lime-300 cursor-pointer font-black text-xs uppercase">
@@ -881,6 +907,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
 
 // --- DASHBOARD ---
 function Dashboard({ userData }) {
+  const navigate = useNavigate();
   const isOriginator = userData?.isOriginator;
   const myId = userData?.myId || "ME-123";
   const helperId = userData?.helperId || "HELPER-99";
@@ -907,6 +934,10 @@ function Dashboard({ userData }) {
           <p className="text-black text-sm font-black uppercase tracking-widest mb-2 bg-white inline-block px-3 py-1 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">Your K-Tag</p>
           <p className="text-4xl sm:text-5xl font-black text-black tracking-wider break-words mt-4">{myId}</p>
         </div>
+        
+        <button onClick={() => navigate('/')} className="mt-8 bg-lime-400 hover:bg-lime-300 text-black text-xl font-black py-4 px-8 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all uppercase tracking-widest cursor-pointer w-full max-w-sm">
+          🌍 Back to Global Map
+        </button>
       </div>
       <div className="w-full lg:w-1/2 h-[50vh] min-h-[350px] lg:h-[500px] relative border-4 border-black rounded-3xl bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] p-2">
         <KindnessGraph data={treeData} />
