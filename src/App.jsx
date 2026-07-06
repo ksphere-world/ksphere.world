@@ -86,7 +86,7 @@ function SettingsModal({ session, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-lg relative transform rotate-1 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white border-2 sm:border-4 border-black rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] w-[95%] sm:w-full max-w-lg relative transform sm:rotate-1 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-3 right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
           ✖
         </button>
@@ -176,7 +176,7 @@ function SettingsModal({ session, onClose }) {
 function TutorialModal({ onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-2xl relative transform -rotate-1 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white border-2 sm:border-4 border-black rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] w-[95%] sm:w-full max-w-2xl relative transform sm:-rotate-1 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-3 right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10">
           ✖
         </button>
@@ -382,7 +382,7 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-lg relative transform rotate-1 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white border-2 sm:border-4 border-black rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] w-[95%] sm:w-full max-w-lg relative transform sm:rotate-1 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-3 right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
           ✖
         </button>
@@ -540,7 +540,7 @@ function RequestsModal({ session, onClose, onRefreshGraph }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-4 border-black rounded-3xl p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-md relative transform -rotate-1">
+      <div className="bg-white border-2 sm:border-4 border-black rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] w-[95%] sm:w-full max-w-md relative transform sm:-rotate-1 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer">
           ✖
         </button>
@@ -939,7 +939,7 @@ function Dashboard({ userData }) {
           🌍 Back to Global Map
         </button>
       </div>
-      <div className="w-full lg:w-1/2 h-[50vh] min-h-[350px] lg:h-[500px] relative border-4 border-black rounded-3xl bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] p-2">
+      <div className="w-full lg:w-1/2 h-[50vh] min-h-[350px] lg:h-[min(500px,70vh)] relative border-2 sm:border-4 border-black rounded-3xl bg-white shadow-[6px_6px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] p-2">
         <KindnessGraph data={treeData} />
       </div>
     </div>
@@ -1081,15 +1081,15 @@ function App() {
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
 
-        <nav className="flex justify-between items-center p-4 md:p-6 lg:px-12 bg-white/80 backdrop-blur-md border-b-4 border-black sticky top-0 z-40">
-          <Link to="/" className="text-xl md:text-2xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform">
-            <span className="text-3xl md:text-4xl">🫶</span>
+        <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:p-6 lg:px-12 bg-white/80 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-y-4">
+          <Link to="/" className="text-lg sm:text-xl md:text-2xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform shrink-0">
+            <span className="text-2xl sm:text-3xl md:text-4xl">🫶</span>
             <div className="flex flex-col leading-none justify-center">
               <span>KINDNESS<span className="text-pink-500">SPHERE</span></span>
-              <span className="text-xs md:text-sm text-cyan-500 uppercase tracking-[0.3em] mt-1">world</span>
+              <span className="text-[10px] sm:text-xs md:text-sm text-cyan-500 uppercase tracking-[0.3em] mt-1">world</span>
             </div>
           </Link>
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 md:gap-6">
             
             {isAuthLoading ? (
                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
@@ -1150,47 +1150,47 @@ function App() {
         <main className="flex-grow flex flex-col px-4 sm:px-6 lg:px-12 pb-12 overflow-x-hidden">
           <Routes>
              <Route path="/" element={
-              <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 h-full flex-grow items-center justify-center mt-8 lg:mt-16 max-w-7xl mx-auto w-full">
-                <div className="w-full lg:w-1/2 flex flex-col gap-6 lg:gap-8 text-center lg:text-left z-10">
+              <div className="flex flex-col lg:flex-row gap-6 lg:gap-12 h-full flex-grow items-center justify-center mt-6 lg:mt-16 max-w-7xl mx-auto w-full">
+                <div className="w-full lg:w-1/2 flex flex-col gap-5 lg:gap-8 text-center lg:text-left z-10">
                   <div className="inline-block mx-auto lg:mx-0 bg-yellow-300 border-2 border-black rounded-full px-4 py-1 w-max shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-[-10px] transform -rotate-2">
-                    <span className="font-bold text-black text-sm uppercase tracking-wider">✨ The live network</span>
+                    <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">✨ The live network</span>
                   </div>
-                  <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-none text-black tracking-tight drop-shadow-sm">
+                  <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-none text-black tracking-tight drop-shadow-sm">
                     Your impact, <br/>
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
                       fully custom.
                     </span>
                   </h1>
-                  <p className="text-slate-600 text-lg sm:text-xl font-medium leading-relaxed max-w-lg mx-auto lg:mx-0">
+                  <p className="text-slate-600 text-base sm:text-lg lg:text-xl font-medium leading-relaxed max-w-lg mx-auto lg:mx-0">
                     Avatars. Emojis. Hexagons. Custom arrows. Start a chain of kindness today and leave your unique mark on the world's graph. 🌍
                   </p>
 
                   {/* NETWORK DATA & STATS - ONLY SHOWN WHEN SIGNED IN */}
                   {session && (
-                    <div className="bg-white border-4 border-black rounded-2xl p-5 shadow-[6px_6px_0px_rgba(0,0,0,1)] max-w-lg mx-auto lg:mx-0 transform -rotate-1 hover:rotate-0 transition-transform">
-                      <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-black border-dashed">
-                        <span className="font-black uppercase text-sm tracking-wide flex items-center gap-2 text-black">
+                    <div className="bg-white border-2 sm:border-4 border-black rounded-2xl p-4 sm:p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] w-full max-w-lg mx-auto lg:mx-0 transform sm:-rotate-1 hover:rotate-0 transition-transform">
+                      <div className="flex items-center justify-between mb-3 sm:mb-4 pb-2 border-b-2 border-black border-dashed">
+                        <span className="font-black uppercase text-xs sm:text-sm tracking-wide flex items-center gap-2 text-black">
                           📊 Live Network Analytics
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-yellow-200 border-2 border-black rounded-xl p-3 text-center shadow-[3px_3px_0px_rgba(0,0,0,1)]">
-                          <p className="text-2xl sm:text-3xl font-black text-black">{totalNodes}</p>
-                          <p className="text-[10px] sm:text-xs font-black uppercase text-slate-800">Total Nodes</p>
+                      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div className="bg-yellow-200 border-2 border-black rounded-xl p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center">
+                          <p className="text-xl sm:text-2xl md:text-3xl font-black text-black leading-none">{totalNodes}</p>
+                          <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-800 mt-1">Total Nodes</p>
                         </div>
-                        <div className="bg-cyan-200 border-2 border-black rounded-xl p-3 text-center shadow-[3px_3px_0px_rgba(0,0,0,1)]">
-                          <p className="text-2xl sm:text-3xl font-black text-black">{totalConnections}</p>
-                          <p className="text-[10px] sm:text-xs font-black uppercase text-slate-800">Connections</p>
+                        <div className="bg-cyan-200 border-2 border-black rounded-xl p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center">
+                          <p className="text-xl sm:text-2xl md:text-3xl font-black text-black leading-none">{totalConnections}</p>
+                          <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-800 mt-1">Connections</p>
                         </div>
-                        <div className="bg-pink-200 border-2 border-black rounded-xl p-3 text-center shadow-[3px_3px_0px_rgba(0,0,0,1)]">
-                          <p className="text-2xl sm:text-3xl font-black text-black">{activeChainsCount}</p>
-                          <p className="text-[10px] sm:text-xs font-black uppercase text-slate-800">Active Chains</p>
+                        <div className="bg-pink-200 border-2 border-black rounded-xl p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center">
+                          <p className="text-xl sm:text-2xl md:text-3xl font-black text-black leading-none">{activeChainsCount}</p>
+                          <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-800 mt-1">Active Chains</p>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
-                <div className="w-full lg:w-1/2 h-[50vh] min-h-[400px] lg:h-[600px] border-4 border-black rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-white overflow-hidden p-2 relative">
+                <div className="w-full lg:w-1/2 h-[50vh] min-h-[350px] lg:h-[min(600px,70vh)] border-4 border-black rounded-3xl shadow-[6px_6px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-white overflow-hidden p-2 relative">
                   <div className="absolute top-4 left-4 z-10 bg-white border-2 border-black px-3 py-1 rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] font-bold text-xs flex items-center gap-2">
                     <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span> LIVE
                   </div>
