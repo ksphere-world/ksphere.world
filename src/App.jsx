@@ -3,6 +3,57 @@ import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import KindnessGraph from './components/KindnessGraph';
 import { supabase } from './supabaseClient';
+// =========================================================
+// BRAWL STARS STYLE BUTTON RECREATED IN REACT/TAILWIND
+// =========================================================
+function BrawlButton({ text, icon, colorScheme, onClick, className = "", isLink = false, to }) {
+  const palettes = {
+    yellow: { top: '#FFE866', mid: '#FFCC00', bot: '#D68A00', textStroke: true },
+    blue: { top: '#63B8FF', mid: '#2979FF', bot: '#003C8F', textStroke: true },
+    pink: { top: '#FFB3D9', mid: '#FF66B2', bot: '#CC0066', textStroke: true },
+    purple: { top: '#E6CCFF', mid: '#B266FF', bot: '#7F00FF', textStroke: true },
+    green: { top: '#B9F6CA', mid: '#00E676', bot: '#00C853', textStroke: true },
+    dark: { top: '#5A627B', mid: '#384055', bot: '#22283A', textStroke: true },
+    white: { top: '#ffffff', mid: '#f8fafc', bot: '#94a3b8', textStroke: false }
+  };
+  const p = palettes[colorScheme] || palettes.blue;
+
+  // FIX 1: Changed rounded-xl to rounded-lg for less rounded corners
+  const baseClasses = `inline-flex items-center justify-center rounded-lg border-[3px] border-black active:scale-95 transition-transform duration-75 shrink-0 whitespace-nowrap cursor-pointer select-none ${className}`;
+
+  // FIX 2: Solid block shadow (fixes the subpixel white gap at the bottom of skewed elements)
+  const buttonStyle = {
+    transform: 'skewX(-8deg)',
+    boxShadow: '-1px 1px 0 #000, -2px 2px 0 #000, -3px 3px 0 #000, -4px 4px 0 #000, -4px 5px 0 #000',
+    backgroundColor: p.bot, // Fallback base color to prevent gaps
+    backgroundImage: `linear-gradient(to bottom, ${p.top} 0%, ${p.top} 15%, ${p.mid} 15%, ${p.mid} 82%, ${p.bot} 82%, ${p.bot} 100%)`
+  };
+
+  // FIX 3: Flawless 8-point stroke matrix (zero glitching/holes in the text shadow)
+  const textStyle = p.textStroke ? {
+    color: 'white',
+    textShadow: `
+      -1px -1px 0 #000,  0px -1px 0 #000,  1px -1px 0 #000,
+      -1px  0px 0 #000,                    1px  0px 0 #000,
+      -1px  1px 0 #000,  0px  1px 0 #000,  1px  1px 0 #000,
+       0px  2px 0 #000,  0px  3px 0 #000
+    `
+  } : { color: 'black' };
+
+  // Slightly increased padding and text size so they don't look cramped
+  const content = (
+    <div style={{ transform: 'skewX(8deg)' }} className="px-3 py-1.5 sm:px-4 sm:py-2 flex items-center gap-1.5 text-[12px] sm:text-[14px] font-black uppercase tracking-wider">
+      {icon && <span className="drop-shadow-md text-sm sm:text-base">{icon}</span>}
+      <span style={textStyle}>{text}</span>
+    </div>
+  );
+
+  if (isLink) {
+    return <Link to={to} className={baseClasses} style={buttonStyle}>{content}</Link>;
+  }
+  return <button onClick={onClick} className={baseClasses} style={buttonStyle}>{content}</button>;
+}
+// =========================================================
 
 const mockFallbackTree = {
   nodes: [
@@ -1081,65 +1132,57 @@ function App() {
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
 
-        <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-white/90 backdrop-blur-md border-b-4 border-black sticky top-0 z-40 gap-3">
+<nav className="flex flex-wrap justify-between items-center p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-4 border-black sticky top-0 z-40 gap-4 overflow-x-hidden">
+          
+          {/* LOGO */}
           <Link to="/" className="text-xl sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform shrink-0">
-            <span className="text-3xl sm:text-4xl">🫶</span>
+            <span className="text-3xl sm:text-4xl drop-shadow-sm">🫶</span>
             <div className="flex flex-col leading-none justify-center">
               <span>KINDNESS<span className="text-pink-500">SPHERE</span></span>
               <span className="text-[10px] sm:text-xs text-cyan-500 uppercase tracking-[0.3em] mt-1">world</span>
             </div>
           </Link>
           
-          {/* ml-auto added here to always force buttons to the right */}
-          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 ml-auto">
+          {/* BRAWL BUTTONS CONTAINER */}
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-5 ml-auto pt-2 sm:pt-0 pb-2 sm:pb-0">
             
             {isAuthLoading ? (
-               <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+               <div className="w-5 h-5 border-[3px] border-black border-t-transparent rounded-full animate-spin"></div>
             ) : session ? (
               <>
-                <div className="hidden lg:flex items-center gap-2 bg-yellow-300 px-3 py-1.5 border-[3px] border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] shrink-0">
-                  <img 
-                    src={session.user.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
-                    alt="avatar" 
-                    className="w-6 h-6 rounded-full border-2 border-black bg-white object-cover" 
-                  />
-                  <span className="text-sm font-black text-black max-w-[90px] truncate">
-                    {session.user.user_metadata?.full_name?.split(' ')[0] || 'User'}
-                  </span>
+               {/* Slanted Avatar Badge */}
+                <div 
+                  className="hidden lg:flex items-center bg-yellow-300 border-[3px] border-black rounded-lg shrink-0" 
+                  style={{ transform: 'skewX(-8deg)', boxShadow: '-1px 1px 0 #000, -2px 2px 0 #000, -3px 3px 0 #000, -4px 4px 0 #000, -4px 5px 0 #000' }}
+                >
+                  <div style={{ transform: 'skewX(8deg)' }} className="flex items-center gap-2 px-3 py-1.5">
+                    <img
+                      src={session.user.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
+                      alt="avatar" 
+                      className="w-6 h-6 rounded-full border-2 border-black bg-white object-cover" 
+                    />
+                    <span className="text-[11px] font-black text-black max-w-[90px] truncate uppercase tracking-wider">
+                      {session.user.user_metadata?.full_name?.split(' ')[0] || 'User'}
+                    </span>
+                  </div>
                 </div>
                 
-                <button onClick={() => setShowSettings(true)} className="bg-cyan-300 hover:bg-cyan-200 px-2.5 py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
-                  ⚙️ <span>Settings</span>
-                </button>
-                
-                <button onClick={() => setShowRequests(true)} className="bg-pink-300 hover:bg-pink-200 px-2.5 py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
-                  🔔 <span>Requests</span>
-                </button>
-                
-                <button onClick={() => setShowNodeManager(true)} className="bg-purple-300 hover:bg-purple-200 px-2.5 py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
-                  🧩 <span>Nodes</span>
-                </button>
-
-                <button onClick={handleLogout} className="bg-slate-200 hover:bg-red-400 px-2.5 py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
-                  🚪 <span>Logout</span>
-                </button>
+                <BrawlButton icon="⚙️" text="Settings" colorScheme="blue" onClick={() => setShowSettings(true)} />
+                <BrawlButton icon="🔔" text="Requests" colorScheme="pink" onClick={() => setShowRequests(true)} />
+                <BrawlButton icon="🧩" text="Nodes" colorScheme="purple" onClick={() => setShowNodeManager(true)} />
+                <BrawlButton icon="🚪" text="Logout" colorScheme="dark" onClick={handleLogout} />
               </>
             ) : (
-              <button onClick={handleGoogleLogin} className="bg-white hover:bg-slate-100 px-3 py-2 sm:px-4 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black transition-transform hover:-translate-y-0.5 shrink-0 whitespace-nowrap">
-                Sign In
-              </button>
+              <BrawlButton text="Sign In" colorScheme="white" onClick={handleGoogleLogin} />
             )}
 
-            <button onClick={() => setShowTutorial(true)} className="hidden xl:flex bg-white hover:bg-slate-100 text-black text-sm font-black py-2 px-3 border-[3px] border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
-              📖 How it works
-            </button>
+            <div className="hidden xl:block">
+              <BrawlButton icon="📖" text="How it works" colorScheme="white" onClick={() => setShowTutorial(true)} />
+            </div>
 
-            <Link to="/join" className="bg-lime-400 hover:bg-lime-300 text-black text-[11px] sm:text-sm font-black py-2 px-3 sm:px-4 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 active:translate-y-0 transition-transform shrink-0 whitespace-nowrap flex items-center gap-1">
-              🚀 <span>Join Chain</span>
-            </Link>
+            <BrawlButton icon="🚀" text="Join Chain" colorScheme="green" isLink={true} to="/join" />
           </div>
         </nav>
-
         <main className="flex-grow flex flex-col px-4 sm:px-6 lg:px-12 pb-12 overflow-x-hidden">
           <Routes>
              <Route path="/" element={
