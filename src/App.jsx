@@ -1090,7 +1090,8 @@ function App() {
             </div>
           </Link>
           
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end">
+          {/* ml-auto added here to always force buttons to the right */}
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 ml-auto">
             
             {isAuthLoading ? (
                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
@@ -1107,25 +1108,24 @@ function App() {
                   </span>
                 </div>
                 
-                <button onClick={() => setShowSettings(true)} className="bg-cyan-300 hover:bg-cyan-200 px-2.5 py-2 sm:px-3 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
-                  ⚙️ <span className="hidden xl:inline">Settings</span>
+                <button onClick={() => setShowSettings(true)} className="bg-cyan-300 hover:bg-cyan-200 px-2.5 py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
+                  ⚙️ <span>Settings</span>
                 </button>
                 
-                <button onClick={() => setShowRequests(true)} className="bg-pink-300 hover:bg-pink-200 px-2.5 py-2 sm:px-3 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
-                  🔔 <span className="hidden md:inline">Requests</span>
+                <button onClick={() => setShowRequests(true)} className="bg-pink-300 hover:bg-pink-200 px-2.5 py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
+                  🔔 <span>Requests</span>
                 </button>
                 
-                <button onClick={() => setShowNodeManager(true)} className="bg-purple-300 hover:bg-purple-200 px-2.5 py-2 sm:px-3 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
-                  🧩 <span className="hidden md:inline">Nodes</span>
+                <button onClick={() => setShowNodeManager(true)} className="bg-purple-300 hover:bg-purple-200 px-2.5 py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
+                  🧩 <span>Nodes</span>
                 </button>
 
-                <button onClick={handleLogout} className="bg-slate-200 hover:bg-red-400 px-2.5 py-2 sm:px-3 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
-                  <span className="md:hidden">🚪</span>
-                  <span className="hidden md:inline">Logout</span>
+                <button onClick={handleLogout} className="bg-slate-200 hover:bg-red-400 px-2.5 py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black flex items-center gap-1 hover:-translate-y-0.5 active:translate-y-0 transition-transform cursor-pointer shrink-0 whitespace-nowrap">
+                  🚪 <span>Logout</span>
                 </button>
               </>
             ) : (
-              <button onClick={handleGoogleLogin} className="bg-white hover:bg-slate-100 px-3 py-2 sm:px-4 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-xs sm:text-sm font-black text-black transition-transform hover:-translate-y-0.5 shrink-0 whitespace-nowrap">
+              <button onClick={handleGoogleLogin} className="bg-white hover:bg-slate-100 px-3 py-2 sm:px-4 sm:py-2 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] text-[10px] sm:text-sm font-black text-black transition-transform hover:-translate-y-0.5 shrink-0 whitespace-nowrap">
                 Sign In
               </button>
             )}
@@ -1134,8 +1134,8 @@ function App() {
               📖 How it works
             </button>
 
-            <Link to="/join" className="bg-lime-400 hover:bg-lime-300 text-black text-xs sm:text-sm font-black py-2 px-3 sm:px-4 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 active:translate-y-0 transition-transform shrink-0 whitespace-nowrap flex items-center gap-1">
-              🚀 <span className="ml-0.5">Join Chain</span>
+            <Link to="/join" className="bg-lime-400 hover:bg-lime-300 text-black text-[11px] sm:text-sm font-black py-2 px-3 sm:px-4 border-2 sm:border-[3px] border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 active:translate-y-0 transition-transform shrink-0 whitespace-nowrap flex items-center gap-1">
+              🚀 <span>Join Chain</span>
             </Link>
           </div>
         </nav>
