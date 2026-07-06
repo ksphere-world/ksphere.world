@@ -2,14 +2,13 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 
-// Helper function to draw different shapes
 const drawShape = (ctx, x, y, r, shape) => {
   ctx.beginPath();
   if (shape === 'square') {
     ctx.roundRect(x - r, y - r, r * 2, r * 2, 4);
   } else if (shape === 'hexagon') {
     for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i - Math.PI / 6; // Offset by 30 deg to stand flat
+      const angle = (Math.PI / 3) * i - Math.PI / 6; 
       const hx = x + (r * 1.1) * Math.cos(angle);
       const hy = y + (r * 1.1) * Math.sin(angle);
       if (i === 0) ctx.moveTo(hx, hy);
@@ -17,7 +16,6 @@ const drawShape = (ctx, x, y, r, shape) => {
     }
     ctx.closePath();
   } else {
-    // Default: Circle
     ctx.arc(x, y, r, 0, 2 * Math.PI, false);
   }
 };
@@ -55,8 +53,9 @@ export default function KindnessGraph({ data }) {
 
   useEffect(() => {
     if (fgRef.current) {
-      fgRef.current.d3Force('charge').strength(-500); // Stronger repulsion for bigger custom nodes
-      fgRef.current.d3Force('link').distance(70);
+      // FIX: Removed dagMode and vastly increased repulsion so different chains push away from each other
+      fgRef.current.d3Force('charge').strength(-1000).distanceMax(600); 
+      fgRef.current.d3Force('link').distance(120); // Made links slightly longer to give nodes breathing room
     }
   }, [processedData]);
 
@@ -68,11 +67,9 @@ export default function KindnessGraph({ data }) {
           width={dimensions.width}
           height={dimensions.height}
           graphData={processedData}
-          dagMode="radialout"
-          dagLevelDistance={100}
+          // dagMode has been REMOVED here to allow multiple independent networks to float freely!
           backgroundColor="transparent"
           
-          // --- CUSTOM LINKS (ARROWS) ---
           linkColor={(link) => link.customColor || '#000000'}
           linkWidth={4}
           linkDirectionalArrowLength={12}
@@ -84,17 +81,14 @@ export default function KindnessGraph({ data }) {
           cooldownTicks={50}
           enableZoom={true}
           
-          // --- TOTAL NODE CUSTOMIZATION (NEO-BRUTALISM) ---
           nodeCanvasObject={(node, ctx) => {
             const isGhost = node.ghost;
             const nodeRadius = isGhost ? 6 : 14 + (node.impactCount * 3);
             const shape = node.shape || 'circle';
-            const type = node.type || 'color'; // 'color', 'emoji', 'image'
+            const type = node.type || 'color'; 
             const value = node.value || '#10b981'; 
 
             ctx.save();
-
-            // 1. Draw the Base Shape & Hard Shadow
             if (!isGhost) {
               ctx.shadowColor = '#000000';
               ctx.shadowBlur = 0;
@@ -104,7 +98,6 @@ export default function KindnessGraph({ data }) {
             
             drawShape(ctx, node.x, node.y, nodeRadius, shape);
             
-            // 2. Fill based on Type
             if (isGhost) {
               ctx.fillStyle = '#e2e8f0';
               ctx.fill();
@@ -132,14 +125,12 @@ export default function KindnessGraph({ data }) {
               ctx.restore();
             }
 
-            // 3. Outline (Thick Black Borders!)
             drawShape(ctx, node.x, node.y, nodeRadius, shape);
             ctx.lineWidth = isGhost ? 2 : 4;
             ctx.strokeStyle = isGhost ? '#94a3b8' : '#000000';
             ctx.stroke();
-            ctx.restore(); // Turn off shadow
+            ctx.restore(); 
 
-            // 4. Draw Emoji Text
             if (!isGhost && type === 'emoji') {
               ctx.font = `${nodeRadius * 1.2}px Arial`;
               ctx.textAlign = 'center';
@@ -147,7 +138,6 @@ export default function KindnessGraph({ data }) {
               ctx.fillText(value, node.x, node.y + 1);
             }
 
-            // 5. Draw the Label Badge
             const label = node.id;
             const fontSize = isGhost ? 10 : 12;
             ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
@@ -157,19 +147,16 @@ export default function KindnessGraph({ data }) {
             const badgeY = node.y + nodeRadius + 8;
             
             if (!isGhost) {
-              // Badge Hard Shadow
               ctx.fillStyle = '#000000';
               ctx.beginPath();
               ctx.roundRect((node.x - badgeWidth / 2) + 2, badgeY + 2, badgeWidth, badgeHeight, 6);
               ctx.fill();
 
-              // Badge Background
               ctx.fillStyle = '#ffffff';
               ctx.beginPath();
               ctx.roundRect(node.x - badgeWidth / 2, badgeY, badgeWidth, badgeHeight, 6);
               ctx.fill();
               
-              // Badge Border
               ctx.lineWidth = 2;
               ctx.strokeStyle = '#000000';
               ctx.stroke();

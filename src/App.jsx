@@ -4,6 +4,14 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react
 import KindnessGraph from './components/KindnessGraph';
 import { supabase } from './supabaseClient';
 
+// 1. Defined safely outside of all components
+const mockFallbackTree = {
+  nodes: [
+    { id: 'SEED-NODE', shape: 'hexagon', type: 'emoji', value: '🌱' }
+  ],
+  links: []
+};
+
 // --- SETTINGS MODAL ---
 function SettingsModal({ session, onClose }) {
   const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
@@ -141,7 +149,6 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
     }
   };
 
-  // Add a loading state so the app doesn't flash "Hold up" before session arrives
   if (isAuthLoading) {
     return (
       <div className="w-full max-w-xl mx-auto mt-12 sm:mt-20 p-8 text-center flex flex-col items-center justify-center">
@@ -158,7 +165,6 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
         <p className="text-black font-bold mb-8 text-lg">You need to sign in to claim your custom node and join the global chain.</p>
         <button onClick={() => supabase.auth.signInWithOAuth({ 
           provider: 'google', 
-          // FIX 1: Redirect to root origin to prevent the 404.html from stripping our OAuth token!
           options: { redirectTo: window.location.origin } 
         })} 
           className="bg-lime-400 hover:bg-lime-300 text-black text-xl font-black py-4 px-8 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-3 mx-auto w-full sm:w-auto">
@@ -168,7 +174,6 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
     );
   }
 
-  // ... rest of the form stays identical
   return (
     <div className="w-full max-w-2xl mx-auto mt-8 sm:mt-12 p-6 sm:p-8 bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,1)] mb-20">
       <h1 className="text-3xl sm:text-4xl font-black mb-8 text-black text-center tracking-tight uppercase transform -rotate-1">🎨 Claim Your Node</h1>
@@ -307,52 +312,69 @@ function Dashboard({ userData }) {
 function App() {
   const [userData, setUserData] = useState(null);
   const [session, setSession] = useState(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true); // FIX 2: Loading State Added
+  const [isAuthLoading, setIsAuthLoading] = useState(true); 
   const [showSettings, setShowSettings] = useState(false);
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
-  const mockFallbackTree = {
-    nodes: [
-      { id: 'SEED-NODE', shape: 'hexagon', type: 'emoji', value: '🌱' }
-    ],
-    links: []
-  };
-
   useEffect(() => {
-    // Check initial session
+    // Check initial auth state
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setIsAuthLoading(false); // Stop loading once checked
+      setIsAuthLoading(false); 
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setIsAuthLoading(false);
     });
+
+    // 2. Fetch function safely enclosed INSIDE the useEffect
+    const fetchGlobalGraph = async () => {
+      const { data: dbNodes, error: nodesError } = await supabase.from('nodes').select('*');
+      const { data: dbLinks, error: linksError } = await supabase.from('links').select('*');
+
+      if (!nodesError && !linksError && dbNodes.length > 0) {
+        setGlobalGraph({
+          nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value })),
+          links: dbLinks.map(l => ({ source: l.source, target: l.target, customColor: l.custom_color }))
+        });
+      } else {
+        setGlobalGraph(mockFallbackTree);
+      }
+    };
     
+    // Call it immediately on load
     fetchGlobalGraph();
-    return () => subscription.unsubscribe();
-  }, []);
 
-  const fetchGlobalGraph = async () => {
-    const { data: dbNodes, error: nodesError } = await supabase.from('nodes').select('*');
-    const { data: dbLinks, error: linksError } = await supabase.from('links').select('*');
+    // 3. Supabase Real-Time setup
+    const channel = supabase.channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'nodes' },
+        (payload) => {
+          console.log("Realtime Node change detected!", payload);
+          fetchGlobalGraph(); 
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'links' },
+        (payload) => {
+          console.log("Realtime Link change detected!", payload);
+          fetchGlobalGraph(); 
+        }
+      )
+      .subscribe();
 
-    if (!nodesError && !linksError && dbNodes.length > 0) {
-      setGlobalGraph({
-        nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value })),
-        links: dbLinks.map(l => ({ source: l.source, target: l.target, customColor: l.custom_color }))
-      });
-    } else {
-      setGlobalGraph(mockFallbackTree);
-    }
-  };
+    return () => {
+      authSub.unsubscribe();
+      supabase.removeChannel(channel); 
+    };
+  }, []); // 4. Clean, empty dependency array! Zero ESLint warnings!
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      // FIX 3: Always redirect to the root domain. This stops the 404 router from erasing the OAuth tokens.
       options: {
         redirectTo: window.location.origin
       }
@@ -375,7 +397,6 @@ function App() {
           </Link>
           <div className="flex items-center gap-4 md:gap-6">
             
-            {/* Show a mini loading spinner on the nav if it's checking session */}
             {isAuthLoading ? (
                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
             ) : session ? (
