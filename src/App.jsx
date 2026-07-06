@@ -491,8 +491,12 @@ function App() {
         {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
 
         <nav className="flex justify-between items-center p-4 md:p-6 lg:px-12 bg-white/80 backdrop-blur-md border-b-4 border-black sticky top-0 z-40">
-          <Link to="/" className="text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform">
-            <span>🫶</span> KINDNESS<span className="text-pink-500">CHAIN</span>
+          <Link to="/" className="text-xl md:text-2xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform">
+            <span className="text-3xl md:text-4xl">🫶</span>
+            <div className="flex flex-col leading-none justify-center">
+              <span>KINDNESS<span className="text-pink-500">SPHERE</span></span>
+              <span className="text-xs md:text-sm text-cyan-500 uppercase tracking-[0.3em] mt-1">world</span>
+            </div>
           </Link>
           <div className="flex items-center gap-4 md:gap-6">
             
