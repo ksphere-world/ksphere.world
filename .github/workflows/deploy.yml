@@ -25,23 +25,23 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22 # Optional but good for caching
+          node-version: 22
+          cache: 'npm'
 
       - name: Install dependencies
-        working-directory: ./frontend # <--- ADDED THIS
         run: npm install
 
       - name: Build project
-        working-directory: ./frontend # <--- ADDED THIS
         run: npm run build
         env:
+          # This injects your GitHub Secrets into the Vite build securely
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./frontend/dist # <--- CHANGED THIS TO POINT TO THE CORRECT DIST FOLDER
+          path: ./dist
 
   deploy:
     environment:
