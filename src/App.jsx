@@ -483,6 +483,12 @@ function App() {
     await supabase.auth.signOut();
   };
 
+  // Compute live graph metrics
+  const totalNodes = globalGraph.nodes.filter(n => !n.ghost).length;
+  const totalConnections = globalGraph.links.length;
+  const targetsSet = new Set(globalGraph.links.map(l => typeof l.target === 'object' ? l.target.id : l.target));
+  const activeChainsCount = globalGraph.nodes.filter(n => !n.ghost && !targetsSet.has(n.id)).length;
+
   return (
     <Router>
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
@@ -556,6 +562,34 @@ function App() {
                   <p className="text-slate-600 text-lg sm:text-xl font-medium leading-relaxed max-w-lg mx-auto lg:mx-0">
                     Avatars. Emojis. Hexagons. Custom arrows. Start a chain of kindness today and leave your unique mark on the world's graph. 🌍
                   </p>
+
+                  {/* NETWORK DATA & STATS - ONLY SHOWN WHEN SIGNED IN */}
+                  {session && (
+                    <div className="bg-white border-4 border-black rounded-2xl p-5 shadow-[6px_6px_0px_rgba(0,0,0,1)] max-w-lg mx-auto lg:mx-0 transform -rotate-1 hover:rotate-0 transition-transform">
+                      <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-black border-dashed">
+                        <span className="font-black uppercase text-sm tracking-wide flex items-center gap-2 text-black">
+                          📊 Live Network Analytics
+                        </span>
+                        <span className="text-xs font-black bg-lime-300 border-2 border-black px-2 py-0.5 rounded-md shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase">
+                          Unlocked 🔓
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-yellow-200 border-2 border-black rounded-xl p-3 text-center shadow-[3px_3px_0px_rgba(0,0,0,1)]">
+                          <p className="text-2xl sm:text-3xl font-black text-black">{totalNodes}</p>
+                          <p className="text-[10px] sm:text-xs font-black uppercase text-slate-800">Total Nodes</p>
+                        </div>
+                        <div className="bg-cyan-200 border-2 border-black rounded-xl p-3 text-center shadow-[3px_3px_0px_rgba(0,0,0,1)]">
+                          <p className="text-2xl sm:text-3xl font-black text-black">{totalConnections}</p>
+                          <p className="text-[10px] sm:text-xs font-black uppercase text-slate-800">Connections</p>
+                        </div>
+                        <div className="bg-pink-200 border-2 border-black rounded-xl p-3 text-center shadow-[3px_3px_0px_rgba(0,0,0,1)]">
+                          <p className="text-2xl sm:text-3xl font-black text-black">{activeChainsCount}</p>
+                          <p className="text-[10px] sm:text-xs font-black uppercase text-slate-800">Active Chains</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="w-full lg:w-1/2 h-[50vh] min-h-[400px] lg:h-[600px] border-4 border-black rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-white overflow-hidden p-2 relative">
                   <div className="absolute top-4 left-4 z-10 bg-white border-2 border-black px-3 py-1 rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] font-bold text-xs flex items-center gap-2">
