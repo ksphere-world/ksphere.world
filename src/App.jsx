@@ -4,6 +4,71 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react
 import KindnessGraph from './components/KindnessGraph';
 import { supabase } from './supabaseClient';
 
+// --- SETTINGS MODAL ---
+function SettingsModal({ session, onClose }) {
+  // Grab automatic Google data from session metadata, or fallback to empty
+  const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
+  const [avatarUrl, setAvatarUrl] = useState(session?.user?.user_metadata?.avatar_url || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMsg('');
+
+    // Update user metadata in Supabase
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: name, avatar_url: avatarUrl }
+    });
+
+    setIsLoading(false);
+    if (error) {
+      setMsg(`⚠️ ${error.message}`);
+    } else {
+      onClose(); // Close modal on success
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-md relative transform rotate-1">
+        <button onClick={onClose} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10">
+          ✖
+        </button>
+        <h2 className="text-2xl font-black mb-6 uppercase tracking-tight transform -rotate-2 w-max bg-blue-300 px-3 py-1 border-2 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          ⚙️ Edit Profile
+        </h2>
+        
+        {msg && <p className="mb-4 text-sm font-bold text-red-600 bg-red-100 p-2 border-2 border-red-600 rounded-lg">{msg}</p>}
+        
+        <form onSubmit={handleSave} className="flex flex-col gap-5 transform -rotate-1">
+          <div>
+            <label className="block text-sm font-black uppercase mb-1">Display Name</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} required
+              className="w-full border-4 border-black rounded-xl p-3 font-bold focus:outline-none focus:bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" />
+          </div>
+          <div>
+            <label className="block text-sm font-black uppercase mb-1">Profile Picture URL</label>
+            <input type="url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} required
+              className="w-full border-4 border-black rounded-xl p-3 font-bold focus:outline-none focus:bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" />
+          </div>
+          
+          <div className="flex items-center gap-4 bg-slate-100 p-3 rounded-xl border-2 border-black border-dashed mt-2">
+            <img src={avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} alt="Preview" className="w-12 h-12 rounded-full border-2 border-black bg-white object-cover" />
+            <p className="text-xs font-bold text-slate-500">Google loaded this automatically. You can paste any image URL to change it!</p>
+          </div>
+
+          <button type="submit" disabled={isLoading} className="mt-2 bg-lime-400 hover:bg-lime-300 disabled:opacity-50 text-black text-lg font-black py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all uppercase tracking-widest">
+            {isLoading ? 'Saving...' : 'Save Profile'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
 // --- THE ADVANCED FORM ---
 function LogKindnessForm({ onComplete, session }) {
   const navigate = useNavigate();
@@ -84,9 +149,9 @@ function LogKindnessForm({ onComplete, session }) {
         <h2 className="text-3xl sm:text-4xl font-black mb-4 text-black uppercase tracking-tight">🔒 Hold Up!</h2>
         <p className="text-black font-bold mb-8 text-lg">You need to sign in to claim your custom node and join the global chain.</p>
         <button onClick={() => supabase.auth.signInWithOAuth({ 
-    provider: 'google', 
-    options: { redirectTo: `${window.location.origin}/join` } 
-  })} 
+          provider: 'google', 
+          options: { redirectTo: `${window.location.origin}/join` } 
+        })} 
           className="bg-lime-400 hover:bg-lime-300 text-black text-xl font-black py-4 px-8 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 active:translate-y-1 active:shadow-[0px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-3 mx-auto w-full sm:w-auto">
           <span>🚀</span> Sign in with Google
         </button>
@@ -232,9 +297,9 @@ function Dashboard({ userData }) {
 function App() {
   const [userData, setUserData] = useState(null);
   const [session, setSession] = useState(null);
+  const [showSettings, setShowSettings] = useState(false); // Controls our new settings modal
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
-  // Fallback mock tree if database is empty
   const mockFallbackTree = {
     nodes: [
       { id: 'SEED-NODE', shape: 'hexagon', type: 'emoji', value: '🌱' }
@@ -243,13 +308,9 @@ function App() {
   };
 
   useEffect(() => {
-    // 1. Setup Auth listener
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
-
-    // 2. Fetch Global Database Graph
     fetchGlobalGraph();
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -263,7 +324,7 @@ function App() {
         links: dbLinks.map(l => ({ source: l.source, target: l.target, customColor: l.custom_color }))
       });
     } else {
-      setGlobalGraph(mockFallbackTree); // Load dummy tree if DB is completely empty
+      setGlobalGraph(mockFallbackTree);
     }
   };
 
@@ -271,7 +332,6 @@ function App() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // Drop them right onto the join page so they can immediately start a chain
         redirectTo: `${window.location.origin}/join` 
       }
     });
@@ -284,16 +344,34 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
-        <nav className="flex justify-between items-center p-4 md:p-6 lg:px-12 bg-white/80 backdrop-blur-md border-b-4 border-black sticky top-0 z-50">
+        
+        {/* Render Settings Modal conditionally */}
+        {showSettings && <SettingsModal session={session} onClose={() => setShowSettings(false)} />}
+
+        <nav className="flex justify-between items-center p-4 md:p-6 lg:px-12 bg-white/80 backdrop-blur-md border-b-4 border-black sticky top-0 z-40">
           <Link to="/" className="text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform">
             <span>🫶</span> KINDNESS<span className="text-pink-500">CHAIN</span>
           </Link>
           <div className="flex items-center gap-4 md:gap-6">
             {session ? (
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-bold text-black hidden sm:block bg-yellow-300 px-3 py-1 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                  Hi, {session.user.user_metadata.full_name || 'User'} ✌️
-                </span>
+              <div className="flex items-center gap-3">
+                {/* Visual User Profile populated automatically from Google */}
+                <div className="hidden sm:flex items-center gap-2 bg-yellow-300 px-3 py-1.5 border-2 border-black rounded-full shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                  <img 
+                    src={session.user.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
+                    alt="avatar" 
+                    className="w-6 h-6 rounded-full border border-black bg-white object-cover" 
+                  />
+                  <span className="text-sm font-bold text-black max-w-[100px] truncate">
+                    {session.user.user_metadata?.full_name || 'User'}
+                  </span>
+                </div>
+                
+                {/* Settings Button */}
+                <button onClick={() => setShowSettings(true)} className="text-sm font-bold text-black hover:text-blue-600 transition-colors flex items-center gap-1">
+                  ⚙️ <span className="hidden sm:inline">Settings</span>
+                </button>
+                
                 <button onClick={handleLogout} className="text-sm font-bold text-black hover:text-pink-600 transition-colors">
                   Logout
                 </button>
@@ -328,7 +406,6 @@ function App() {
                   </p>
                 </div>
                 <div className="w-full lg:w-1/2 h-[50vh] min-h-[400px] lg:h-[600px] border-4 border-black rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-white overflow-hidden p-2 relative">
-                  {/* Now rendering LIVE Data from Supabase */}
                   <div className="absolute top-4 left-4 z-10 bg-white border-2 border-black px-3 py-1 rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] font-bold text-xs flex items-center gap-2">
                     <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span> LIVE
                   </div>
