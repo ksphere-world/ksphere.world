@@ -1482,7 +1482,6 @@ function App() {
                   </div>
                 </div>
                 
-                <BrawlButton icon="🔄" text="Refresh" colorScheme="yellow" onClick={handleManualRefresh} hideTextOnMobile={true} />
                 <BrawlButton icon="⚙️" text="Settings" colorScheme="blue" onClick={() => setShowSettings(true)} hideTextOnMobile={true} />
                 <BrawlButton icon="🔔" text="Requests" colorScheme="pink" onClick={() => setShowRequests(true)} hideTextOnMobile={true} />
                 <BrawlButton icon="🧩" text="Nodes" colorScheme="purple" onClick={() => setShowNodeManager(true)} hideTextOnMobile={true} />
@@ -1516,12 +1515,25 @@ function App() {
              <Route path="/" element={
                 <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-3 pb-8 sm:p-6 lg:p-8 overflow-hidden">
                   
-                  {/* TOP LEFT: LIVE BADGE */}
-                  <div className={`flex justify-start pointer-events-auto transition-all duration-300 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? '-translate-y-20 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                  {/* TOP LEFT: LIVE BADGE & REFRESH BUTTON */}
+                  <div className={`flex flex-col items-start gap-2 sm:gap-3 pointer-events-auto transition-all duration-300 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? '-translate-y-20 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                    
                     <div className="bg-white border-2 sm:border-4 border-black px-2 py-1 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] font-black text-[9px] sm:text-sm flex items-center gap-1.5 sm:gap-2 transform -rotate-2 w-max">
                       <span className="relative flex h-2 w-2 sm:h-3 sm:w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 sm:h-3 sm:w-3 bg-green-500"></span></span> 
                       GLOBAL NETWORK LIVE
                     </div>
+
+                    {/* NEW BLUE SQUARE REFRESH BUTTON */}
+                    <button 
+                      onClick={handleManualRefresh}
+                      className="bg-blue-500 hover:bg-blue-400 text-white border-2 sm:border-4 border-black rounded-lg sm:rounded-xl w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1 hover:-translate-y-1 transition-all cursor-pointer active:scale-95 ml-1"
+                      title="Refresh & Recenter Map"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+
                   </div>
 
                   {/* BOTTOM SECTION: ALL ON ONE ROW (flex-row) */}
