@@ -1426,11 +1426,11 @@ function App() {
         <nav className="flex flex-wrap justify-between items-center p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-4 border-black sticky top-0 z-40 gap-4 overflow-x-hidden">
           
           {/* LOGO */}
-          <Link to="/" className="text-xl sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform shrink-0">
-            <span className="text-3xl sm:text-4xl drop-shadow-sm">🫶</span>
+          <Link to="/" className="text-lg sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-1.5 sm:gap-2 hover:scale-105 transition-transform shrink-0">
+            <span className="text-2xl sm:text-4xl drop-shadow-sm">🫶</span>
             <div className="flex flex-col leading-none justify-center">
               <span>KINDNESS<span className="text-pink-500">SPHERE</span></span>
-              <span className="text-[10px] sm:text-xs text-cyan-500 uppercase tracking-[0.3em] mt-1">world</span>
+              <span className="text-[7px] sm:text-[10px] md:text-xs text-cyan-500 uppercase tracking-[0.3em] mt-0.5 sm:mt-1">world</span>
             </div>
           </Link>
           
@@ -1499,24 +1499,26 @@ function App() {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 sm:gap-6 pointer-events-auto w-full">
                     
                     {/* BOTTOM LEFT: USER INFO OR PITCH */}
-                    <div className="flex flex-col items-start gap-2 sm:gap-3 w-full md:max-w-sm">
+                    <div className="flex flex-col items-start gap-1.5 sm:gap-3 w-full md:max-w-sm pointer-events-auto">
                       {session && myPrimaryNode ? (
                         <>
-                          <div className="bg-yellow-300 border-2 border-black rounded-full px-2 py-0.5 sm:px-4 sm:py-1 w-max shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2">
-                            <span className="font-bold text-black text-[8px] sm:text-sm uppercase tracking-wider">🏆 Global Rank: #{myRankNumber}</span>
+                          <div className="bg-yellow-300 border-2 sm:border-4 border-black rounded-full px-2.5 py-0.5 sm:px-4 sm:py-1 w-max shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:-rotate-2 transition-transform">
+                            <span className="font-black text-black text-[9px] sm:text-sm uppercase tracking-wider">🏆 Global Rank: #{myRankNumber}</span>
                           </div>
-                          <h1 className="text-xl sm:text-4xl md:text-5xl font-black leading-none text-black tracking-tight drop-shadow-sm mt-0.5 mb-1 sm:mb-2 bg-white/80 p-1.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 sm:border-4 border-black w-max backdrop-blur-sm shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1">
+                          <h1 className="text-xl sm:text-4xl md:text-5xl font-black leading-none text-black tracking-tight drop-shadow-sm mt-0.5 mb-1 sm:mb-2 bg-white/90 px-2 py-1.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 sm:border-4 border-black w-max backdrop-blur-sm shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:rotate-1 transition-transform">
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">{myRank}</span>
                           </h1>
-                          <div className="bg-lime-300 border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-1.5 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1 hover:rotate-0 transition-transform w-max">
-                            <span className="font-black text-black text-[9px] sm:text-base uppercase tracking-wider flex items-center gap-1 sm:gap-2">
-                              🤝 You helped <span className="text-xs sm:text-xl bg-white border-2 border-black rounded-md sm:rounded-lg px-1 sm:px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedCount}</span> people
-                            </span>
-                          </div>
-                          <div className="bg-cyan-300 border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-1.5 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-1 hover:rotate-0 transition-transform w-max">
-                            <span className="font-black text-black text-[9px] sm:text-base uppercase tracking-wider flex items-center gap-1 sm:gap-2">
-                              💖 <span className="text-xs sm:text-xl bg-white border-2 border-black rounded-md sm:rounded-lg px-1 sm:px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span> people helped you
-                            </span>
+                          <div className="flex flex-col gap-1.5 sm:gap-3 w-max">
+                            <div className="bg-lime-300 border-2 sm:border-4 border-black rounded-lg sm:rounded-2xl px-2 py-1 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:rotate-1 hover:rotate-0 transition-transform w-full">
+                              <span className="font-black text-black text-[10px] sm:text-base uppercase tracking-wider flex items-center justify-between gap-1.5 sm:gap-2">
+                                🤝 You helped <span className="text-xs sm:text-xl bg-white border-2 border-black rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedCount}</span>
+                              </span>
+                            </div>
+                            <div className="bg-cyan-300 border-2 sm:border-4 border-black rounded-lg sm:rounded-2xl px-2 py-1 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:-rotate-1 hover:rotate-0 transition-transform w-full">
+                              <span className="font-black text-black text-[10px] sm:text-base uppercase tracking-wider flex items-center justify-between gap-1.5 sm:gap-2">
+                                💖 Helped by <span className="text-xs sm:text-xl bg-white border-2 border-black rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span>
+                              </span>
+                            </div>
                           </div>
                         </>
                       ) : (
@@ -1532,33 +1534,33 @@ function App() {
                     </div>
 
                     {/* BOTTOM RIGHT: ACTIONS & STATS */}
-                    <div className="flex flex-col items-start md:items-end gap-2 sm:gap-4 w-full md:w-auto">
+                    <div className="flex flex-col items-end gap-2 sm:gap-4 w-full md:w-auto pointer-events-auto z-10">
                       
                       {/* BIG QR QUICK CONNECT BUTTON (ONLY IF SIGNED IN) */}
                       {session && myPrimaryNode && (
-                        <div onClick={() => setShowQRModal(true)} className="bg-white border-2 sm:border-4 border-black rounded-xl sm:rounded-3xl p-1.5 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] inline-flex items-center gap-1.5 sm:gap-3 transform -rotate-1 hover:rotate-0 hover:-translate-y-1 sm:hover:-translate-y-2 transition-all cursor-pointer hover:bg-yellow-100 group w-max self-end">
+                        <div onClick={() => setShowQRModal(true)} className="bg-yellow-400 border-2 sm:border-4 border-black rounded-xl sm:rounded-3xl p-1.5 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] inline-flex items-center gap-1.5 sm:gap-3 md:-rotate-2 hover:rotate-0 hover:-translate-y-1 sm:hover:-translate-y-2 transition-all cursor-pointer hover:bg-yellow-300 group w-max self-end">
                           <div className="bg-black text-white p-1.5 sm:p-3 rounded-lg sm:rounded-xl transform group-hover:scale-110 transition-transform shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] border-2 border-black flex items-center justify-center">
-                            <span className="text-lg sm:text-3xl">🔳</span>
+                            <span className="text-xl sm:text-3xl">⚡</span>
                           </div>
                           <div className="flex flex-col text-left pr-1 sm:pr-2">
-                            <span className="font-black text-black uppercase text-xs sm:text-xl leading-none tracking-tight">Quick Connect</span>
-                            <span className="text-[7px] sm:text-xs font-black text-slate-500 uppercase mt-0.5 sm:mt-1 tracking-widest bg-slate-100 px-1 sm:px-2 py-0.5 rounded border-2 border-black w-max">Scan / Show QR ⚡</span>
+                            <span className="font-black text-black uppercase text-sm sm:text-xl leading-none tracking-tight">Quick Connect</span>
+                            <span className="text-[7px] sm:text-xs font-black text-slate-800 uppercase mt-0.5 sm:mt-1 tracking-widest bg-white/80 px-1.5 sm:px-2 py-0.5 rounded border-2 border-black w-max">Scan / Show QR 📷</span>
                           </div>
                         </div>
                       )}
 
                       {/* MINI NETWORK STATS DASHBOARD */}
                       {session && (
-                        <div className="bg-white/90 backdrop-blur-md border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-1.5 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] flex gap-1.5 sm:gap-3 w-max overflow-x-auto transform rotate-1 self-start md:self-end">
-                          <div className="bg-yellow-200 border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[50px] sm:min-w-[70px]">
+                        <div className="bg-white/90 backdrop-blur-md border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-1.5 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] flex gap-1.5 sm:gap-3 w-max overflow-x-auto md:rotate-1 self-end">
+                          <div className="bg-slate-100 border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[45px] sm:min-w-[70px]">
                             <p className="text-sm sm:text-xl font-black text-black leading-none">{totalNodes}</p>
                             <p className="text-[7px] sm:text-[9px] font-black uppercase text-slate-800 mt-0.5 sm:mt-1">Nodes</p>
                           </div>
-                          <div className="bg-cyan-200 border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[50px] sm:min-w-[70px]">
+                          <div className="bg-slate-100 border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[45px] sm:min-w-[70px]">
                             <p className="text-sm sm:text-xl font-black text-black leading-none">{totalConnections}</p>
                             <p className="text-[7px] sm:text-[9px] font-black uppercase text-slate-800 mt-0.5 sm:mt-1">Links</p>
                           </div>
-                          <div className="bg-pink-200 border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[50px] sm:min-w-[70px]">
+                          <div className="bg-slate-100 border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[45px] sm:min-w-[70px]">
                             <p className="text-sm sm:text-xl font-black text-black leading-none">{activeChainsCount}</p>
                             <p className="text-[7px] sm:text-[9px] font-black uppercase text-slate-800 mt-0.5 sm:mt-1">Chains</p>
                           </div>
