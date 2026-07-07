@@ -484,7 +484,7 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
                         </div>
                       ) : isPrimary ? (
                         <div className="bg-lime-50 border-2 border-dashed border-black rounded-lg p-2 text-[10px] font-bold text-slate-700 mt-1">
-                          🔒 Secure. Others must send a Request to link to your Tag!
+                          ✅ Active Node. Anyone you help can directly link to your Tag!
                         </div>
                       ) : null}
                     </div>
@@ -736,12 +736,12 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
           setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
         } else {
           // Linking to an EXISTING user's node! 
-          // Status MUST be pending so they can approve it in their Requests Modal, preventing unknown claims.
+          // Auto-approving the link so it shows up immediately on the global map for everyone
           const { error: linkError } = await supabase.from('links').insert({
             source: finalHelperId,
             target: finalMyId,
             custom_color: linkColor,
-            status: 'pending' 
+            status: 'approved' 
           });
 
           if (linkError && linkError.code !== '23505') throw linkError;
