@@ -815,22 +815,26 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
           if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
 
           // You created this unclaimed node, trigger the smart backend function
-          await supabase.rpc('log_kindness_link', {
+          const { error: rpcError1 } = await supabase.rpc('log_kindness_link', {
             p_source: finalHelperId,
             p_target: finalMyId,
             p_color: linkColor,
             p_comment: deedComment
           });
+          
+          if (rpcError1) throw new Error(`Link Error: ${rpcError1.message}`);
 
           setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
         } else {
           // Linking to an EXISTING user's node, trigger the smart backend function
-          await supabase.rpc('log_kindness_link', {
+          const { error: rpcError2 } = await supabase.rpc('log_kindness_link', {
             p_source: finalHelperId,
             p_target: finalMyId,
             p_color: linkColor,
             p_comment: deedComment
           });
+          
+          if (rpcError2) throw new Error(`Link Error: ${rpcError2.message}`);
         }
       }
 
