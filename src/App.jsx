@@ -1474,96 +1474,98 @@ function App() {
             <BrawlButton icon="🚀" text="Join Chain" colorScheme="green" isLink={true} to="/join" />
           </div>
         </nav>
-        <main className="flex-grow flex flex-col px-4 sm:px-6 lg:px-12 pb-12 overflow-x-hidden">
+        <main className="flex-grow relative w-full overflow-hidden flex flex-col">
           <Routes>
              <Route path="/" element={
-              <div className="flex flex-col lg:flex-row gap-6 lg:gap-12 h-full flex-grow items-center justify-center mt-6 lg:mt-16 max-w-7xl mx-auto w-full">
-                <div className="w-full lg:w-1/2 flex flex-col gap-5 lg:gap-8 text-center lg:text-left z-10">
-                  
-                  {session && myPrimaryNode ? (
-                    <>
-                      <div className="inline-block mx-auto lg:mx-0 bg-yellow-300 border-2 border-black rounded-full px-4 py-1 w-max shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-[-10px] transform -rotate-2">
-                        <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">
-                          🏆 Global Rank: #{myRankNumber}
-                        </span>
-                      </div>
-                      <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-none text-black tracking-tight drop-shadow-sm mt-1">
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
-                          {myRank}
-                        </span>
-                      </h1>
-                      <div className="flex flex-col gap-3 mt-2">
-                        <div className="bg-lime-300 border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] inline-block w-max mx-auto lg:mx-0 transform rotate-1 hover:rotate-0 transition-transform">
-                          <span className="font-black text-black text-lg sm:text-xl uppercase tracking-wider flex items-center gap-2">
-                            🤝 You helped <span className="text-3xl bg-white border-2 border-black rounded-lg px-3 py-1 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedCount}</span> people
-                          </span>
-                        </div>
-                        <div className="bg-cyan-300 border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] inline-block w-max mx-auto lg:mx-0 transform -rotate-1 mt-2 hover:rotate-0 transition-transform">
-                          <span className="font-black text-black text-lg sm:text-xl uppercase tracking-wider flex items-center gap-2">
-                            💖 <span className="text-3xl bg-white border-2 border-black rounded-lg px-3 py-1 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span> people helped you
-                          </span>
-                        </div>
-                        
-                        {/* BIG QR QUICK CONNECT BUTTON! */}
-                        <div onClick={() => setShowQRModal(true)} className="bg-white border-4 border-black rounded-2xl p-3 sm:p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] inline-flex items-center gap-4 w-max mx-auto lg:mx-0 transform rotate-1 mt-6 hover:rotate-0 hover:-translate-y-1 transition-all cursor-pointer hover:bg-yellow-100 group">
-                          <div className="bg-black text-white p-3 rounded-xl transform group-hover:scale-110 transition-transform shadow-[2px_2px_0px_rgba(0,0,0,1)] border-2 border-black flex items-center justify-center">
-                            <span className="text-3xl">🔳</span>
-                          </div>
-                          <div className="flex flex-col text-left pr-4">
-                            <span className="font-black text-black uppercase text-xl leading-none tracking-tight">Quick Connect</span>
-                            <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase mt-1 tracking-widest bg-slate-100 px-2 py-0.5 rounded-md border-2 border-black w-max">Scan / Show QR ⚡</span>
-                          </div>
-                        </div>
-
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="inline-block mx-auto lg:mx-0 bg-yellow-300 border-2 border-black rounded-full px-4 py-1 w-max shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-[-10px] transform -rotate-2">
-                        <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">✨ The live network</span>
-                      </div>
-                      <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-none text-black tracking-tight drop-shadow-sm">
-                        Your impact, <br/>
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
-                          fully custom.
-                        </span>
-                      </h1>
-                      <p className="text-slate-600 text-base sm:text-lg lg:text-xl font-medium leading-relaxed max-w-lg mx-auto lg:mx-0">
-                        Avatars. Emojis. Hexagons. Custom arrows. Start a chain of kindness today and leave your unique mark on the world's graph. 🌍
-                      </p>
-                    </>
-                  )}
-
-                  {/* NETWORK DATA & STATS - ONLY SHOWN WHEN SIGNED IN */}
-                  {session && (
-                    <div className="bg-white border-2 sm:border-4 border-black rounded-2xl p-4 sm:p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] w-full max-w-lg mx-auto lg:mx-0 transform sm:-rotate-1 hover:rotate-0 transition-transform">
-                      <div className="flex items-center justify-between mb-3 sm:mb-4 pb-2 border-b-2 border-black border-dashed">
-                        <span className="font-black uppercase text-xs sm:text-sm tracking-wide flex items-center gap-2 text-black">
-                          📊 Live Network Analytics
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                        <div className="bg-yellow-200 border-2 border-black rounded-xl p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center">
-                          <p className="text-xl sm:text-2xl md:text-3xl font-black text-black leading-none">{totalNodes}</p>
-                          <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-800 mt-1">Total Nodes</p>
-                        </div>
-                        <div className="bg-cyan-200 border-2 border-black rounded-xl p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center">
-                          <p className="text-xl sm:text-2xl md:text-3xl font-black text-black leading-none">{totalConnections}</p>
-                          <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-800 mt-1">Connections</p>
-                        </div>
-                        <div className="bg-pink-200 border-2 border-black rounded-xl p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center">
-                          <p className="text-xl sm:text-2xl md:text-3xl font-black text-black leading-none">{activeChainsCount}</p>
-                          <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-800 mt-1">Active Chains</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="w-full lg:w-1/2 h-[50vh] min-h-[350px] lg:h-[min(600px,70vh)] border-4 border-black rounded-3xl shadow-[6px_6px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-white overflow-hidden p-2 relative">
-                  <div className="absolute top-4 left-4 z-10 bg-white border-2 border-black px-3 py-1 rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] font-bold text-xs flex items-center gap-2">
-                    <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span> LIVE
-                  </div>
+              <div className="absolute inset-0 w-full h-full flex flex-col bg-[#fdfbf7]">
+                
+                {/* 1. BACKGROUND FULL-SCREEN MAP */}
+                <div className="absolute inset-0 z-0">
                   <KindnessGraph data={globalGraph} onNodeClick={setSelectedNode} /> 
+                </div>
+
+                {/* 2. HUD OVERLAYS (pointer-events-none lets you click the map under empty spaces!) */}
+                <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-4 sm:p-6 lg:p-8 overflow-hidden">
+                  
+                  {/* TOP LEFT: LIVE BADGE */}
+                  <div className="flex justify-start pointer-events-auto">
+                    <div className="bg-white border-2 sm:border-4 border-black px-4 py-2 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)] font-black text-xs sm:text-sm flex items-center gap-2 transform -rotate-2">
+                      <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span> 
+                      GLOBAL NETWORK LIVE
+                    </div>
+                  </div>
+
+                  {/* BOTTOM SECTION: PANELS FLOATING IN CORNERS */}
+                  <div className="flex flex-col md:flex-row justify-between items-end gap-6 pointer-events-auto">
+                    
+                    {/* BOTTOM LEFT: USER INFO OR PITCH */}
+                    <div className="flex flex-col gap-3 max-w-sm w-full">
+                      {session && myPrimaryNode ? (
+                        <>
+                          <div className="bg-yellow-300 border-2 border-black rounded-full px-4 py-1 w-max shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2">
+                            <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">🏆 Global Rank: #{myRankNumber}</span>
+                          </div>
+                          <h1 className="text-4xl sm:text-5xl font-black leading-none text-black tracking-tight drop-shadow-sm mt-1 mb-2 bg-white/80 p-2 sm:p-3 rounded-2xl border-4 border-black w-max backdrop-blur-sm shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1">
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">{myRank}</span>
+                          </h1>
+                          <div className="bg-lime-300 border-4 border-black rounded-2xl p-2.5 sm:p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1 hover:rotate-0 transition-transform w-max">
+                            <span className="font-black text-black text-sm sm:text-base uppercase tracking-wider flex items-center gap-2">
+                              🤝 You helped <span className="text-xl bg-white border-2 border-black rounded-lg px-2 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedCount}</span> people
+                            </span>
+                          </div>
+                          <div className="bg-cyan-300 border-4 border-black rounded-2xl p-2.5 sm:p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-1 hover:rotate-0 transition-transform w-max">
+                            <span className="font-black text-black text-sm sm:text-base uppercase tracking-wider flex items-center gap-2">
+                              💖 <span className="text-xl bg-white border-2 border-black rounded-lg px-2 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span> people helped you
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bg-white/90 backdrop-blur-md border-4 border-black rounded-3xl p-5 shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1">
+                          <h1 className="text-3xl sm:text-4xl font-black leading-none text-black tracking-tight drop-shadow-sm mb-3">
+                            Your impact, <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">fully custom.</span>
+                          </h1>
+                          <p className="text-slate-700 text-sm sm:text-base font-bold leading-relaxed">
+                            Start a chain of kindness today and leave your unique mark on the world's graph. 🌍
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* BOTTOM RIGHT: ACTIONS & STATS */}
+                    <div className="flex flex-col items-end gap-4 w-full md:w-auto">
+                      
+                      {/* BIG QR QUICK CONNECT BUTTON (ONLY IF SIGNED IN) */}
+                      {session && myPrimaryNode && (
+                        <div onClick={() => setShowQRModal(true)} className="bg-white border-4 border-black rounded-3xl p-3 shadow-[6px_6px_0px_rgba(0,0,0,1)] inline-flex items-center gap-3 transform -rotate-1 hover:rotate-0 hover:-translate-y-2 transition-all cursor-pointer hover:bg-yellow-100 group w-max self-end md:self-auto">
+                          <div className="bg-black text-white p-3 rounded-xl transform group-hover:scale-110 transition-transform shadow-[2px_2px_0px_rgba(0,0,0,1)] border-2 border-black flex items-center justify-center">
+                            <span className="text-2xl sm:text-3xl">🔳</span>
+                          </div>
+                          <div className="flex flex-col text-left pr-2">
+                            <span className="font-black text-black uppercase text-lg sm:text-xl leading-none tracking-tight">Quick Connect</span>
+                            <span className="text-[10px] sm:text-xs font-black text-slate-500 uppercase mt-1 tracking-widest bg-slate-100 px-2 py-0.5 rounded-md border-2 border-black w-max">Scan / Show QR ⚡</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* MINI NETWORK STATS DASHBOARD */}
+                      {session && (
+                        <div className="bg-white/90 backdrop-blur-md border-4 border-black rounded-2xl p-3 shadow-[6px_6px_0px_rgba(0,0,0,1)] flex gap-2 sm:gap-3 w-full md:w-max overflow-x-auto transform rotate-1 self-end md:self-auto">
+                          <div className="bg-yellow-200 border-2 border-black rounded-xl px-3 py-2 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[70px]">
+                            <p className="text-lg sm:text-xl font-black text-black leading-none">{totalNodes}</p>
+                            <p className="text-[8px] sm:text-[9px] font-black uppercase text-slate-800 mt-1">Nodes</p>
+                          </div>
+                          <div className="bg-cyan-200 border-2 border-black rounded-xl px-3 py-2 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[70px]">
+                            <p className="text-lg sm:text-xl font-black text-black leading-none">{totalConnections}</p>
+                            <p className="text-[8px] sm:text-[9px] font-black uppercase text-slate-800 mt-1">Links</p>
+                          </div>
+                          <div className="bg-pink-200 border-2 border-black rounded-xl px-3 py-2 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[70px]">
+                            <p className="text-lg sm:text-xl font-black text-black leading-none">{activeChainsCount}</p>
+                            <p className="text-[8px] sm:text-[9px] font-black uppercase text-slate-800 mt-1">Chains</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             } />
