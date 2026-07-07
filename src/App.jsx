@@ -61,7 +61,6 @@ const mockFallbackTree = {
   ],
   links: []
 };
-
 // --- SETTINGS MODAL ---
 function SettingsModal({ session, onClose }) {
   const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
@@ -88,17 +87,19 @@ function SettingsModal({ session, onClose }) {
   // Fetch current node on mount
   useEffect(() => {
     const fetchNode = async () => {
+      if (!session?.user?.id) return;
+      // FIX: Relaxed query to ensure we find your node even if it was created on an older version!
       const { data } = await supabase.from('nodes')
         .select('id')
-        .eq('user_id', session?.user?.id)
-        .eq('is_claimed', true)
-        .single();
-      if (data) {
-        setKTag(data.id);
-        setOldKTag(data.id);
+        .eq('user_id', session.user.id)
+        .limit(1);
+        
+      if (data && data.length > 0) {
+        setKTag(data[0].id);
+        setOldKTag(data[0].id);
       }
     };
-    if (session?.user?.id) fetchNode();
+    fetchNode();
 
     // Check cooldown status from user metadata
     const lastChange = session?.user?.user_metadata?.last_ktag_change;
@@ -145,38 +146,65 @@ function SettingsModal({ session, onClose }) {
       let cleanNewTag = kTag.toUpperCase().replace(/[^A-Z0-9-]/g, '').trim();
       if (!cleanNewTag) throw new Error("K-Tag cannot be empty.");
 
-      if (cleanNewTag !== oldKTag && oldKTag) {
+      // Migration Logic! Only runs if the input actually changed
+      if (cleanNewTag !== oldKTag) {
         if (isKtagLocked) throw new Error(`K-Tag is locked for ${lockDaysLeft} more days.`);
         if (cleanNewTag.length < 3) throw new Error("K-Tag must be at least 3 characters.");
 
         // Check availability
-        const { data: existing } = await supabase.from('nodes').select('id').eq('id', cleanNewTag).maybeSingle();
-        if (existing) throw new Error(`⚠️ K-Tag "${cleanNewTag}" is already taken! Try another one.`);
+        const { data: existing } = await supabase.from('nodes').select('id').eq('id', cleanNewTag).limit(1);
+        if (existing && existing.length > 0) throw new Error(`⚠️ K-Tag "${cleanNewTag}" is already taken! Try another.`);
 
-        // Migrate Node and Update Connections!
-        const { data: currNode } = await supabase.from('nodes').select('*').eq('id', oldKTag).single();
-        if (currNode) {
-          const { id, ...nodeData } = currNode; 
-          
-          const { error: insertErr } = await supabase.from('nodes').insert({ id: cleanNewTag, ...nodeData, socials });
-          if (insertErr) throw insertErr;
-          
-          await supabase.from('links').update({ source: cleanNewTag }).eq('source', oldKTag);
-          await supabase.from('links').update({ target: cleanNewTag }).eq('target', oldKTag);
-          await supabase.from('nodes').delete().eq('id', oldKTag);
+        if (oldKTag) {
+          // 1. Fetch old node completely
+          const { data: currNode } = await supabase.from('nodes').select('*').eq('id', oldKTag).limit(1);
+          if (currNode && currNode.length > 0) {
+            const { id, ...nodeData } = currNode[0]; 
+            
+            // 2. Insert new node (Force is_claimed true so it never breaks!)
+            const { error: insertErr } = await supabase.from('nodes').insert({ 
+              id: cleanNewTag, 
+              ...nodeData, 
+              socials,
+              is_claimed: true 
+            });
+            if (insertErr) throw new Error("Failed to migrate K-Tag.");
+            
+            // 3. Connect existing arrows
+            await supabase.from('links').update({ source: cleanNewTag }).eq('source', oldKTag);
+            await supabase.from('links').update({ target: cleanNewTag }).eq('target', oldKTag);
 
-          newMetadata.last_ktag_change = Date.now();
-          setOldKTag(cleanNewTag);
+            // 4. Delete old node
+            await supabase.from('nodes').delete().eq('id', oldKTag);
+          }
+        } else {
+           // Fallback if they didn't have an ID for some reason
+           await supabase.from('nodes').insert({
+             id: cleanNewTag,
+             user_id: session.user.id,
+             shape: 'circle',
+             type: 'image',
+             value: avatarUrl,
+             socials: socials,
+             is_claimed: true
+           });
         }
+
+        // Log the timestamp of the change!
+        newMetadata.last_ktag_change = Date.now();
+        setOldKTag(cleanNewTag);
+        setIsKtagLocked(true);
+        setLockDaysLeft(7);
       } else if (oldKTag) {
-        // Just updating normal settings on the existing node
+        // If they didn't change their tag, just update socials on their existing node
         await supabase.from('nodes').update({ socials }).eq('id', oldKTag);
       }
 
+      // Sync metadata with authentication
       const { error } = await supabase.auth.updateUser({ data: newMetadata });
-      if (error) throw error;
+      if (error) throw new Error("Settings applied but Auth Sync failed.");
       
-      onClose();
+      onClose(); // Success!
     } catch (error) {
       setMsg(`⚠️ ${error.message}`);
     } finally {
@@ -699,6 +727,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [claimModalUrl, setClaimModalUrl] = useState('');
   const [helperPin, setHelperPin] = useState(''); 
+  const [deedComment, setDeedComment] = useState(''); // 📝 NEW: Store the story
   
   const [nodeShape, setNodeShape] = useState('circle');
   const [nodeType, setNodeType] = useState('image'); 
@@ -715,10 +744,10 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
       if (data) setExistingTags(data);
 
       if (session?.user?.id) {
-        // Fetch ONLY the permanent claimed node belonging to this exact user
+        // FIX: Made this query much more robust so it never fails to find your ID
         const { data: userNodes } = await supabase.from('nodes').select('id')
           .eq('user_id', session.user.id)
-          .eq('is_claimed', true);
+          .limit(1);
         if (userNodes && userNodes.length > 0) {
           setMyId(userNodes[0].id);
         }
@@ -795,7 +824,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
             source: finalHelperId,
             target: finalMyId,
             custom_color: linkColor,
-            status: 'approved'
+            status: 'approved',
+            comment: deedComment // 📝 Saving the comment/story
           });
 
           setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
@@ -806,7 +836,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
             source: finalHelperId,
             target: finalMyId,
             custom_color: linkColor,
-            status: 'approved' 
+            status: 'approved',
+            comment: deedComment // 📝 Saving the comment/story
           });
 
           if (linkError && linkError.code !== '23505') throw linkError;
@@ -961,6 +992,20 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
               className="w-full bg-slate-200 border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-not-allowed text-slate-600" 
               title="To prevent spam, your account is bound to a single unique K-Tag on the global map." />
           </div>
+        </div>
+
+        {/* --- DEED STORY / COMMENT BOX --- */}
+        <div className="flex flex-col gap-2">
+          <label className="block text-xs font-black text-black uppercase">
+            📝 Tell the story (Optional)
+          </label>
+          <textarea 
+            placeholder="How did this person help you? Drop a quick note!" 
+            value={deedComment}
+            onChange={(e) => setDeedComment(e.target.value)}
+            rows="3"
+            className="w-full bg-white border-4 border-black rounded-xl p-3 font-bold text-sm focus:outline-none focus:bg-pink-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] resize-none"
+          ></textarea>
         </div>
 
         <div className="border-t-4 border-black border-dashed pt-6">
