@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import KindnessGraph from './components/KindnessGraph';
 import { supabase } from './supabaseClient';
+import { Scanner } from '@yudiel/react-qr-scanner';
 // =========================================================
 // BRAWL STARS STYLE BUTTON RECREATED IN REACT/TAILWIND
 // =========================================================
@@ -1063,6 +1064,140 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   );
 }
 
+// --- QUICK QR CONNECT MODAL (UPI STYLE) ---
+function QuickQRModal({ myPrimaryNode, onClose, onRefreshGraph }) {
+  const [mode, setMode] = useState('select'); // 'select', 'show', 'scan', 'form'
+  const [scannedTag, setScannedTag] = useState('');
+  const [relation, setRelation] = useState('they_helped_me'); // 'they_helped_me' or 'i_helped_them'
+  const [comment, setComment] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const handleScan = (detectedCodes) => {
+    if (detectedCodes && detectedCodes.length > 0) {
+      const text = detectedCodes[0].rawValue;
+      if (!text) return;
+      const cleanTag = text.toUpperCase().trim();
+      setScannedTag(cleanTag);
+      setMode('form');
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!scannedTag) return;
+    setIsLoading(true);
+    setMsg('');
+    try {
+      // Determine direction of arrow based on toggle!
+      const source = relation === 'they_helped_me' ? scannedTag : myPrimaryNode.id;
+      const target = relation === 'they_helped_me' ? myPrimaryNode.id : scannedTag;
+
+      const { error } = await supabase.rpc('log_kindness_link', {
+        p_source: source,
+        p_target: target,
+        p_color: '#cbd5e1', // Default arrow color for quick connects
+        p_comment: comment
+      });
+
+      if (error) throw error;
+      
+      setMsg('🎉 Chain successfully linked!');
+      setTimeout(() => {
+        if (onRefreshGraph) onRefreshGraph();
+        onClose();
+      }, 1500);
+    } catch (err) {
+      setMsg(`⚠️ Error: ${err.message}`);
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="bg-white border-4 border-black rounded-3xl p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-sm relative transform -rotate-1 flex flex-col items-center">
+        <button onClick={onClose} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
+          ✖
+        </button>
+
+        <h2 className="text-2xl font-black mb-4 uppercase tracking-tight bg-yellow-300 px-4 py-1 border-2 border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] transform rotate-2">
+          ⚡ Quick Connect
+        </h2>
+
+        {mode === 'select' && (
+          <div className="flex flex-col gap-4 w-full mt-2">
+            <button onClick={() => setMode('show')} className="w-full bg-cyan-300 hover:bg-cyan-200 border-4 border-black rounded-2xl p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all cursor-pointer flex flex-col items-center text-center">
+              <span className="text-5xl mb-2">📱</span>
+              <span className="font-black uppercase text-xl text-black">Show My QR</span>
+              <span className="text-xs font-bold text-slate-700 mt-1">Let someone scan your K-Tag</span>
+            </button>
+
+            <button onClick={() => setMode('scan')} className="w-full bg-pink-300 hover:bg-pink-200 border-4 border-black rounded-2xl p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all cursor-pointer flex flex-col items-center text-center">
+              <span className="text-5xl mb-2">📷</span>
+              <span className="font-black uppercase text-xl text-black">Scan a QR</span>
+              <span className="text-xs font-bold text-slate-700 mt-1">Link to someone you helped</span>
+            </button>
+          </div>
+        )}
+
+        {mode === 'show' && (
+          <div className="flex flex-col items-center w-full animate-in fade-in zoom-in duration-200">
+            <p className="text-sm font-black uppercase text-slate-600 mb-4 text-center">Have them scan this to link with you!</p>
+            <div className="bg-white p-4 border-4 border-black rounded-3xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+              {/* Zero Dependency QR Code via Free API */}
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${myPrimaryNode?.id}`} alt="My QR Code" className="w-48 h-48 sm:w-56 sm:h-56 object-contain rounded-xl" />
+            </div>
+            <p className="mt-6 text-2xl font-black uppercase tracking-widest bg-slate-100 border-2 border-black px-4 py-2 rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+              {myPrimaryNode?.id}
+            </p>
+            <button onClick={() => setMode('select')} className="mt-6 text-xs font-black uppercase underline hover:text-pink-500">Back</button>
+          </div>
+        )}
+
+        {mode === 'scan' && (
+          <div className="w-full flex flex-col items-center animate-in fade-in zoom-in duration-200">
+            <div className="w-full h-64 border-4 border-black rounded-2xl overflow-hidden shadow-[4px_4px_0px_rgba(0,0,0,1)] relative bg-black">
+              <Scanner onScan={handleScan} />
+              <div className="absolute inset-0 pointer-events-none border-[40px] border-black/40"></div>
+            </div>
+            <p className="text-xs font-black uppercase text-slate-600 mt-4">Point at someone's K-Tag QR Code</p>
+            <button onClick={() => setMode('select')} className="mt-4 text-xs font-black uppercase underline hover:text-pink-500">Cancel</button>
+          </div>
+        )}
+
+        {mode === 'form' && (
+          <div className="w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+            <div className="bg-slate-100 border-2 border-black rounded-xl p-3 text-center">
+              <span className="text-[10px] font-black uppercase text-slate-500 block mb-1">Scanned User</span>
+              <span className="text-xl font-black uppercase tracking-widest text-black">{scannedTag}</span>
+            </div>
+
+            {msg && <p className="text-xs font-bold text-center bg-yellow-200 p-2 border-2 border-black rounded-lg">{msg}</p>}
+
+            <div className="flex bg-slate-200 rounded-xl p-1 border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] relative">
+              <button onClick={() => setRelation('they_helped_me')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-colors z-10 ${relation === 'they_helped_me' ? 'text-black' : 'text-slate-500'}`}>They Helped Me</button>
+              <button onClick={() => setRelation('i_helped_them')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-colors z-10 ${relation === 'i_helped_them' ? 'text-black' : 'text-slate-500'}`}>I Helped Them</button>
+              <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-lg border-2 border-black transition-transform duration-200 shadow-sm ${relation === 'i_helped_them' ? 'translate-x-[calc(100%+2px)]' : 'translate-x-0'}`}></div>
+            </div>
+
+            <textarea 
+              placeholder="Tell the story (Optional)" 
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows="3"
+              className="w-full bg-white border-2 border-black rounded-xl p-3 font-bold text-xs focus:outline-none focus:bg-pink-50 shadow-[2px_2px_0px_rgba(0,0,0,1)] resize-none"
+            ></textarea>
+
+            <button onClick={handleSubmit} disabled={isLoading} className="w-full bg-lime-400 hover:bg-lime-300 text-black text-lg font-black py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all uppercase tracking-widest cursor-pointer mt-2">
+              {isLoading ? 'Linking...' : 'Log It 🚀'}
+            </button>
+            <button onClick={() => setMode('select')} className="text-[10px] font-black uppercase underline hover:text-pink-500 text-center">Reset / Go Back</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // --- DASHBOARD ---
 function Dashboard({ userData }) {
   const navigate = useNavigate();
@@ -1114,6 +1249,7 @@ function App() {
   const [showNodeManager, setShowNodeManager] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false); // NEW STATE FOR QR
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
   // 1. Fetch Global Graph wrapped in useCallback so it's globally available
@@ -1276,21 +1412,18 @@ function App() {
     <Router>
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
         
+        {/* MODALS */}
         {showSettings && <SettingsModal session={session} onClose={() => setShowSettings(false)} />}
         {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
         {showRequests && <RequestsModal session={session} onClose={() => setShowRequests(false)} onRefreshGraph={fetchGlobalGraph} />}
         {showNodeManager && <NodeManagerModal session={session} onClose={() => setShowNodeManager(false)} onRefreshGraph={fetchGlobalGraph} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
-        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
-        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
-        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
-        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
-        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
-        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
-        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
-        {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
-
-<nav className="flex flex-wrap justify-between items-center p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-4 border-black sticky top-0 z-40 gap-4 overflow-x-hidden">
+        
+        {/* QUICK CONNECT QR MODAL */}
+        {showQRModal && myPrimaryNode && <QuickQRModal myPrimaryNode={myPrimaryNode} onClose={() => setShowQRModal(false)} onRefreshGraph={fetchGlobalGraph} />}
+        
+        {/* NAVBAR */}
+        <nav className="flex flex-wrap justify-between items-center p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-4 border-black sticky top-0 z-40 gap-4 overflow-x-hidden">
           
           {/* LOGO */}
           <Link to="/" className="text-xl sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 hover:scale-105 transition-transform shrink-0">
@@ -1370,6 +1503,18 @@ function App() {
                             💖 <span className="text-3xl bg-white border-2 border-black rounded-lg px-3 py-1 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span> people helped you
                           </span>
                         </div>
+                        
+                        {/* BIG QR QUICK CONNECT BUTTON! */}
+                        <div onClick={() => setShowQRModal(true)} className="bg-white border-4 border-black rounded-2xl p-3 sm:p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] inline-flex items-center gap-4 w-max mx-auto lg:mx-0 transform rotate-1 mt-6 hover:rotate-0 hover:-translate-y-1 transition-all cursor-pointer hover:bg-yellow-100 group">
+                          <div className="bg-black text-white p-3 rounded-xl transform group-hover:scale-110 transition-transform shadow-[2px_2px_0px_rgba(0,0,0,1)] border-2 border-black flex items-center justify-center">
+                            <span className="text-3xl">🔳</span>
+                          </div>
+                          <div className="flex flex-col text-left pr-4">
+                            <span className="font-black text-black uppercase text-xl leading-none tracking-tight">Quick Connect</span>
+                            <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase mt-1 tracking-widest bg-slate-100 px-2 py-0.5 rounded-md border-2 border-black w-max">Scan / Show QR ⚡</span>
+                          </div>
+                        </div>
+
                       </div>
                     </>
                   ) : (
