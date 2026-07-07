@@ -156,26 +156,16 @@ function SettingsModal({ session, onClose }) {
         if (existing && existing.length > 0) throw new Error(`⚠️ K-Tag "${cleanNewTag}" is already taken! Try another.`);
 
         if (oldKTag) {
-          // 1. Fetch old node completely
-          const { data: currNode } = await supabase.from('nodes').select('*').eq('id', oldKTag).limit(1);
-          if (currNode && currNode.length > 0) {
-            const { id, ...nodeData } = currNode[0]; 
-            
-            // 2. Insert new node (Force is_claimed true so it never breaks!)
-            const { error: insertErr } = await supabase.from('nodes').insert({ 
-              id: cleanNewTag, 
-              ...nodeData, 
-              socials,
-              is_claimed: true 
-            });
-            if (insertErr) throw new Error("Failed to migrate K-Tag.");
-            
-            // 3. Connect existing arrows
-            await supabase.from('links').update({ source: cleanNewTag }).eq('source', oldKTag);
-            await supabase.from('links').update({ target: cleanNewTag }).eq('target', oldKTag);
-
-            // 4. Delete old node
-            await supabase.from('nodes').delete().eq('id', oldKTag);
+          // A single, elegant UPDATE. The backend cascade handles the links!
+          // And the backend trigger handles the 7-day timer!
+          const { error: updateErr } = await supabase.from('nodes').update({ 
+            id: cleanNewTag,
+            socials 
+          }).eq('id', oldKTag);
+          
+          if (updateErr) {
+             // If the timer blocks them, it will show the backend's error message here!
+             throw new Error(updateErr.message || "Failed to update K-Tag.");
           }
         } else {
            // Fallback if they didn't have an ID for some reason
