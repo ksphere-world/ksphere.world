@@ -19,13 +19,12 @@ function BrawlButton({ text, icon, colorScheme, onClick, className = "", isLink 
   };
   const p = palettes[colorScheme] || palettes.blue;
 
-  // FIX 1: Changed rounded-xl to rounded-lg for less rounded corners
-  const baseClasses = `inline-flex items-center justify-center rounded-lg border-[3px] border-black active:scale-95 transition-transform duration-75 shrink-0 whitespace-nowrap cursor-pointer select-none ${className}`;
+  // FIX 1: Reduced borders on mobile, added dynamic Tailwind block shadows (2px for mobile, 5px for desktop)
+  const baseClasses = `inline-flex items-center justify-center rounded-lg border-2 sm:border-[3px] border-black active:scale-95 transition-transform duration-75 shrink-0 whitespace-nowrap cursor-pointer select-none shadow-[-1px_1px_0_#000,-2px_2px_0_#000] sm:shadow-[-1px_1px_0_#000,-2px_2px_0_#000,-3px_3px_0_#000,-4px_4px_0_#000,-4px_5px_0_#000] ${className}`;
 
-  // FIX 2: Solid block shadow (fixes the subpixel white gap at the bottom of skewed elements)
+  // FIX 2: Removed inline boxShadow so Tailwind classes handle responsiveness!
   const buttonStyle = {
     transform: 'skewX(-8deg)',
-    boxShadow: '-1px 1px 0 #000, -2px 2px 0 #000, -3px 3px 0 #000, -4px 4px 0 #000, -4px 5px 0 #000',
     backgroundColor: p.bot, // Fallback base color to prevent gaps
     backgroundImage: `linear-gradient(to bottom, ${p.top} 0%, ${p.top} 15%, ${p.mid} 15%, ${p.mid} 82%, ${p.bot} 82%, ${p.bot} 100%)`
   };
@@ -1439,7 +1438,7 @@ function App() {
         {showQRModal && myPrimaryNode && <QuickQRModal myPrimaryNode={myPrimaryNode} onClose={() => setShowQRModal(false)} onRefreshGraph={fetchGlobalGraph} />}
         
         {/* NAVBAR */}
-        <nav className="flex flex-wrap justify-between items-center p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-4 border-black sticky top-0 z-40 gap-4 overflow-x-hidden pointer-events-auto">
+        <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 overflow-x-hidden pointer-events-auto">
           
           {/* LOGO */}
           <Link to="/" className="text-lg sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-1.5 sm:gap-2 hover:scale-105 transition-transform shrink-0">
@@ -1459,8 +1458,8 @@ function App() {
               <>
                {/* Slanted Avatar Badge */}
                 <div 
-                  className="hidden lg:flex items-center bg-yellow-300 border-[3px] border-black rounded-lg shrink-0" 
-                  style={{ transform: 'skewX(-8deg)', boxShadow: '-1px 1px 0 #000, -2px 2px 0 #000, -3px 3px 0 #000, -4px 4px 0 #000, -4px 5px 0 #000' }}
+                  className="hidden lg:flex items-center bg-yellow-300 border-[3px] border-black rounded-lg shrink-0 shadow-[-1px_1px_0_#000,-2px_2px_0_#000,-3px_3px_0_#000,-4px_4px_0_#000,-4px_5px_0_#000]" 
+                  style={{ transform: 'skewX(-8deg)' }}
                 >
                   <div style={{ transform: 'skewX(8deg)' }} className="flex items-center gap-2 px-3 py-1.5">
                     <img
