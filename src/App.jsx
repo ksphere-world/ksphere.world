@@ -7,7 +7,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 // =========================================================
 // BRAWL STARS STYLE BUTTON RECREATED IN REACT/TAILWIND
 // =========================================================
-function BrawlButton({ text, icon, colorScheme, onClick, className = "", isLink = false, to }) {
+function BrawlButton({ text, icon, colorScheme, onClick, className = "", isLink = false, to, hideTextOnMobile = false }) {
   const palettes = {
     yellow: { top: '#FFE866', mid: '#FFCC00', bot: '#D68A00', textStroke: true },
     blue: { top: '#63B8FF', mid: '#2979FF', bot: '#003C8F', textStroke: true },
@@ -43,9 +43,9 @@ function BrawlButton({ text, icon, colorScheme, onClick, className = "", isLink 
 
   // Slightly increased padding and text size so they don't look cramped
   const content = (
-    <div style={{ transform: 'skewX(8deg)' }} className="px-3 py-1.5 sm:px-4 sm:py-2 flex items-center gap-1.5 text-[12px] sm:text-[14px] font-black uppercase tracking-wider">
+    <div style={{ transform: 'skewX(8deg)' }} className="px-2 py-1.5 sm:px-4 sm:py-2 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-[14px] font-black uppercase tracking-wider">
       {icon && <span className="drop-shadow-md text-sm sm:text-base">{icon}</span>}
-      <span style={textStyle}>{text}</span>
+      <span style={textStyle} className={hideTextOnMobile ? "hidden sm:inline-block" : "inline-block"}>{text}</span>
     </div>
   );
 
@@ -885,8 +885,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto mt-8 p-6 sm:p-8 bg-white rounded-3xl border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,1)] mb-20">
-      <h1 className="text-3xl sm:text-4xl font-black mb-6 text-black text-center tracking-tight uppercase transform -rotate-1">
+    <div className="w-full max-w-2xl mx-auto mt-4 sm:mt-8 p-4 sm:p-8 bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] mb-20">
+      <h1 className="text-xl sm:text-4xl font-black mb-4 sm:mb-6 text-black text-center tracking-tight uppercase transform -rotate-1">
         🤝 Log an Act of Kindness
       </h1>
       
@@ -1435,7 +1435,7 @@ function App() {
           </Link>
           
           {/* BRAWL BUTTONS CONTAINER */}
-          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-5 ml-auto pt-2 sm:pt-0 pb-2 sm:pb-0">
+          <div className="flex flex-wrap items-center justify-end gap-x-2 sm:gap-x-4 gap-y-3 sm:gap-y-5 ml-auto pt-2 sm:pt-0 pb-2 sm:pb-0">
             
             {isAuthLoading ? (
                <div className="w-5 h-5 border-[3px] border-black border-t-transparent rounded-full animate-spin"></div>
@@ -1458,10 +1458,10 @@ function App() {
                   </div>
                 </div>
                 
-                <BrawlButton icon="⚙️" text="Settings" colorScheme="blue" onClick={() => setShowSettings(true)} />
-                <BrawlButton icon="🔔" text="Requests" colorScheme="pink" onClick={() => setShowRequests(true)} />
-                <BrawlButton icon="🧩" text="Nodes" colorScheme="purple" onClick={() => setShowNodeManager(true)} />
-                <BrawlButton icon="🚪" text="Logout" colorScheme="dark" onClick={handleLogout} />
+                <BrawlButton icon="⚙️" text="Settings" colorScheme="blue" onClick={() => setShowSettings(true)} hideTextOnMobile={true} />
+                <BrawlButton icon="🔔" text="Requests" colorScheme="pink" onClick={() => setShowRequests(true)} hideTextOnMobile={true} />
+                <BrawlButton icon="🧩" text="Nodes" colorScheme="purple" onClick={() => setShowNodeManager(true)} hideTextOnMobile={true} />
+                <BrawlButton icon="🚪" text="Logout" colorScheme="dark" onClick={handleLogout} hideTextOnMobile={true} />
               </>
             ) : (
               <BrawlButton text="Sign In" colorScheme="white" onClick={handleGoogleLogin} />
@@ -1502,29 +1502,29 @@ function App() {
                     <div className="flex flex-col gap-3 max-w-sm w-full">
                       {session && myPrimaryNode ? (
                         <>
-                          <div className="bg-yellow-300 border-2 border-black rounded-full px-4 py-1 w-max shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2">
-                            <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">🏆 Global Rank: #{myRankNumber}</span>
+                          <div className="bg-yellow-300 border-2 border-black rounded-full px-3 py-1 sm:px-4 w-max shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2">
+                            <span className="font-bold text-black text-[10px] sm:text-sm uppercase tracking-wider">🏆 Global Rank: #{myRankNumber}</span>
                           </div>
-                          <h1 className="text-4xl sm:text-5xl font-black leading-none text-black tracking-tight drop-shadow-sm mt-1 mb-2 bg-white/80 p-2 sm:p-3 rounded-2xl border-4 border-black w-max backdrop-blur-sm shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1">
+                          <h1 className="text-2xl sm:text-5xl font-black leading-none text-black tracking-tight drop-shadow-sm mt-1 mb-2 bg-white/80 p-1.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 sm:border-4 border-black w-max backdrop-blur-sm shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1">
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">{myRank}</span>
                           </h1>
-                          <div className="bg-lime-300 border-4 border-black rounded-2xl p-2.5 sm:p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1 hover:rotate-0 transition-transform w-max">
-                            <span className="font-black text-black text-sm sm:text-base uppercase tracking-wider flex items-center gap-2">
-                              🤝 You helped <span className="text-xl bg-white border-2 border-black rounded-lg px-2 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedCount}</span> people
+                          <div className="bg-lime-300 border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-2 sm:p-3 shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1 hover:rotate-0 transition-transform w-max">
+                            <span className="font-black text-black text-[11px] sm:text-base uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                              🤝 You helped <span className="text-sm sm:text-xl bg-white border-2 border-black rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedCount}</span> people
                             </span>
                           </div>
-                          <div className="bg-cyan-300 border-4 border-black rounded-2xl p-2.5 sm:p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-1 hover:rotate-0 transition-transform w-max">
-                            <span className="font-black text-black text-sm sm:text-base uppercase tracking-wider flex items-center gap-2">
-                              💖 <span className="text-xl bg-white border-2 border-black rounded-lg px-2 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span> people helped you
+                          <div className="bg-cyan-300 border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-2 sm:p-3 shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-1 hover:rotate-0 transition-transform w-max">
+                            <span className="font-black text-black text-[11px] sm:text-base uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                              💖 <span className="text-sm sm:text-xl bg-white border-2 border-black rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span> people helped you
                             </span>
                           </div>
                         </>
                       ) : (
-                        <div className="bg-white/90 backdrop-blur-md border-4 border-black rounded-3xl p-5 shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1">
-                          <h1 className="text-3xl sm:text-4xl font-black leading-none text-black tracking-tight drop-shadow-sm mb-3">
+                        <div className="bg-white/90 backdrop-blur-md border-2 sm:border-4 border-black rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1">
+                          <h1 className="text-2xl sm:text-4xl font-black leading-none text-black tracking-tight drop-shadow-sm mb-2 sm:mb-3">
                             Your impact, <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">fully custom.</span>
                           </h1>
-                          <p className="text-slate-700 text-sm sm:text-base font-bold leading-relaxed">
+                          <p className="text-slate-700 text-xs sm:text-base font-bold leading-relaxed">
                             Start a chain of kindness today and leave your unique mark on the world's graph. 🌍
                           </p>
                         </div>
@@ -1536,30 +1536,30 @@ function App() {
                       
                       {/* BIG QR QUICK CONNECT BUTTON (ONLY IF SIGNED IN) */}
                       {session && myPrimaryNode && (
-                        <div onClick={() => setShowQRModal(true)} className="bg-white border-4 border-black rounded-3xl p-3 shadow-[6px_6px_0px_rgba(0,0,0,1)] inline-flex items-center gap-3 transform -rotate-1 hover:rotate-0 hover:-translate-y-2 transition-all cursor-pointer hover:bg-yellow-100 group w-max self-end md:self-auto">
-                          <div className="bg-black text-white p-3 rounded-xl transform group-hover:scale-110 transition-transform shadow-[2px_2px_0px_rgba(0,0,0,1)] border-2 border-black flex items-center justify-center">
-                            <span className="text-2xl sm:text-3xl">🔳</span>
+                        <div onClick={() => setShowQRModal(true)} className="bg-white border-2 sm:border-4 border-black rounded-2xl sm:rounded-3xl p-2 sm:p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] inline-flex items-center gap-2 sm:gap-3 transform -rotate-1 hover:rotate-0 hover:-translate-y-1 sm:hover:-translate-y-2 transition-all cursor-pointer hover:bg-yellow-100 group w-max self-end md:self-auto">
+                          <div className="bg-black text-white p-2 sm:p-3 rounded-lg sm:rounded-xl transform group-hover:scale-110 transition-transform shadow-[2px_2px_0px_rgba(0,0,0,1)] border-2 border-black flex items-center justify-center">
+                            <span className="text-xl sm:text-3xl">🔳</span>
                           </div>
-                          <div className="flex flex-col text-left pr-2">
-                            <span className="font-black text-black uppercase text-lg sm:text-xl leading-none tracking-tight">Quick Connect</span>
-                            <span className="text-[10px] sm:text-xs font-black text-slate-500 uppercase mt-1 tracking-widest bg-slate-100 px-2 py-0.5 rounded-md border-2 border-black w-max">Scan / Show QR ⚡</span>
+                          <div className="flex flex-col text-left pr-1 sm:pr-2">
+                            <span className="font-black text-black uppercase text-sm sm:text-xl leading-none tracking-tight">Quick Connect</span>
+                            <span className="text-[8px] sm:text-xs font-black text-slate-500 uppercase mt-1 tracking-widest bg-slate-100 px-1.5 sm:px-2 py-0.5 rounded-md border-2 border-black w-max">Scan / Show QR ⚡</span>
                           </div>
                         </div>
                       )}
 
                       {/* MINI NETWORK STATS DASHBOARD */}
                       {session && (
-                        <div className="bg-white/90 backdrop-blur-md border-4 border-black rounded-2xl p-3 shadow-[6px_6px_0px_rgba(0,0,0,1)] flex gap-2 sm:gap-3 w-full md:w-max overflow-x-auto transform rotate-1 self-end md:self-auto">
-                          <div className="bg-yellow-200 border-2 border-black rounded-xl px-3 py-2 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[70px]">
-                            <p className="text-lg sm:text-xl font-black text-black leading-none">{totalNodes}</p>
+                        <div className="bg-white/90 backdrop-blur-md border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-2 sm:p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] flex gap-2 sm:gap-3 w-full md:w-max overflow-x-auto transform rotate-1 self-end md:self-auto justify-between sm:justify-start">
+                          <div className="bg-yellow-200 border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] flex-1 sm:min-w-[70px]">
+                            <p className="text-base sm:text-xl font-black text-black leading-none">{totalNodes}</p>
                             <p className="text-[8px] sm:text-[9px] font-black uppercase text-slate-800 mt-1">Nodes</p>
                           </div>
-                          <div className="bg-cyan-200 border-2 border-black rounded-xl px-3 py-2 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[70px]">
-                            <p className="text-lg sm:text-xl font-black text-black leading-none">{totalConnections}</p>
+                          <div className="bg-cyan-200 border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] flex-1 sm:min-w-[70px]">
+                            <p className="text-base sm:text-xl font-black text-black leading-none">{totalConnections}</p>
                             <p className="text-[8px] sm:text-[9px] font-black uppercase text-slate-800 mt-1">Links</p>
                           </div>
-                          <div className="bg-pink-200 border-2 border-black rounded-xl px-3 py-2 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[70px]">
-                            <p className="text-lg sm:text-xl font-black text-black leading-none">{activeChainsCount}</p>
+                          <div className="bg-pink-200 border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)] flex-1 sm:min-w-[70px]">
+                            <p className="text-base sm:text-xl font-black text-black leading-none">{activeChainsCount}</p>
                             <p className="text-[8px] sm:text-[9px] font-black uppercase text-slate-800 mt-1">Chains</p>
                           </div>
                         </div>
