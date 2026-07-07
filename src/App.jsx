@@ -733,9 +733,11 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
       if (data) setExistingTags(data);
 
       if (session?.user?.id) {
-        // FIX: Made this query much more robust so it never fails to find your ID
+        // 🛑 STRICT QUERY: Must include is_claimed = true so it doesn't accidentally 
+        // fetch temporary/unclaimed nodes you created for other people!
         const { data: userNodes } = await supabase.from('nodes').select('id')
           .eq('user_id', session.user.id)
+          .eq('is_claimed', true)
           .limit(1);
         if (userNodes && userNodes.length > 0) {
           setMyId(userNodes[0].id);
