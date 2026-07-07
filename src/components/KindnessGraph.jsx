@@ -43,12 +43,29 @@ export default function KindnessGraph({ data, onNodeClick }) {
     if (!data) return null;
     const helpCount = {};
     data.nodes.forEach(n => helpCount[n.id] = 0);
+    
+    // 1. Scan for bidirectional connections (A helped B, and B helped A)
+    const linkPairs = new Set();
     data.links.forEach(l => {
-      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
-      if (helpCount[sourceId] !== undefined) helpCount[sourceId] += 1;
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      linkPairs.add(`${s}|${t}`);
+      if (helpCount[s] !== undefined) helpCount[s] += 1;
     });
+
+    // 2. Add a `curvature` property if a reverse connection exists!
+    const links = data.links.map(l => {
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      const hasReverse = linkPairs.has(`${t}|${s}`);
+      return { 
+        ...l, 
+        curvature: hasReverse ? 0.25 : 0 // 0.25 makes them bow outward beautifully
+      };
+    });
+
     const nodes = data.nodes.map(n => ({ ...n, impactCount: helpCount[n.id] || 0 }));
-    return { nodes, links: data.links };
+    return { nodes, links };
   }, [data]);
 
   useEffect(() => {
@@ -76,6 +93,7 @@ export default function KindnessGraph({ data, onNodeClick }) {
           linkDirectionalArrowLength={12}
           linkDirectionalArrowRelPos={0.5}
           linkDirectionalArrowColor={(link) => link.customColor || '#000000'}
+          linkCurvature={(link) => link.curvature || 0}
           
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx) => {
@@ -85,11 +103,24 @@ export default function KindnessGraph({ data, onNodeClick }) {
               // Wait until coordinates are calculated by the physics engine
               if (typeof start !== 'object' || typeof end !== 'object') return;
               
-              // Calculate center of the arrow
-              const textPos = {
-                x: start.x + (end.x - start.x) / 2,
-                y: start.y + (end.y - start.y) / 2
+              const dx = end.x - start.x;
+              const dy = end.y - start.y;
+              const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+              
+              // Calculate straight midpoint
+              let textPos = {
+                x: start.x + dx / 2,
+                y: start.y + dy / 2
               };
+
+              // If the arrow is curved, push the badge perfectly to the curve's apex using normal vector math!
+              if (link.curvature) {
+                const nx = -dy / distance; 
+                const ny = dx / distance;
+                const offset = (distance * link.curvature) / 2;
+                textPos.x += nx * offset;
+                textPos.y += ny * offset;
+              }
 
               const label = `${link.helpsCount}x`;
               const fontSize = 10;
