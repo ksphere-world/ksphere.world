@@ -1499,9 +1499,9 @@ function App() {
                 {/* 1. BACKGROUND FULL-SCREEN MAP */}
                 <div 
                   className="absolute inset-0 z-0"
-                  onTouchStart={handleMapInteractionStart}
-                  onTouchEnd={handleMapInteractionEnd}
-                  onTouchCancel={handleMapInteractionEnd}
+                  onPointerDownCapture={handleMapInteractionStart}
+                  onPointerUpCapture={handleMapInteractionEnd}
+                  onPointerCancelCapture={handleMapInteractionEnd}
                 >
                   <KindnessGraph data={globalGraph} onNodeClick={setSelectedNode} /> 
                 </div>
@@ -1510,7 +1510,7 @@ function App() {
                 <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-4 sm:p-6 lg:p-8 overflow-hidden">
                   
                   {/* TOP LEFT: LIVE BADGE */}
-                  <div className={`flex justify-start pointer-events-auto transition-all duration-500 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? '-translate-y-20 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                  <div className={`flex justify-start pointer-events-auto transition-all duration-300 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? '-translate-y-20 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
                     <div className="bg-white border-2 sm:border-4 border-black px-2 py-1 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] font-black text-[9px] sm:text-sm flex items-center gap-1.5 sm:gap-2 transform -rotate-2 w-max">
                       <span className="relative flex h-2 w-2 sm:h-3 sm:w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 sm:h-3 sm:w-3 bg-green-500"></span></span> 
                       GLOBAL NETWORK LIVE
@@ -1518,7 +1518,7 @@ function App() {
                   </div>
 
                   {/* BOTTOM SECTION: PANELS FLOATING IN CORNERS */}
-                  <div className={`flex flex-col md:flex-row justify-between items-start md:items-end gap-4 sm:gap-6 pointer-events-none w-full transition-all duration-500 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? 'translate-y-40 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                  <div className={`flex flex-col md:flex-row justify-between items-start md:items-end gap-4 sm:gap-6 pointer-events-none w-full transition-all duration-300 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? 'translate-y-40 opacity-0' : 'translate-y-0 opacity-100'}`}>
                     
                     {/* BOTTOM LEFT: USER INFO OR PITCH */}
                     <div className="flex flex-col items-start gap-1.5 sm:gap-3 w-full md:max-w-sm pointer-events-auto">
