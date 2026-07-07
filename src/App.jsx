@@ -349,7 +349,8 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
     const { data } = await supabase
       .from('nodes')
       .select('*')
-      .or(`user_id.eq.${userId},created_by.eq.${userId}`);
+      .or(`user_id.eq.${userId},created_by.eq.${userId}`)
+      .order('is_claimed', { ascending: false }); // Primary claimed node is forced to the top
 
     if (data && data.length > 0) {
       setMyNodes(data);
@@ -653,7 +654,10 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
       if (data) setExistingTags(data);
 
       if (session?.user?.id) {
-        const { data: userNodes } = await supabase.from('nodes').select('id').eq('user_id', session.user.id);
+        // Fetch ONLY the permanent claimed node belonging to this exact user
+        const { data: userNodes } = await supabase.from('nodes').select('id')
+          .eq('user_id', session.user.id)
+          .eq('is_claimed', true);
         if (userNodes && userNodes.length > 0) {
           setMyId(userNodes[0].id);
         }
@@ -890,10 +894,11 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
 
           <div>
             <label className="block text-xs font-black text-black mb-1 uppercase">
-              Your Primary K-Tag <span className="text-lime-600 font-bold">(Auto-filled)</span>
+              Your Primary K-Tag <span className="text-red-500 font-bold">(Fixed ID)</span>
             </label>
-            <input type="text" value={myId} onChange={(e) => setMyId(e.target.value)} required
-              className="w-full bg-yellow-50 border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)]" />
+            <input type="text" value={myId} readOnly required
+              className="w-full bg-slate-200 border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-not-allowed text-slate-600" 
+              title="To prevent spam, your account is bound to a single unique K-Tag on the global map." />
           </div>
         </div>
 
@@ -1029,10 +1034,12 @@ function App() {
     if (!userSession?.user?.id) return;
     const userId = userSession.user.id;
 
+    // Strictly check if the user has a permanent claimed node attached to their account
     const { data: existingNodes } = await supabase
       .from('nodes')
       .select('*')
-      .or(`user_id.eq.${userId},created_by.eq.${userId}`);
+      .eq('user_id', userId)
+      .eq('is_claimed', true);
 
     if (!existingNodes || existingNodes.length === 0) {
       const rawName = userSession.user.user_metadata?.full_name || userSession.user.email?.split('@')[0] || 'KIND';
