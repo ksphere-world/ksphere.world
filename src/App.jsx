@@ -67,6 +67,12 @@ function SettingsModal({ session, onClose }) {
   const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
   const [avatarUrl, setAvatarUrl] = useState(session?.user?.user_metadata?.avatar_url || '');
   
+  // K-Tag Modification State
+  const [kTag, setKTag] = useState('');
+  const [oldKTag, setOldKTag] = useState('');
+  const [isKtagLocked, setIsKtagLocked] = useState(false);
+  const [lockDaysLeft, setLockDaysLeft] = useState(0);
+
   // Social Links State
   const initialSocials = session?.user?.user_metadata?.socials || {};
   const [instagram, setInstagram] = useState(initialSocials.instagram || '');
@@ -79,28 +85,43 @@ function SettingsModal({ session, onClose }) {
   const [isUploading, setIsUploading] = useState(false);
   const [msg, setMsg] = useState('');
 
-  // Handle image upload to Supabase Storage 'avatars' bucket
+  // Fetch current node on mount
+  useEffect(() => {
+    const fetchNode = async () => {
+      const { data } = await supabase.from('nodes')
+        .select('id')
+        .eq('user_id', session?.user?.id)
+        .eq('is_claimed', true)
+        .single();
+      if (data) {
+        setKTag(data.id);
+        setOldKTag(data.id);
+      }
+    };
+    if (session?.user?.id) fetchNode();
+
+    // Check cooldown status from user metadata
+    const lastChange = session?.user?.user_metadata?.last_ktag_change;
+    if (lastChange) {
+      const daysSince = (Date.now() - lastChange) / (1000 * 60 * 60 * 24);
+      if (daysSince < 7) {
+        setIsKtagLocked(true);
+        setLockDaysLeft(Math.ceil(7 - daysSince));
+      }
+    }
+  }, [session]);
+
   const handleAvatarUpload = async (event) => {
     try {
       const file = event.target.files?.[0];
       if (!file) return;
-
       setIsUploading(true);
       setMsg('');
-
       const fileExt = file.name.split('.').pop();
       const fileName = `${session?.user?.id || 'user'}-${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true });
-
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
       if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
       if (data?.publicUrl) {
         setAvatarUrl(data.publicUrl);
         setMsg('✅ Image uploaded successfully!');
@@ -117,21 +138,49 @@ function SettingsModal({ session, onClose }) {
     setIsLoading(true);
     setMsg('');
 
-    const socials = { instagram, twitter, youtube, facebook, website };
+    try {
+      const socials = { instagram, twitter, youtube, facebook, website };
+      let newMetadata = { full_name: name, avatar_url: avatarUrl, socials };
+      
+      let cleanNewTag = kTag.toUpperCase().replace(/[^A-Z0-9-]/g, '').trim();
+      if (!cleanNewTag) throw new Error("K-Tag cannot be empty.");
 
-    const { error } = await supabase.auth.updateUser({
-      data: { 
-        full_name: name, 
-        avatar_url: avatarUrl,
-        socials
+      if (cleanNewTag !== oldKTag && oldKTag) {
+        if (isKtagLocked) throw new Error(`K-Tag is locked for ${lockDaysLeft} more days.`);
+        if (cleanNewTag.length < 3) throw new Error("K-Tag must be at least 3 characters.");
+
+        // Check availability
+        const { data: existing } = await supabase.from('nodes').select('id').eq('id', cleanNewTag).maybeSingle();
+        if (existing) throw new Error(`⚠️ K-Tag "${cleanNewTag}" is already taken! Try another one.`);
+
+        // Migrate Node and Update Connections!
+        const { data: currNode } = await supabase.from('nodes').select('*').eq('id', oldKTag).single();
+        if (currNode) {
+          const { id, ...nodeData } = currNode; 
+          
+          const { error: insertErr } = await supabase.from('nodes').insert({ id: cleanNewTag, ...nodeData, socials });
+          if (insertErr) throw insertErr;
+          
+          await supabase.from('links').update({ source: cleanNewTag }).eq('source', oldKTag);
+          await supabase.from('links').update({ target: cleanNewTag }).eq('target', oldKTag);
+          await supabase.from('nodes').delete().eq('id', oldKTag);
+
+          newMetadata.last_ktag_change = Date.now();
+          setOldKTag(cleanNewTag);
+        }
+      } else if (oldKTag) {
+        // Just updating normal settings on the existing node
+        await supabase.from('nodes').update({ socials }).eq('id', oldKTag);
       }
-    });
 
-    setIsLoading(false);
-    if (error) {
+      const { error } = await supabase.auth.updateUser({ data: newMetadata });
+      if (error) throw error;
+      
+      onClose();
+    } catch (error) {
       setMsg(`⚠️ ${error.message}`);
-    } else {
-      onClose(); 
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -148,6 +197,18 @@ function SettingsModal({ session, onClose }) {
         {msg && <p className="mb-4 text-xs font-bold text-slate-900 bg-yellow-200 p-2.5 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">{msg}</p>}
         
         <form onSubmit={handleSave} className="flex flex-col gap-5 transform -rotate-1">
+          
+          {/* K-TAG MODIFIER */}
+          <div className="bg-blue-50 border-2 border-black border-dashed p-3 rounded-xl mb-2">
+            <label className="block text-xs font-black uppercase mb-1 text-black flex justify-between">
+              Your Unique K-Tag
+              {isKtagLocked && <span className="text-red-500">🔒 Locked ({lockDaysLeft}d)</span>}
+            </label>
+            <input type="text" value={kTag} onChange={e => setKTag(e.target.value)} required disabled={isKtagLocked}
+              className={`w-full border-4 border-black rounded-xl p-3 font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-colors ${isKtagLocked ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'focus:outline-none focus:bg-white bg-white'}`} />
+            {!isKtagLocked && <p className="text-[10px] font-bold text-slate-600 mt-2 leading-tight">You can change this <b>once every 7 days</b>. Changing it will instantly update your node on the global map!</p>}
+          </div>
+
           <div>
             <label className="block text-xs font-black uppercase mb-1 text-black">Display Name</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} required
