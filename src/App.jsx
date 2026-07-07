@@ -766,6 +766,12 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
       return;
     }
 
+    // 🛑 NEW: Block empty submissions!
+    if (!isAnonymousHelper && !helperId.trim()) {
+      setErrorMsg("Please enter the K-Tag of the person who helped you, or select 'Anonymous'!");
+      return;
+    }
+
     setIsLoading(true);
     setErrorMsg('');
     const finalMyId = myId.toUpperCase().trim();
@@ -912,7 +918,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="relative">
             <label className="block text-xs font-black text-black mb-1 uppercase">
-              Who Helped You? <span className="text-slate-500 font-normal">(Leave blank to start new chain)</span>
+              Who Helped You? <span className="text-red-500 font-bold">*</span>
             </label>
             <input 
               type="text" 
