@@ -872,7 +872,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
 
   if (!session) {
     return (
-      <div className="w-full max-w-xl mx-auto mt-12 sm:mt-20 p-8 sm:p-12 bg-pink-300 rounded-3xl border-4 border-black text-center shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1 hover:rotate-0 transition-transform mb-20">
+      <div className="relative w-full max-w-xl mx-auto mt-12 sm:mt-20 p-8 sm:p-12 bg-pink-300 rounded-3xl border-4 border-black text-center shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1 hover:rotate-0 transition-transform mb-20">
+        <button onClick={() => navigate('/')} className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
         <h2 className="text-3xl sm:text-4xl font-black mb-4 text-black uppercase tracking-tight">🔒 Hold Up!</h2>
         <p className="text-black font-bold mb-8 text-lg">Sign in to claim your node and log acts of kindness.</p>
         <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })} 
@@ -884,7 +885,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto mt-4 sm:mt-8 p-4 sm:p-8 bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] mb-20">
+    <div className="relative w-full max-w-2xl mx-auto mt-4 sm:mt-8 p-4 sm:p-8 bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] mb-20">
+      <button onClick={() => navigate('/')} className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
       <h1 className="text-xl sm:text-4xl font-black mb-4 sm:mb-6 text-black text-center tracking-tight uppercase transform -rotate-1">
         🤝 Log an Act of Kindness
       </h1>
