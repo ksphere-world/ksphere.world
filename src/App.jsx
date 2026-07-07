@@ -1,5 +1,5 @@
 // frontend/src/App.jsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import KindnessGraph from './components/KindnessGraph';
 import { supabase } from './supabaseClient';
@@ -1252,6 +1252,23 @@ function App() {
   const [showQRModal, setShowQRModal] = useState(false); // NEW STATE FOR QR
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
+  // --- MAP INTERACTION LOGIC (HIDES UI ON MOBILE PANNING) ---
+  const [isMapInteracting, setIsMapInteracting] = useState(false);
+  const interactTimeout = useRef(null);
+
+  const handleMapInteractionStart = () => {
+    if (window.innerWidth >= 768) return; // Ignore on desktop/big iPads
+    if (interactTimeout.current) clearTimeout(interactTimeout.current);
+    setIsMapInteracting(true);
+  };
+
+  const handleMapInteractionEnd = () => {
+    if (window.innerWidth >= 768) return;
+    interactTimeout.current = setTimeout(() => {
+      setIsMapInteracting(false);
+    }, 800); // UI swoops back in 0.8s after you release your finger!
+  };
+
   // 1. Fetch Global Graph wrapped in useCallback so it's globally available
   const fetchGlobalGraph = useCallback(async () => {
     const { data: dbNodes, error: nodesError } = await supabase.from('nodes').select('*');
@@ -1480,7 +1497,12 @@ function App() {
               <div className="absolute inset-0 w-full h-full flex flex-col bg-[#fdfbf7]">
                 
                 {/* 1. BACKGROUND FULL-SCREEN MAP */}
-                <div className="absolute inset-0 z-0">
+                <div 
+                  className="absolute inset-0 z-0"
+                  onTouchStart={handleMapInteractionStart}
+                  onTouchEnd={handleMapInteractionEnd}
+                  onTouchCancel={handleMapInteractionEnd}
+                >
                   <KindnessGraph data={globalGraph} onNodeClick={setSelectedNode} /> 
                 </div>
 
@@ -1488,7 +1510,7 @@ function App() {
                 <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-4 sm:p-6 lg:p-8 overflow-hidden">
                   
                   {/* TOP LEFT: LIVE BADGE */}
-                  <div className="flex justify-start pointer-events-auto">
+                  <div className={`flex justify-start pointer-events-auto transition-all duration-500 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? '-translate-y-20 opacity-0' : 'translate-y-0 opacity-100'}`}>
                     <div className="bg-white border-2 sm:border-4 border-black px-2 py-1 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] font-black text-[9px] sm:text-sm flex items-center gap-1.5 sm:gap-2 transform -rotate-2 w-max">
                       <span className="relative flex h-2 w-2 sm:h-3 sm:w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 sm:h-3 sm:w-3 bg-green-500"></span></span> 
                       GLOBAL NETWORK LIVE
@@ -1496,7 +1518,7 @@ function App() {
                   </div>
 
                   {/* BOTTOM SECTION: PANELS FLOATING IN CORNERS */}
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 sm:gap-6 pointer-events-auto w-full">
+                  <div className={`flex flex-col md:flex-row justify-between items-start md:items-end gap-4 sm:gap-6 pointer-events-none w-full transition-all duration-500 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? 'translate-y-40 opacity-0' : 'translate-y-0 opacity-100'}`}>
                     
                     {/* BOTTOM LEFT: USER INFO OR PITCH */}
                     <div className="flex flex-col items-start gap-1.5 sm:gap-3 w-full md:max-w-sm pointer-events-auto">
