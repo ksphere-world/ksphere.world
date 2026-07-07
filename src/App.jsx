@@ -1234,21 +1234,37 @@ function App() {
   let myHelpedCount = 0;
   let myHelpedByCount = 0;
   let myRank = "Starter Seed 🌰";
+  let myRankNumber = "-"; // NEW: Numeric Rank
 
   if (session && globalGraph.nodes.length > 0) {
     myPrimaryNode = globalGraph.nodes.find(n => n.user_id === session.user.id && n.is_claimed);
+    
     if (myPrimaryNode) {
-      // How many times you helped others (Outgoing)
-      myHelpedCount = globalGraph.links
-        .filter(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id)
-        .reduce((sum, l) => sum + (l.helpsCount || 1), 0);
+      // 1. Calculate scores for ALL claimed users to determine the leaderboard
+      const userScores = globalGraph.nodes
+        .filter(n => n.is_claimed)
+        .map(node => {
+          const score = globalGraph.links
+            .filter(l => (typeof l.source === 'object' ? l.source.id : l.source) === node.id)
+            .reduce((sum, l) => sum + (l.helpsCount || 1), 0);
+          return { id: node.id, score };
+        });
+
+      // 2. Sort users by score (highest to lowest)
+      userScores.sort((a, b) => b.score - a.score);
+
+      // 3. Find exactly where YOU stand in the world!
+      const myIndex = userScores.findIndex(u => u.id === myPrimaryNode.id);
+      myRankNumber = myIndex !== -1 ? myIndex + 1 : "-";
+
+      // 4. Get your personal counts
+      myHelpedCount = userScores.find(u => u.id === myPrimaryNode.id)?.score || 0;
         
-      // How many times others helped you (Incoming)
       myHelpedByCount = globalGraph.links
         .filter(l => (typeof l.target === 'object' ? l.target.id : l.target) === myPrimaryNode.id)
         .reduce((sum, l) => sum + (l.helpsCount || 1), 0);
 
-      // Rank Logic!
+      // Rank Title Logic!
       if (myHelpedCount >= 25) myRank = "Global Legend 👑";
       else if (myHelpedCount >= 10) myRank = "Kindness Catalyst ⚡";
       else if (myHelpedCount >= 3) myRank = "Rising Star ⭐";
@@ -1334,9 +1350,11 @@ function App() {
                   {session && myPrimaryNode ? (
                     <>
                       <div className="inline-block mx-auto lg:mx-0 bg-yellow-300 border-2 border-black rounded-full px-4 py-1 w-max shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-[-10px] transform -rotate-2">
-                        <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">🏆 Your Kindness Rank</span>
+                        <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">
+                          🏆 Global Rank: #{myRankNumber}
+                        </span>
                       </div>
-                      <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-none text-black tracking-tight drop-shadow-sm">
+                      <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-none text-black tracking-tight drop-shadow-sm mt-1">
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
                           {myRank}
                         </span>
