@@ -1520,36 +1520,35 @@ function App() {
                   <div className={`flex flex-row justify-between items-end gap-2 sm:gap-6 pointer-events-none w-full transition-all duration-300 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? 'translate-y-40 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
                     
                     {/* BOTTOM LEFT: USER INFO */}
-                    <div className="flex flex-col items-start gap-1 sm:gap-3 w-auto pointer-events-none">
+                    <div className="flex flex-col items-start gap-1.5 sm:gap-3 w-auto pointer-events-none">
                       {session && myPrimaryNode ? (
                         <>
-                          <div className="bg-yellow-300 border-2 sm:border-4 border-black rounded-full px-2 py-0.5 sm:px-4 sm:py-1 w-max shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:-rotate-2 transition-transform pointer-events-auto">
-                            <span className="font-black text-black text-[8px] sm:text-sm uppercase tracking-wider">🏆 Global Rank: #{myRankNumber}</span>
+                          <div className="bg-yellow-300 border-2 sm:border-4 border-black rounded-full px-2.5 py-0.5 sm:px-4 sm:py-1 w-max shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:-rotate-2 transition-transform pointer-events-auto">
+                            <span className="font-black text-black text-[10px] sm:text-sm uppercase tracking-wider">🏆 Rank: #{myRankNumber}</span>
                           </div>
-                          <h1 className="text-[16px] sm:text-4xl md:text-5xl font-black leading-none text-black tracking-tight drop-shadow-sm mt-0.5 mb-0.5 sm:mb-2 bg-white/90 px-1.5 py-1 sm:p-3 rounded-lg sm:rounded-2xl border-2 sm:border-4 border-black w-max backdrop-blur-sm shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:rotate-1 transition-transform pointer-events-auto">
+                          <h1 className="text-xl sm:text-4xl md:text-5xl font-black leading-none text-black tracking-tight drop-shadow-sm mt-0.5 mb-1 sm:mb-2 bg-white/90 px-2 py-1.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 sm:border-4 border-black w-max backdrop-blur-sm shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:rotate-1 transition-transform pointer-events-auto">
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">{myRank}</span>
                           </h1>
                           
-                          {/* Re-Stacked horizontally to stay slim on mobile! */}
-                          <div className="flex flex-col gap-1 sm:gap-3 w-max pointer-events-none">
-                            <div className="bg-lime-300 border-2 sm:border-4 border-black rounded-md sm:rounded-2xl px-1.5 py-0.5 sm:p-3 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:rotate-1 hover:rotate-0 transition-transform w-max pointer-events-auto">
-                              <span className="font-black text-black text-[8px] sm:text-base uppercase tracking-wider flex items-center gap-1 sm:gap-2">
-                                🤝 You helped <span className="text-[10px] sm:text-xl bg-white border border-black sm:border-2 rounded sm:rounded-lg px-1 sm:px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedCount}</span>
+                          <div className="flex flex-col gap-1.5 sm:gap-3 w-max pointer-events-none">
+                            <div className="bg-lime-300 border-2 sm:border-4 border-black rounded-lg sm:rounded-2xl px-2 py-1 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:rotate-1 hover:rotate-0 transition-transform w-max pointer-events-auto">
+                              <span className="font-black text-black text-[10px] sm:text-base uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                                🤝 You helped <span className="text-xs sm:text-xl bg-white border border-black sm:border-2 rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedCount}</span>
                               </span>
                             </div>
-                            <div className="bg-cyan-300 border-2 sm:border-4 border-black rounded-md sm:rounded-2xl px-1.5 py-0.5 sm:p-3 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:-rotate-1 hover:rotate-0 transition-transform w-max pointer-events-auto">
-                              <span className="font-black text-black text-[8px] sm:text-base uppercase tracking-wider flex items-center gap-1 sm:gap-2">
-                                💖 Helped by <span className="text-[10px] sm:text-xl bg-white border border-black sm:border-2 rounded sm:rounded-lg px-1 sm:px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span>
+                            <div className="bg-cyan-300 border-2 sm:border-4 border-black rounded-lg sm:rounded-2xl px-2 py-1 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] md:-rotate-1 hover:rotate-0 transition-transform w-max pointer-events-auto">
+                              <span className="font-black text-black text-[10px] sm:text-base uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                                💖 Helped by <span className="text-xs sm:text-xl bg-white border border-black sm:border-2 rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span>
                               </span>
                             </div>
                           </div>
                         </>
                       ) : (
-                        <div className="bg-white/90 backdrop-blur-md border-2 sm:border-4 border-black rounded-xl sm:rounded-3xl p-2 sm:p-5 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1 pointer-events-auto">
-                          <h1 className="text-lg sm:text-4xl font-black leading-none text-black tracking-tight drop-shadow-sm mb-1 sm:mb-3">
+                        <div className="bg-white/90 backdrop-blur-md border-2 sm:border-4 border-black rounded-xl sm:rounded-3xl p-3 sm:p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1 pointer-events-auto">
+                          <h1 className="text-xl sm:text-4xl font-black leading-none text-black tracking-tight drop-shadow-sm mb-1.5 sm:mb-3">
                             Your impact, <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">fully custom.</span>
                           </h1>
-                          <p className="text-slate-700 text-[9px] sm:text-base font-bold leading-relaxed max-w-[150px] sm:max-w-none">
+                          <p className="text-slate-700 text-[10px] sm:text-base font-bold leading-relaxed max-w-[160px] sm:max-w-none">
                             Start a chain of kindness today and leave your unique mark on the world's graph. 🌍
                           </p>
                         </div>
@@ -1557,35 +1556,35 @@ function App() {
                     </div>
 
                     {/* BOTTOM RIGHT: ACTIONS & STATS */}
-                    <div className="flex flex-col items-end gap-1.5 sm:gap-4 w-auto pointer-events-none z-10">
+                    <div className="flex flex-col items-end gap-2 sm:gap-4 w-auto pointer-events-none z-10">
                       
                       {/* QUICK CONNECT BUTTON */}
                       {session && myPrimaryNode && (
-                        <div onClick={() => setShowQRModal(true)} className="bg-yellow-400 border-2 sm:border-4 border-black rounded-lg sm:rounded-3xl p-1 sm:p-3 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] inline-flex items-center gap-1 sm:gap-3 md:-rotate-2 hover:rotate-0 hover:-translate-y-1 sm:hover:-translate-y-2 transition-all cursor-pointer hover:bg-yellow-300 group w-max self-end pointer-events-auto">
-                          <div className="bg-black text-white p-1 sm:p-3 rounded sm:rounded-xl transform group-hover:scale-110 transition-transform shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] border border-black flex items-center justify-center">
-                            <span className="text-[12px] sm:text-3xl">⚡</span>
+                        <div onClick={() => setShowQRModal(true)} className="bg-yellow-400 border-2 sm:border-4 border-black rounded-xl sm:rounded-3xl p-1.5 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] inline-flex items-center gap-1.5 sm:gap-3 md:-rotate-2 hover:rotate-0 hover:-translate-y-1 sm:hover:-translate-y-2 transition-all cursor-pointer hover:bg-yellow-300 group w-max self-end pointer-events-auto">
+                          <div className="bg-black text-white p-1.5 sm:p-3 rounded-lg sm:rounded-xl transform group-hover:scale-110 transition-transform shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] border border-black sm:border-2 flex items-center justify-center">
+                            <span className="text-[18px] sm:text-3xl">⚡</span>
                           </div>
-                          <div className="flex flex-col text-left pr-1 sm:pr-2">
-                            <span className="font-black text-black uppercase text-[10px] sm:text-xl leading-none tracking-tight">Quick Connect</span>
-                            <span className="text-[6px] sm:text-xs font-black text-slate-800 uppercase mt-0.5 sm:mt-1 tracking-widest bg-white/80 px-1 sm:px-2 py-0.5 rounded border border-black sm:border-2 w-max">Scan / Show QR 📷</span>
+                          <div className="flex flex-col text-left pr-1.5 sm:pr-2">
+                            <span className="font-black text-black uppercase text-xs sm:text-xl leading-none tracking-tight">Quick Connect</span>
+                            <span className="text-[8px] sm:text-xs font-black text-slate-800 uppercase mt-0.5 sm:mt-1 tracking-widest bg-white/80 px-1.5 sm:px-2 py-0.5 rounded-md border border-black sm:border-2 w-max">Scan / Show QR 📷</span>
                           </div>
                         </div>
                       )}
 
                       {/* STATS DASHBOARD */}
                       {session && (
-                        <div className="bg-white/90 backdrop-blur-md border-2 sm:border-4 border-black rounded-lg sm:rounded-2xl p-1 sm:p-3 shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] flex gap-1 sm:gap-3 w-max overflow-x-auto md:rotate-1 self-end pointer-events-auto">
-                          <div className="bg-slate-100 border sm:border-2 border-black rounded px-1.5 sm:px-3 py-0.5 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[35px] sm:min-w-[70px]">
-                            <p className="text-[10px] sm:text-xl font-black text-black leading-none">{totalNodes}</p>
-                            <p className="text-[6px] sm:text-[9px] font-black uppercase text-slate-800 mt-0.5 sm:mt-1">Nodes</p>
+                        <div className="bg-white/90 backdrop-blur-md border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-1.5 sm:p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_rgba(0,0,0,1)] flex gap-1.5 sm:gap-3 w-max overflow-x-auto md:rotate-1 self-end pointer-events-auto">
+                          <div className="bg-slate-100 border sm:border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[42px] sm:min-w-[70px]">
+                            <p className="text-sm sm:text-xl font-black text-black leading-none">{totalNodes}</p>
+                            <p className="text-[8px] sm:text-[9px] font-black uppercase text-slate-800 mt-0.5 sm:mt-1">Nodes</p>
                           </div>
-                          <div className="bg-slate-100 border sm:border-2 border-black rounded px-1.5 sm:px-3 py-0.5 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[35px] sm:min-w-[70px]">
-                            <p className="text-[10px] sm:text-xl font-black text-black leading-none">{totalConnections}</p>
-                            <p className="text-[6px] sm:text-[9px] font-black uppercase text-slate-800 mt-0.5 sm:mt-1">Links</p>
+                          <div className="bg-slate-100 border sm:border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[42px] sm:min-w-[70px]">
+                            <p className="text-sm sm:text-xl font-black text-black leading-none">{totalConnections}</p>
+                            <p className="text-[8px] sm:text-[9px] font-black uppercase text-slate-800 mt-0.5 sm:mt-1">Links</p>
                           </div>
-                          <div className="bg-slate-100 border sm:border-2 border-black rounded px-1.5 sm:px-3 py-0.5 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[35px] sm:min-w-[70px]">
-                            <p className="text-[10px] sm:text-xl font-black text-black leading-none">{activeChainsCount}</p>
-                            <p className="text-[6px] sm:text-[9px] font-black uppercase text-slate-800 mt-0.5 sm:mt-1">Chains</p>
+                          <div className="bg-slate-100 border sm:border-2 border-black rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-2 text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] sm:shadow-[2px_2px_0px_rgba(0,0,0,1)] min-w-[42px] sm:min-w-[70px]">
+                            <p className="text-sm sm:text-xl font-black text-black leading-none">{activeChainsCount}</p>
+                            <p className="text-[8px] sm:text-[9px] font-black uppercase text-slate-800 mt-0.5 sm:mt-1">Chains</p>
                           </div>
                         </div>
                       )}
