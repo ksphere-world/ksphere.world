@@ -1425,6 +1425,13 @@ function App() {
       else if (myHelpedCount >= 1) myRank = "Sprout 🌱";
     }
   }
+
+  // Handle the new Refresh button
+  const handleManualRefresh = () => {
+    fetchGlobalGraph();
+    window.dispatchEvent(new CustomEvent('recenter-graph')); // Tells the map to animate & recenter
+  };
+
   return (
     <Router>
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
@@ -1475,6 +1482,7 @@ function App() {
                   </div>
                 </div>
                 
+                <BrawlButton icon="🔄" text="Refresh" colorScheme="yellow" onClick={handleManualRefresh} hideTextOnMobile={true} />
                 <BrawlButton icon="⚙️" text="Settings" colorScheme="blue" onClick={() => setShowSettings(true)} hideTextOnMobile={true} />
                 <BrawlButton icon="🔔" text="Requests" colorScheme="pink" onClick={() => setShowRequests(true)} hideTextOnMobile={true} />
                 <BrawlButton icon="🧩" text="Nodes" colorScheme="purple" onClick={() => setShowNodeManager(true)} hideTextOnMobile={true} />
@@ -1492,22 +1500,20 @@ function App() {
           </div>
         </nav>
 
-        <main className="flex-grow relative w-full overflow-hidden flex flex-col">
+        <main className="flex-grow relative w-full overflow-hidden flex flex-col bg-[#fdfbf7]">
+          
+          {/* ALWAYS RENDER MAP IN BACKGROUND (Prevents unmounting & scattering when switching pages!) */}
+          <div 
+            className="absolute inset-0 z-0"
+            onPointerDownCapture={handleMapInteractionStart}
+            onPointerUpCapture={handleMapInteractionEnd}
+            onPointerCancelCapture={handleMapInteractionEnd}
+          >
+            <KindnessGraph data={globalGraph} onNodeClick={setSelectedNode} /> 
+          </div>
+
           <Routes>
              <Route path="/" element={
-              <div className="absolute inset-0 w-full h-full flex flex-col bg-[#fdfbf7]">
-                
-                {/* 1. BACKGROUND FULL-SCREEN MAP */}
-                <div 
-                  className="absolute inset-0 z-0"
-                  onPointerDownCapture={handleMapInteractionStart}
-                  onPointerUpCapture={handleMapInteractionEnd}
-                  onPointerCancelCapture={handleMapInteractionEnd}
-                >
-                  <KindnessGraph data={globalGraph} onNodeClick={setSelectedNode} /> 
-                </div>
-
-                {/* 2. HUD OVERLAYS - notice pb-8 (padding-bottom) added for Android Nav Bars! */}
                 <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-3 pb-8 sm:p-6 lg:p-8 overflow-hidden">
                   
                   {/* TOP LEFT: LIVE BADGE */}
@@ -1592,11 +1598,10 @@ function App() {
                       )}
                     </div>
                   </div>
-                </div>
-              </div>
+                </div> 
             } />
-            <Route path="/join" element={<LogKindnessForm onComplete={setUserData} session={session} isAuthLoading={isAuthLoading} />} />
-            <Route path="/dashboard" element={<Dashboard userData={userData} />} />
+            <Route path="/join" element={<div className="relative z-10 w-full h-full overflow-y-auto pointer-events-auto flex items-start justify-center pt-8 pb-20 bg-white/40 backdrop-blur-sm"><LogKindnessForm onComplete={setUserData} session={session} isAuthLoading={isAuthLoading} /></div>} />
+            <Route path="/dashboard" element={<div className="relative z-10 w-full h-full overflow-y-auto pointer-events-auto bg-white/40 backdrop-blur-sm"><Dashboard userData={userData} /></div>} />
           </Routes>
         </main>
       </div>

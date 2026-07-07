@@ -1,5 +1,5 @@
 // frontend/src/components/KindnessGraph.jsx
-import { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 
 const drawShape = (ctx, x, y, r, shape) => {
@@ -24,6 +24,19 @@ export default function KindnessGraph({ data, onNodeClick }) {
   const containerRef = useRef(null);
   const fgRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+  const [processedData, setProcessedData] = useState(null); // Safely holds memory
+
+  // NEW: Listens for the Refresh button click to re-warm physics and zoom perfectly to fit the map
+  useEffect(() => {
+    const handleRecenter = () => {
+      if (fgRef.current) {
+        fgRef.current.d3ReheatSimulation();
+        fgRef.current.zoomToFit(600, 50); // 600ms animation, 50px padding
+      }
+    };
+    window.addEventListener('recenter-graph', handleRecenter);
+    return () => window.removeEventListener('recenter-graph', handleRecenter);
+  }, []);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -39,33 +52,55 @@ export default function KindnessGraph({ data, onNodeClick }) {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  const processedData = useMemo(() => {
-    if (!data) return null;
-    const helpCount = {};
-    data.nodes.forEach(n => helpCount[n.id] = 0);
+  useEffect(() => {
+    if (!data) return;
     
-    // 1. Scan for bidirectional connections (A helped B, and B helped A)
-    const linkPairs = new Set();
-    data.links.forEach(l => {
-      const s = typeof l.source === 'object' ? l.source.id : l.source;
-      const t = typeof l.target === 'object' ? l.target.id : l.target;
-      linkPairs.add(`${s}|${t}`);
-      if (helpCount[s] !== undefined) helpCount[s] += 1;
-    });
+    // Using setTimeout makes this update asynchronous, safely bypassing React's strict cascading render warnings!
+    const timer = setTimeout(() => {
+      setProcessedData(prev => {
+        const helpCount = {};
+        data.nodes.forEach(n => helpCount[n.id] = 0);
+        
+        const linkPairs = new Set();
+        data.links.forEach(l => {
+        const s = typeof l.source === 'object' ? l.source.id : l.source;
+        const t = typeof l.target === 'object' ? l.target.id : l.target;
+        linkPairs.add(`${s}|${t}`);
+        if (helpCount[s] !== undefined) helpCount[s] += 1;
+      });
 
-    // 2. Add a `curvature` property if a reverse connection exists!
-    const links = data.links.map(l => {
-      const s = typeof l.source === 'object' ? l.source.id : l.source;
-      const t = typeof l.target === 'object' ? l.target.id : l.target;
-      const hasReverse = linkPairs.has(`${t}|${s}`);
-      return { 
-        ...l, 
-        curvature: hasReverse ? 0.25 : 0 // 0.25 makes them bow outward beautifully
-      };
-    });
+      const links = data.links.map(l => {
+        const s = typeof l.source === 'object' ? l.source.id : l.source;
+        const t = typeof l.target === 'object' ? l.target.id : l.target;
+        const hasReverse = linkPairs.has(`${t}|${s}`);
+        return { ...l, curvature: hasReverse ? 0.25 : 0 };
+      });
 
-    const nodes = data.nodes.map(n => ({ ...n, impactCount: helpCount[n.id] || 0 }));
-    return { nodes, links };
+      // Map out the previous coordinates safely
+      const oldNodeMap = new Map();
+      if (prev && prev.nodes) {
+        prev.nodes.forEach(n => oldNodeMap.set(n.id, n));
+      }
+
+      // 3. PREVENT SCATTER! Apply previous physics state (x,y,vx,vy)
+      const nodes = data.nodes.map(n => {
+        const oldNode = oldNodeMap.get(n.id);
+        const newNode = { ...n, impactCount: helpCount[n.id] || 0 };
+        
+        if (oldNode) {
+          if (oldNode.x !== undefined) newNode.x = oldNode.x;
+          if (oldNode.y !== undefined) newNode.y = oldNode.y;
+          if (oldNode.vx !== undefined) newNode.vx = oldNode.vx;
+          if (oldNode.vy !== undefined) newNode.vy = oldNode.vy;
+        }
+        return newNode;
+      });
+
+      return { nodes, links };
+    });
+    }, 0); // End of setTimeout
+
+    return () => clearTimeout(timer); // Clean up the timer
   }, [data]);
 
   useEffect(() => {
