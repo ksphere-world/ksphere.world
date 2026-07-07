@@ -1123,7 +1123,8 @@ function App() {
 
     if (!nodesError && !linksError && dbNodes.length > 0) {
         setGlobalGraph({
-          nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value, socials: n.socials, is_claimed: n.is_claimed })),
+          // We added user_id here so the frontend can find your node in the sea of nodes!
+          nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value, socials: n.socials, is_claimed: n.is_claimed, user_id: n.user_id })),
           links: dbLinks.filter(l => l.status === 'approved' || !l.status).map(l => ({ 
               source: l.source, 
               target: l.target, 
@@ -1228,6 +1229,33 @@ function App() {
   const targetsSet = new Set(globalGraph.links.map(l => typeof l.target === 'object' ? l.target.id : l.target));
   const activeChainsCount = globalGraph.nodes.filter(n => !n.ghost && !targetsSet.has(n.id)).length;
 
+  // Compute Personal User Stats & Ranks
+  let myPrimaryNode = null;
+  let myHelpedCount = 0;
+  let myHelpedByCount = 0;
+  let myRank = "Starter Seed 🌰";
+
+  if (session && globalGraph.nodes.length > 0) {
+    myPrimaryNode = globalGraph.nodes.find(n => n.user_id === session.user.id && n.is_claimed);
+    if (myPrimaryNode) {
+      // How many times you helped others (Outgoing)
+      myHelpedCount = globalGraph.links
+        .filter(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id)
+        .reduce((sum, l) => sum + (l.helpsCount || 1), 0);
+        
+      // How many times others helped you (Incoming)
+      myHelpedByCount = globalGraph.links
+        .filter(l => (typeof l.target === 'object' ? l.target.id : l.target) === myPrimaryNode.id)
+        .reduce((sum, l) => sum + (l.helpsCount || 1), 0);
+
+      // Rank Logic!
+      if (myHelpedCount >= 25) myRank = "Global Legend 👑";
+      else if (myHelpedCount >= 10) myRank = "Kindness Catalyst ⚡";
+      else if (myHelpedCount >= 3) myRank = "Rising Star ⭐";
+      else if (myHelpedCount >= 1) myRank = "Sprout 🌱";
+    }
+  }
+
   return (
     <Router>
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
@@ -1302,18 +1330,46 @@ function App() {
              <Route path="/" element={
               <div className="flex flex-col lg:flex-row gap-6 lg:gap-12 h-full flex-grow items-center justify-center mt-6 lg:mt-16 max-w-7xl mx-auto w-full">
                 <div className="w-full lg:w-1/2 flex flex-col gap-5 lg:gap-8 text-center lg:text-left z-10">
-                  <div className="inline-block mx-auto lg:mx-0 bg-yellow-300 border-2 border-black rounded-full px-4 py-1 w-max shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-[-10px] transform -rotate-2">
-                    <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">✨ The live network</span>
-                  </div>
-                  <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-none text-black tracking-tight drop-shadow-sm">
-                    Your impact, <br/>
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
-                      fully custom.
-                    </span>
-                  </h1>
-                  <p className="text-slate-600 text-base sm:text-lg lg:text-xl font-medium leading-relaxed max-w-lg mx-auto lg:mx-0">
-                    Avatars. Emojis. Hexagons. Custom arrows. Start a chain of kindness today and leave your unique mark on the world's graph. 🌍
-                  </p>
+                  
+                  {session && myPrimaryNode ? (
+                    <>
+                      <div className="inline-block mx-auto lg:mx-0 bg-yellow-300 border-2 border-black rounded-full px-4 py-1 w-max shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-[-10px] transform -rotate-2">
+                        <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">🏆 Your Kindness Rank</span>
+                      </div>
+                      <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-none text-black tracking-tight drop-shadow-sm">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
+                          {myRank}
+                        </span>
+                      </h1>
+                      <div className="flex flex-col gap-3 mt-2">
+                        <div className="bg-lime-300 border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] inline-block w-max mx-auto lg:mx-0 transform rotate-1 hover:rotate-0 transition-transform">
+                          <span className="font-black text-black text-lg sm:text-xl uppercase tracking-wider flex items-center gap-2">
+                            🤝 You helped <span className="text-3xl bg-white border-2 border-black rounded-lg px-3 py-1 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedCount}</span> people
+                          </span>
+                        </div>
+                        <div className="bg-cyan-300 border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] inline-block w-max mx-auto lg:mx-0 transform -rotate-1 mt-2 hover:rotate-0 transition-transform">
+                          <span className="font-black text-black text-lg sm:text-xl uppercase tracking-wider flex items-center gap-2">
+                            💖 <span className="text-3xl bg-white border-2 border-black rounded-lg px-3 py-1 shadow-[2px_2px_0px_rgba(0,0,0,1)]">{myHelpedByCount}</span> people helped you
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="inline-block mx-auto lg:mx-0 bg-yellow-300 border-2 border-black rounded-full px-4 py-1 w-max shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-[-10px] transform -rotate-2">
+                        <span className="font-bold text-black text-xs sm:text-sm uppercase tracking-wider">✨ The live network</span>
+                      </div>
+                      <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-none text-black tracking-tight drop-shadow-sm">
+                        Your impact, <br/>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">
+                          fully custom.
+                        </span>
+                      </h1>
+                      <p className="text-slate-600 text-base sm:text-lg lg:text-xl font-medium leading-relaxed max-w-lg mx-auto lg:mx-0">
+                        Avatars. Emojis. Hexagons. Custom arrows. Start a chain of kindness today and leave your unique mark on the world's graph. 🌍
+                      </p>
+                    </>
+                  )}
 
                   {/* NETWORK DATA & STATS - ONLY SHOWN WHEN SIGNED IN */}
                   {session && (
