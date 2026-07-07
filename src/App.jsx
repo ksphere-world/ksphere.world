@@ -814,28 +814,23 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
 
           if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
 
-          // You created this unclaimed node, so the link is automatically approved
-          await supabase.from('links').insert({
-            source: finalHelperId,
-            target: finalMyId,
-            custom_color: linkColor,
-            status: 'approved',
-            comment: deedComment // 📝 Saving the comment/story
+          // You created this unclaimed node, trigger the smart backend function
+          await supabase.rpc('log_kindness_link', {
+            p_source: finalHelperId,
+            p_target: finalMyId,
+            p_color: linkColor,
+            p_comment: deedComment
           });
 
           setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
         } else {
-          // Linking to an EXISTING user's node! 
-          // Auto-approving the link so it shows up immediately on the global map for everyone
-          const { error: linkError } = await supabase.from('links').insert({
-            source: finalHelperId,
-            target: finalMyId,
-            custom_color: linkColor,
-            status: 'approved',
-            comment: deedComment // 📝 Saving the comment/story
+          // Linking to an EXISTING user's node, trigger the smart backend function
+          await supabase.rpc('log_kindness_link', {
+            p_source: finalHelperId,
+            p_target: finalMyId,
+            p_color: linkColor,
+            p_comment: deedComment
           });
-
-          if (linkError && linkError.code !== '23505') throw linkError;
         }
       }
 
@@ -1123,7 +1118,12 @@ function App() {
     if (!nodesError && !linksError && dbNodes.length > 0) {
         setGlobalGraph({
           nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value, socials: n.socials, is_claimed: n.is_claimed })),
-          links: dbLinks.filter(l => l.status === 'approved' || !l.status).map(l => ({ source: l.source, target: l.target, customColor: l.custom_color }))
+          links: dbLinks.filter(l => l.status === 'approved' || !l.status).map(l => ({ 
+              source: l.source, 
+              target: l.target, 
+              customColor: l.custom_color, 
+              helpsCount: l.helps_count || 1 
+            }))
         });
       } else {
       setGlobalGraph(mockFallbackTree);

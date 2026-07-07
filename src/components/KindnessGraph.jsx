@@ -77,6 +77,47 @@ export default function KindnessGraph({ data, onNodeClick }) {
           linkDirectionalArrowRelPos={0.5}
           linkDirectionalArrowColor={(link) => link.customColor || '#000000'}
           
+          linkCanvasObjectMode={() => 'after'}
+          linkCanvasObject={(link, ctx) => {
+            if (link.helpsCount > 1) {
+              const start = link.source;
+              const end = link.target;
+              // Wait until coordinates are calculated by the physics engine
+              if (typeof start !== 'object' || typeof end !== 'object') return;
+              
+              // Calculate center of the arrow
+              const textPos = {
+                x: start.x + (end.x - start.x) / 2,
+                y: start.y + (end.y - start.y) / 2
+              };
+
+              const label = `${link.helpsCount}x`;
+              const fontSize = 10;
+              ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
+              
+              const textWidth = ctx.measureText(label).width;
+              const bgWidth = textWidth + 8;
+              const bgHeight = fontSize + 6;
+              
+              // Draw Yellow Pill Background
+              ctx.fillStyle = '#facc15';
+              ctx.beginPath();
+              ctx.roundRect(textPos.x - bgWidth/2, textPos.y - bgHeight/2, bgWidth, bgHeight, 6);
+              ctx.fill();
+              
+              // Draw Pill Border
+              ctx.lineWidth = 1.5;
+              ctx.strokeStyle = '#000000';
+              ctx.stroke();
+
+              // Draw Text
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillStyle = '#000000';
+              ctx.fillText(label, textPos.x, textPos.y + 0.5); // +0.5 fixes canvas vertical alignment
+            }
+          }}
+
           d3VelocityDecay={0.8}
           warmupTicks={100}
           cooldownTicks={50}
