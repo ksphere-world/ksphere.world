@@ -84,32 +84,32 @@ function SettingsModal({ session, onClose }) {
   const [isUploading, setIsUploading] = useState(false);
   const [msg, setMsg] = useState('');
 
-  // Fetch current node on mount
+  // Fetch current node and backend timer on mount
   useEffect(() => {
     const fetchNode = async () => {
       if (!session?.user?.id) return;
-      // FIX: Relaxed query to ensure we find your node even if it was created on an older version!
       const { data } = await supabase.from('nodes')
-        .select('id')
+        .select('id, last_ktag_change')
         .eq('user_id', session.user.id)
+        .eq('is_claimed', true)
         .limit(1);
         
       if (data && data.length > 0) {
         setKTag(data[0].id);
         setOldKTag(data[0].id);
+        
+        // Read actual database timer!
+        const lastChange = data[0].last_ktag_change;
+        if (lastChange) {
+          const daysSince = (Date.now() - new Date(lastChange).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSince < 7) {
+            setIsKtagLocked(true);
+            setLockDaysLeft(Math.ceil(7 - daysSince));
+          }
+        }
       }
     };
     fetchNode();
-
-    // Check cooldown status from user metadata
-    const lastChange = session?.user?.user_metadata?.last_ktag_change;
-    if (lastChange) {
-      const daysSince = (Date.now() - lastChange) / (1000 * 60 * 60 * 24);
-      if (daysSince < 7) {
-        setIsKtagLocked(true);
-        setLockDaysLeft(Math.ceil(7 - daysSince));
-      }
-    }
   }, [session]);
 
   const handleAvatarUpload = async (event) => {
@@ -190,8 +190,7 @@ function SettingsModal({ session, onClose }) {
            });
         }
 
-        // Log the timestamp of the change!
-        newMetadata.last_ktag_change = Date.now();
+        // Database trigger handles the real timestamp automatically now
         setOldKTag(cleanNewTag);
         setIsKtagLocked(true);
         setLockDaysLeft(7);
