@@ -89,9 +89,9 @@ export default function KindnessGraph({ data, onNodeClick }) {
           backgroundColor="transparent"
           
           linkColor={(link) => link.customColor || '#000000'}
-          linkWidth={4}
+          linkWidth={3} 
           linkDirectionalArrowLength={12}
-          linkDirectionalArrowRelPos={0.5}
+          linkDirectionalArrowRelPos={0.75} /* Shifted arrow head towards target so it doesn't overlap the middle label! */
           linkDirectionalArrowColor={(link) => link.customColor || '#000000'}
           linkCurvature={(link) => link.curvature || 0}
           
