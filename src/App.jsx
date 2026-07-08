@@ -1306,8 +1306,23 @@ function App() {
   const [nodeMenu, setNodeMenu] = useState(null); 
   const [linkPopup, setLinkPopup] = useState(null); 
   const [showQRModal, setShowQRModal] = useState(false); 
-  const [showQuestModal, setShowQuestModal] = useState(false); // 🔥 Toggles Daily Mission Window
+  const [showQuestModal, setShowQuestModal] = useState(false);
+  const [showShopModal, setShowShopModal] = useState(false); // 🛒 Gamification Cosmetics Window State Variable  
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
+
+  // THE K-SHOP COSMETICS CATALOG DATABASE
+  const SHOP_EFFECTS = [
+    { id: 'none', label: 'Off', icon: '🛑' }, { id: 'fire', label: 'Hellfire', icon: '🔥' }, 
+    { id: 'neon', label: 'CyberGlow', icon: '⚡' }, { id: 'holy', label: 'Divine Light', icon: '🌟' }
+  ];
+  const SHOP_SHAPES = [
+    { id: 'circle', label: 'Circle', icon: '🟡' }, { id: 'square', label: 'Square', icon: '🔲' }, 
+    { id: 'hexagon', label: 'Tech Hex', icon: '⬢' }, { id: 'star', label: 'Star', icon: '⭐' }
+  ];
+  const SHOP_ARROWS = [
+    { id: 'classic', label: 'Standard Line', icon: '➡️' }, { id: 'dashed', label: 'Pixel Dashed', icon: '➖' }, 
+    { id: 'electric', label: 'Thick Zap', icon: '🌩️' }
+  ];
 
   // --- MAP INTERACTION LOGIC (HIDES UI ON MOBILE PANNING) ---
   const [isMapInteracting, setIsMapInteracting] = useState(false);
@@ -1388,6 +1403,13 @@ function App() {
           nodes: dbNodes.map(n => {
             const nodeFollowers = followMap[n.id] || [];
             const didQuestToday = n.last_quest_date === new Date().toISOString().split('T')[0];
+            
+            // Clean parsing to prevent bad JSON memory faults securely protecting backend overrides
+            let cosmeticsPayload = {};
+            if (typeof n.cosmetics === 'object' && n.cosmetics) cosmeticsPayload = n.cosmetics;
+            if (typeof n.cosmetics === 'string') {
+              try { cosmeticsPayload = JSON.parse(n.cosmetics); } catch(e){}
+            }
 
             return {
               id: n.id, shape: n.shape, type: n.type, value: n.value, 
@@ -1398,18 +1420,26 @@ function App() {
               isFollowedByMe: activeUserId ? nodeFollowers.includes(activeUserId) : false, 
               questsCompleted: n.quests_completed || 0,
               questStreak: n.quest_streak || 0,
-              glowingQuestHalo: didQuestToday
+              glowingQuestHalo: didQuestToday,
+              cosmetics: cosmeticsPayload
             };
           }),
-          links: approvedLinks.map(l => ({ 
-              source: l.source, 
-              target: l.target, 
-              customColor: l.custom_color, 
-              helpsCount: l.helps_count || 1,
-              comment: l.comment || '', 
-              reactions: aggregatedLinkReacts[`${l.source}|${l.target}`] || {},
-              isQuestMode: l.is_quest 
-            }))
+          links: approvedLinks.map(l => {
+              // Locate Outbound Link creator dynamically capturing their personal Wardrobe aesthetic tracking constraints safely globally over engine parameters !
+              const creator = dbNodes.find(nd => nd.id === l.source);
+              let linkCosmetic = 'classic';
+              if (creator) {
+                 const srcCosm = (typeof creator.cosmetics === 'object') ? creator.cosmetics : (typeof creator.cosmetics === 'string' ? JSON.parse(creator.cosmetics||'{}') : {});
+                 if (srcCosm?.arrow) linkCosmetic = srcCosm.arrow;
+              }
+
+              return {
+                source: l.source, target: l.target, customColor: l.custom_color, helpsCount: l.helps_count || 1,
+                comment: l.comment || '', reactions: aggregatedLinkReacts[`${l.source}|${l.target}`] || {},
+                isQuestMode: l.is_quest,
+                arrowStyle: linkCosmetic // Inject Wardrobe Variable Engine Parameter Track!
+              };
+          })
         });
       } else {
       setGlobalGraph(mockFallbackTree);
@@ -1748,6 +1778,65 @@ function App() {
              </div>
           </div>
         )}
+        {/* GAMIFIED COSMETIC K-SHOP UI LAYER MENU HOOK SYSTEM POP OVERLAYS COMPLETELY STANDARDIZED! */}
+        {showShopModal && session && myPrimaryNode && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 pointer-events-auto">
+             <div className="bg-white border-4 border-black p-5 sm:p-7 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] transform w-full max-w-xl text-center relative animate-in slide-in-from-bottom max-h-[90vh] overflow-y-auto">
+                <button onClick={() => setShowShopModal(false)} className="absolute -top-3 -right-3 bg-red-500 text-white border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
+                <div className="inline-block bg-yellow-400 px-6 py-2 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2 mb-4">
+                  <h2 className="text-black font-black uppercase text-xl sm:text-2xl tracking-widest leading-none drop-shadow-md">🛒 K-Shop <span className="text-xs absolute top-1 ml-2 text-pink-600 bg-white border border-black px-1 rounded animate-pulse shadow-sm tracking-tight transform rotate-6">Beta Unlocked Free!</span></h2>
+                </div>
+
+                {/* EFFECTS TAB WRAPPER */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-violet-200 p-2 rounded tracking-widest text-xs flex justify-between">
+                   Aura Effects <span>0 Coins (Unlocked)</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
+                  {SHOP_EFFECTS.map(item => (
+                    <button key={item.id} onClick={async () => {
+                         const currentEffect = myPrimaryNode?.cosmetics?.effect || 'none';
+                         if (currentEffect === item.id) return;
+                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                         if (n) { n.cosmetics = { ...n.cosmetics, effect: item.id }; setGlobalGraph(prev => ({ ...prev })); }
+                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: item.id, p_arrow: myPrimaryNode?.cosmetics?.arrow }); fetchGlobalGraph();
+                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.effect === item.id ? 'border-pink-500 bg-pink-100 ring-2 ring-pink-500 transform -translate-y-1 scale-105' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[10px] uppercase font-black">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* SHAPE TAB WRAPPER */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-cyan-200 p-2 rounded tracking-widest text-xs">Map Tokens</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
+                  {SHOP_SHAPES.map(item => (
+                    <button key={item.id} onClick={async () => {
+                         if (myPrimaryNode.shape === item.id) return;
+                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                         if (n) { n.shape = item.id; setGlobalGraph(prev => ({ ...prev })); }
+                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: item.id, p_effect: n?.cosmetics?.effect, p_arrow: myPrimaryNode?.cosmetics?.arrow }); fetchGlobalGraph();
+                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode.shape || 'circle') === item.id ? 'border-lime-500 bg-lime-100 transform -translate-y-1 scale-105' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[10px] uppercase font-black">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* ARROWS / BEAMS */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-orange-200 p-2 rounded tracking-widest text-xs">Connecting Beams</div>
+                <div className="grid grid-cols-3 gap-3 mb-2 mt-3">
+                  {SHOP_ARROWS.map(item => (
+                    <button key={item.id} onClick={async () => {
+                         if (myPrimaryNode?.cosmetics?.arrow === item.id) return;
+                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                         if (n) { n.cosmetics = { ...n.cosmetics, arrow: item.id }; setGlobalGraph(prev => ({ ...prev })); }
+                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: item.id }); fetchGlobalGraph();
+                    }} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.arrow === item.id ? 'border-blue-500 bg-blue-100 transform -translate-y-1 scale-105' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-2xl">{item.icon}</span><span className="text-[10px] mt-1 uppercase font-black">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+             </div>
+          </div>
+        )}
         
         {/* NAVBAR */}
         <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 overflow-x-hidden pointer-events-auto">
@@ -1787,6 +1876,7 @@ function App() {
                 
                 <BrawlButton icon="⚙️" text="Settings" colorScheme="blue" onClick={() => setShowSettings(true)} hideTextOnMobile={true} />
                 <BrawlButton icon="🔔" text="Requests" colorScheme="pink" onClick={() => setShowRequests(true)} hideTextOnMobile={true} />
+                <BrawlButton icon="🛒" text="K-Shop" colorScheme="yellow" onClick={() => setShowShopModal(true)} hideTextOnMobile={true} />
                 <BrawlButton icon="🧩" text="Nodes" colorScheme="purple" onClick={() => setShowNodeManager(true)} hideTextOnMobile={true} />
                 <BrawlButton icon="🚪" text="Logout" colorScheme="dark" onClick={handleLogout} hideTextOnMobile={true} />
               </>

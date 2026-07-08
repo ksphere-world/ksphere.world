@@ -6,6 +6,15 @@ const drawShape = (ctx, x, y, r, shape) => {
   ctx.beginPath();
   if (shape === 'square') {
     ctx.roundRect(x - r, y - r, r * 2, r * 2, 4);
+  } else if (shape === 'star') {
+    // Designer Math Map Poly Structure Generating Precision Custom Shapes 
+    const points = 5; const outerR = r * 1.35; const innerR = r * 0.6; const rot = Math.PI / 2 * 3;
+    ctx.moveTo(x, y - outerR);
+    for (let i = 0; i < points; i++) {
+        ctx.lineTo(x + Math.cos(rot + i*Math.PI*2/points) * outerR, y + Math.sin(rot + i*Math.PI*2/points) * outerR);
+        ctx.lineTo(x + Math.cos(rot + i*Math.PI*2/points + Math.PI/points) * innerR, y + Math.sin(rot + i*Math.PI*2/points + Math.PI/points) * innerR);
+    }
+    ctx.closePath();
   } else if (shape === 'hexagon') {
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i - Math.PI / 6; 
@@ -164,12 +173,21 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           onNodeHover={setHoverNode}
           onLinkHover={setHoverLink}
           
-          linkColor={(link) => link === hoverLink ? '#f472b6' : (link.customColor || '#000000')}
-          linkWidth={(link) => link === hoverLink ? 6 : 3} 
+          linkColor={(link) => {
+              if (link === hoverLink) return '#f472b6';
+              // Check cosmetic beam styling modifications cleanly via source mapped attributes universally globally  
+              return link.arrowStyle === 'electric' ? '#60a5fa' : (link.customColor || '#000000');
+          }}
+          // Hooking Width properties and Dashing physics natively allowing beautiful styling mapping without blowing up renderer 
+          linkWidth={(link) => {
+              if (link === hoverLink) return 6;
+              return link.arrowStyle === 'electric' ? 5 : 3;
+          }} 
           linkDirectionalArrowLength={(link) => link === hoverLink ? 16 : 12}
           linkDirectionalArrowRelPos={0.75} /* Shifted arrow head towards target so it doesn't overlap the middle label! */
-          linkDirectionalArrowColor={(link) => link === hoverLink ? '#f472b6' : (link.customColor || '#000000')}
+          linkDirectionalArrowColor={(link) => link === hoverLink ? '#f472b6' : (link.arrowStyle === 'electric' ? '#2563eb' : (link.customColor || '#000000'))}
           linkCurvature={(link) => link.curvature || 0}
+          linkLineDash={(link) => link.arrowStyle === 'dashed' ? [6, 6] : null} // NATIVELY PUSHES GLOWING/DASHED PARTICLES OVER ARROW PHYSICS SMOOTHLY
           
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx) => {
@@ -293,16 +311,45 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             const shape = node.shape || 'circle';
             const type = node.type || 'color'; 
             const value = node.value || '#10b981'; 
+            const eff = node.cosmetics?.effect || 'none'; // GRABS K-SHOP AURA LAYER INSTANTLY GLOBALLY OVER OVERRIDES
 
             ctx.save();
             
+            // WARDROBE AURA MATHEMATICAL PAINT PROCESSING VISUAL OVERRIDE BLEND COMPOSITION NATIVELY!
+            if (!isGhost && eff !== 'none' && !isHovered) {
+               ctx.beginPath();
+               if (eff === 'fire') {
+                   // Blinking animated chaotic hellfire
+                   const randoFlare = (Date.now() % 500) / 100; // Fast time math flickering rendering limits properly bouncing
+                   drawShape(ctx, node.x, node.y, nodeRadius + 4 + (randoFlare), shape);
+                   ctx.fillStyle = "rgba(239, 68, 68, 0.8)";
+                   ctx.shadowColor = '#f97316';
+                   ctx.shadowBlur = 35;
+               } else if (eff === 'neon') {
+                   // Pulsing elegant static clean pink cyberpunk neon bounds overlapping 
+                   drawShape(ctx, node.x, node.y, nodeRadius + 3, shape);
+                   ctx.fillStyle = "rgba(217, 70, 239, 0.5)";
+                   ctx.shadowColor = '#ec4899';
+                   ctx.shadowBlur = 18;
+               } else if (eff === 'holy') {
+                   // Static Golden massive peaceful aura overlay overlapping boundaries extending completely universally! 
+                   drawShape(ctx, node.x, node.y, nodeRadius + 5, shape);
+                   ctx.fillStyle = "rgba(252, 211, 77, 0.3)";
+                   ctx.shadowColor = '#fcd34d';
+                   ctx.shadowBlur = 20;
+               }
+               ctx.fill();
+               // Strip overlapping paint shadow bleeds instantly universally clearing logic bounds tracking globally rendering limits!
+               ctx.shadowBlur = 0; 
+               ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; 
+            }
+
             // ✨ GOLDEN HALO QUEST TRACKING SHINE OVERRIDES DEFAULTS !
             if (node.glowingQuestHalo && !isGhost && !isHovered) {
-                // If accomplished standard challenge natively, grant 3D burning Gold Glow Ring mapping under character!
                 ctx.beginPath();
-                ctx.arc(node.x, node.y, nodeRadius + 5, 0, 2 * Math.PI, false);
-                ctx.fillStyle = "rgba(250, 204, 21, 0.5)"; // Burning transparent yellow ring buffer base math overlap
-                ctx.shadowColor = '#fbbf24'; // Yellow Bright 
+                drawShape(ctx, node.x, node.y, nodeRadius + 6, shape);
+                ctx.fillStyle = "rgba(250, 204, 21, 0.5)"; 
+                ctx.shadowColor = '#fbbf24';  
                 ctx.shadowBlur = 25; 
                 ctx.fill();
             }
@@ -310,23 +357,22 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             // ✨ HOVER POP ANIMATION ✨
             if (isHovered && !isGhost) {
               ctx.translate(node.x, node.y);
-              ctx.scale(1.25, 1.25); // Scale up 125% when mouse enters
+              ctx.scale(1.25, 1.25); 
               ctx.translate(-node.x, -node.y);
-              
-              ctx.shadowColor = '#f472b6'; // Glowing pink aura
+              ctx.shadowColor = '#f472b6'; 
               ctx.shadowBlur = 20;
               ctx.shadowOffsetX = 0;
               ctx.shadowOffsetY = 0;
-            } else if (!isGhost && !node.glowingQuestHalo) {
+            } else if (!isGhost && eff === 'none' && !node.glowingQuestHalo) {
               ctx.shadowColor = '#000000';
               ctx.shadowBlur = 0;
               ctx.shadowOffsetX = 4;
               ctx.shadowOffsetY = 4;
-            } else if (node.glowingQuestHalo) {
-              // Lock structural boundaries firmly below actual rendered objects strictly 
+            } else {
               ctx.shadowColor = '#000000';
               ctx.shadowOffsetX = 2; 
               ctx.shadowOffsetY = 2;
+              ctx.shadowBlur = 0;
             }
             
             drawShape(ctx, node.x, node.y, nodeRadius, shape);
