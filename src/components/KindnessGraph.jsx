@@ -72,7 +72,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           // FIX: Add the actual number of helps to the impact count, not just 1!
           if (helpCount[s] !== undefined) helpCount[s] += (l.helpsCount || 1); 
         });
-        
+
       const links = data.links.map(l => {
         const s = typeof l.source === 'object' ? l.source.id : l.source;
         const t = typeof l.target === 'object' ? l.target.id : l.target;
@@ -202,6 +202,30 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
               ctx.fillStyle = isHovered ? '#ffffff' : '#000000';
               if (isHovered) ctx.font = `900 ${fontSize + 2}px "Inter", sans-serif`; // Bolder text
               ctx.fillText(label, textPos.x, textPos.y + 0.5); // +0.5 fixes canvas vertical alignment
+              
+              // ✨ RENDER REACTIONS ATTACHED TO THE STORY ARROW ✨
+              if (link.reactions) {
+                const totalReacts = Object.values(link.reactions).reduce((a, b) => a + b, 0);
+                if (totalReacts > 0) {
+                  // Grab the most popular emoji received by this story!
+                  const topEmoji = Object.entries(link.reactions).sort((a,b)=>b[1]-a[1])[0][0];
+                  
+                  ctx.fillStyle = '#ffffff';
+                  ctx.beginPath();
+                  ctx.roundRect(textPos.x + bgWidth/2 - 4, textPos.y - bgHeight - 4, 18, 14, 4); // Pops it up and slightly right
+                  ctx.fill();
+                  ctx.lineWidth = 1;
+                  ctx.strokeStyle = '#000000';
+                  ctx.stroke();
+
+                  ctx.font = '10px Arial';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillStyle = '#000000';
+                  ctx.fillText(topEmoji, textPos.x + bgWidth/2 + 5, textPos.y - bgHeight + 3.5);
+                }
+              }
+
             }
           }}
 
@@ -340,6 +364,43 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             ctx.textBaseline = 'middle';
             ctx.fillStyle = isGhost ? '#94a3b8' : '#000000';
             ctx.fillText(label, node.x, badgeY + badgeHeight / 2 + 1); 
+
+            // ✨ RENDER REACTIONS ORBITING THE USER ✨
+            if (node.reactions) {
+              const entries = Object.entries(node.reactions).sort((a,b)=>b[1]-a[1]);
+              let ringOffset = 0; // Stack multiple reactions dynamically around them!
+
+              entries.forEach(([emoji, count], idx) => {
+                 if (idx > 1) return; // To keep map clean, max 2 emoji types can be seen globally
+                 
+                 const popX = (node.x + nodeRadius) + 2; 
+                 const popY = (node.y - nodeRadius) + (ringOffset * 15) - 2;
+                 
+                 // Reaction Bubble Background (with count)
+                 const eFont = 10;
+                 ctx.font = `800 ${eFont - 2}px "Inter", sans-serif`;
+                 const textPadding = 12; // Adjust for emoji width and count
+                 const width = count > 1 ? textPadding + 8 : textPadding; 
+                 
+                 ctx.fillStyle = '#ffffff';
+                 ctx.beginPath();
+                 ctx.roundRect(popX - width/2, popY - eFont, width + 4, eFont + 6, 6);
+                 ctx.fill();
+                 ctx.lineWidth = 1.5;
+                 ctx.strokeStyle = '#000000';
+                 ctx.stroke();
+
+                 // Draw the Reaction text
+                 ctx.textAlign = 'center';
+                 ctx.textBaseline = 'middle';
+                 const bubbleText = count > 1 ? `${emoji} ${count}` : emoji;
+                 ctx.fillStyle = '#000';
+                 ctx.fillText(bubbleText, popX + 2, popY - 2);
+                 
+                 ringOffset++;
+              });
+            }
+
           }}
         />
       ) : (

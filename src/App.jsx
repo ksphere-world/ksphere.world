@@ -1489,7 +1489,26 @@ function App() {
                  🏆 Rank: #{nodeMenu.node.rank}
                </div>
                
-               {/* SECURITY LOCK: Only logged-in users can click the profile! */}
+               {/* 💖 LIVE PROFILE REACTION BAR */}
+               <div className="flex justify-between items-center bg-slate-100 border-2 border-black rounded-lg p-1.5 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.1)] my-1">
+                 {['🔥', '💖', '🙌', '👀'].map(emoji => (
+                   <button 
+                     key={emoji}
+                     title={`React with ${emoji}`}
+                     onClick={() => {
+                        // Instant Visual Injection into Local State so the map re-draws with the emoji
+                        setGlobalGraph(prev => ({
+                           ...prev,
+                           nodes: prev.nodes.map(n => n.id === nodeMenu.node.id ? 
+                             { ...n, reactions: { ...(n.reactions || {}), [emoji]: ((n.reactions || {})[emoji] || 0) + 1 } } : n)
+                        }));
+                        setNodeMenu(null);
+                     }}
+                     className="hover:scale-[1.3] active:scale-95 hover:-translate-y-1 transition-all cursor-pointer text-base bg-white rounded-md border border-black shadow-[1px_1px_0px_rgba(0,0,0,1)] px-1"
+                   >{emoji}</button>
+                 ))}
+               </div>
+
                {session ? (
                  <button onClick={() => { setSelectedNode(nodeMenu.node); setNodeMenu(null); }} className="bg-cyan-300 hover:bg-cyan-200 border-2 border-black rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-transform cursor-pointer">
                    Tap to see profile
@@ -1499,8 +1518,6 @@ function App() {
                    🔒 Sign in to see profile
                  </button>
                )}
-
-               {/* Little speech bubble arrow */}
                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white border-b-4 border-r-4 border-black rotate-45"></div>
             </div>
           </div>
@@ -1515,9 +1532,40 @@ function App() {
                  <span className="mx-1 text-xs">➔</span> 
                  {typeof linkPopup.link.target === 'object' ? linkPopup.link.target.id : linkPopup.link.target}
                </div>
-               <div className="text-xs font-bold text-slate-700 italic bg-slate-50 p-2 rounded-lg border-2 border-black border-dashed">
+               
+               {/* THE LINK STORY/COMMENT */}
+               <div className="text-xs font-bold text-slate-800 bg-slate-50 p-2 rounded-lg border-2 border-black">
                  {linkPopup.link.comment ? `"${linkPopup.link.comment}"` : "No story provided for this good deed."}
                </div>
+
+               {/* 💖 LIVE STORY REACTION BAR */}
+               <div className="flex justify-center gap-3 items-center mt-1 border-t-2 border-black border-dashed pt-2">
+                 {['🥺', '❤️', '👏', '🏆'].map(emoji => (
+                   <button 
+                     key={emoji}
+                     title={`React with ${emoji}`}
+                     onClick={() => {
+                        setGlobalGraph(prev => ({
+                           ...prev,
+                           links: prev.links.map(l => {
+                             const s = typeof l.source === 'object' ? l.source.id : l.source;
+                             const t = typeof l.target === 'object' ? l.target.id : l.target;
+                             const menuS = typeof linkPopup.link.source === 'object' ? linkPopup.link.source.id : linkPopup.link.source;
+                             const menuT = typeof linkPopup.link.target === 'object' ? linkPopup.link.target.id : linkPopup.link.target;
+                             
+                             if (s === menuS && t === menuT) {
+                               return { ...l, reactions: { ...(l.reactions || {}), [emoji]: ((l.reactions || {})[emoji] || 0) + 1 } };
+                             }
+                             return l;
+                           })
+                        }));
+                        setLinkPopup(null);
+                     }}
+                     className="hover:scale-[1.3] active:scale-95 hover:-translate-y-1 transition-all cursor-pointer text-lg bg-pink-50 rounded-md border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] px-1"
+                   >{emoji}</button>
+                 ))}
+               </div>
+
                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white border-b-4 border-r-4 border-black rotate-45"></div>
              </div>
           </div>
