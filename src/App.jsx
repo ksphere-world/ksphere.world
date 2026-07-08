@@ -1303,9 +1303,10 @@ function App() {
   const [showNodeManager, setShowNodeManager] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [nodeMenu, setNodeMenu] = useState(null); // Interactive map popup for nodes
-  const [linkPopup, setLinkPopup] = useState(null); // Interactive map popup for arrows
-  const [showQRModal, setShowQRModal] = useState(false); // NEW STATE FOR QR
+  const [nodeMenu, setNodeMenu] = useState(null); 
+  const [linkPopup, setLinkPopup] = useState(null); 
+  const [showQRModal, setShowQRModal] = useState(false); 
+  const [showQuestModal, setShowQuestModal] = useState(false); // 🔥 Toggles Daily Mission Window
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
   // --- MAP INTERACTION LOGIC (HIDES UI ON MOBILE PANNING) ---
@@ -1732,6 +1733,21 @@ function App() {
         
         {/* QUICK CONNECT QR MODAL */}
         {showQRModal && myPrimaryNode && <QuickQRModal myPrimaryNode={myPrimaryNode} onClose={() => setShowQRModal(false)} onRefreshGraph={fetchGlobalGraph} />}
+
+        {/* DAILY QUEST MODAL */}
+        {showQuestModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pointer-events-auto">
+             <div className="bg-yellow-400 border-4 border-black p-5 sm:p-8 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1 w-full max-w-sm text-center relative animate-in zoom-in">
+                <button onClick={() => setShowQuestModal(false)} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
+                <div className="text-4xl sm:text-5xl mb-2 select-none mt-2 drop-shadow-md">📜</div>
+                <h2 className="text-black font-black uppercase text-base sm:text-xl tracking-widest leading-tight">Today's <br/><span className="text-pink-600 bg-white border-2 border-black px-3 mt-2 py-1.5 rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)] inline-block relative -rotate-2">Active Mission</span></h2>
+                <div className="bg-white/90 border-4 border-black border-dashed mt-6 rounded-2xl p-5 font-black text-[14px] sm:text-[15px] leading-snug drop-shadow-sm flex items-center justify-center text-slate-800 break-words w-full h-auto shadow-[inset_2px_2px_5px_rgba(0,0,0,0.1)]">
+                  {TODAYS_QUEST}
+                </div>
+                <p className="mt-5 text-[10px] sm:text-xs font-black uppercase text-slate-700 tracking-wider">Tick the "Mission" box when logging a deed to activate your reward! ✨</p>
+             </div>
+          </div>
+        )}
         
         {/* NAVBAR */}
         <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 overflow-x-hidden pointer-events-auto">
@@ -1817,27 +1833,34 @@ function App() {
                       GLOBAL NETWORK LIVE
                     </div>
 
-                    {/* NEW BLUE SQUARE REFRESH BUTTON overrides Glass inheritance keeping manual interaction valid exclusively here */}
-                    <button 
-                      onClick={handleManualRefresh}
-                      className="pointer-events-auto bg-blue-500 hover:bg-blue-400 text-white border-2 sm:border-4 border-black rounded-lg sm:rounded-xl w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1 hover:-translate-y-1 transition-all cursor-pointer active:scale-95 ml-1"
-                      title="Refresh & Recenter Map"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </button>
-                  </div>
+                    {/* BUTTON CONTAINER FOR REFRESH & QUEST */}
+                    <div className="flex flex-col gap-2 sm:gap-3 pointer-events-auto ml-1 sm:ml-2 mt-1">
+                      
+                      {/* MAP REFRESH BUTTON */}
+                      <button 
+                        onClick={handleManualRefresh}
+                        className="bg-blue-500 hover:bg-blue-400 text-white border-2 sm:border-4 border-black rounded-lg sm:rounded-xl w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1 hover:-translate-y-1 transition-all cursor-pointer active:scale-95"
+                        title="Refresh & Recenter Map"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
 
-                  {/* GLOBAL FLOATING DAILY QUEST BAR TARGET WIDGET IN DEAD CENTER SCREENS PASSING PHYSICS TARGET SCALES COMPLETELY BYPASS INTERACT MAP PAN INTERCEPTS! */}
-                  <div className={`absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 flex items-center justify-center w-[85%] max-w-sm transition-all duration-300 pointer-events-none z-10 ${isMapInteracting ? '-translate-y-24 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                      <div className="bg-yellow-400 border-4 border-black p-3 sm:p-4 rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,1)] transform rotate-1 w-full text-center relative pointer-events-auto cursor-help" title="Anyone fulfilling this map directive connects a Gold/Shiny Map Chain today!">
-                        <div className="absolute -top-3 sm:-top-4 -left-3 sm:-left-4 text-3xl sm:text-4xl bg-white border-4 border-black rounded-full w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-12 select-none animate-bounce z-20">📜</div>
-                        <h2 className="text-black font-black uppercase text-xs sm:text-sm tracking-widest pl-6 sm:pl-10 text-center leading-none inline-block">Today's <br/><span className="text-pink-600 bg-white border-2 border-black px-2 mt-1 py-0.5 rounded shadow-[1px_1px_0px_rgba(0,0,0,1)] inline-block relative -rotate-2 top-0.5 text-[10px]">Active Mission</span></h2>
-                        <div className="bg-white/80 border-2 border-black border-dashed mt-3 rounded-xl p-2 font-black text-[11px] sm:text-[13px] leading-tight flex-wrap tracking-tight drop-shadow-sm flex text-slate-800 break-words h-auto overflow-hidden">
-                          {TODAYS_QUEST}
-                        </div>
-                      </div>
+                      {/* THE MINI QUEST BUTTON - Pings elegantly! */}
+                      <button 
+                        onClick={() => setShowQuestModal(true)}
+                        className="bg-yellow-400 hover:bg-yellow-300 text-[18px] sm:text-[22px] border-2 sm:border-4 border-black rounded-lg sm:rounded-xl w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-3 hover:-translate-y-1 transition-all cursor-pointer active:scale-95 relative group"
+                        title="Check Today's Quest Mission"
+                      >
+                        <div className="group-hover:animate-bounce transform rotate-3 flex items-center justify-center drop-shadow-sm select-none leading-none">📜</div>
+                        {/* Red Dot Notifications Hook Loop Tracker Map  */}
+                        <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-red-500 rounded-full border border-black animate-ping"></div>
+                        <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-red-500 rounded-full border border-black shadow-sm"></div>
+                      </button>
+
+                    </div>
+
                   </div>
 
                   {/* BOTTOM SECTION: ALL ON ONE ROW (flex-row) */}
