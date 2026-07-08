@@ -4,6 +4,25 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react
 import KindnessGraph from './components/KindnessGraph';
 import { supabase } from './supabaseClient';
 import { Scanner } from '@yudiel/react-qr-scanner';
+
+// =========================================================
+// THE GLOBAL DAILY QUEST ENGINE
+// Uses universal mathematics based on timezone constraints locking 1 specific quest per 24 hours globally worldwide synchronously 
+// =========================================================
+const DAILY_QUESTS = [
+  "☕ Pay for someone's coffee/food behind you.",
+  "✍️ Leave a positive handwritten note somewhere public.",
+  "👞 Compliment a stranger's shoes or outfit.",
+  "📞 Call or text 3 people just to say you appreciate them.",
+  "🗑️ Pick up 3 pieces of trash outside today.",
+  "🍪 Share snacks/treats with coworkers or classmates.",
+  "🚪 Hold the door and greet 5 people warmly.",
+  "💸 Leave an overly generous tip for a worker.",
+  "🚙 Let a car safely merge ahead of you with a wave."
+];
+const getCurrentQuestIndex = () => Math.floor(Date.now() / 86400000) % DAILY_QUESTS.length;
+const TODAYS_QUEST = DAILY_QUESTS[getCurrentQuestIndex()];
+
 // =========================================================
 // BRAWL STARS STYLE BUTTON RECREATED IN REACT/TAILWIND
 // =========================================================
@@ -733,6 +752,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const [claimModalUrl, setClaimModalUrl] = useState('');
   const [helperPin, setHelperPin] = useState(''); 
   const [deedComment, setDeedComment] = useState(''); // 📝 NEW: Store the story
+  const [completedQuest, setCompletedQuest] = useState(false); // 🔥 QUEST FLAG
   
   const [nodeShape, setNodeShape] = useState('circle');
   const [nodeType, setNodeType] = useState('image'); 
@@ -837,7 +857,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
             p_source: finalHelperId,
             p_target: finalMyId,
             p_color: linkColor,
-            p_comment: deedComment
+            p_comment: deedComment,
+            p_is_quest: completedQuest // 🚀 Passing mission flag directly into function natively securely!
           });
           
           if (rpcError1) throw new Error(`Link Error: ${rpcError1.message}`);
@@ -849,7 +870,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
             p_source: finalHelperId,
             p_target: finalMyId,
             p_color: linkColor,
-            p_comment: deedComment
+            p_comment: deedComment,
+            p_is_quest: completedQuest // 🚀
           });
           
           if (rpcError2) throw new Error(`Link Error: ${rpcError2.message}`);
@@ -1005,6 +1027,21 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
             <input type="text" value={myId} readOnly required
               className="w-full bg-slate-200 border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-not-allowed text-slate-600" 
               title="To prevent spam, your account is bound to a single unique K-Tag on the global map." />
+          </div>
+        </div>
+
+        {/* --- DAILY QUEST COMPLETION WIDGET CHECKBOX --- */}
+        <div className="bg-gradient-to-r from-amber-200 to-yellow-400 p-3 sm:p-4 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-start gap-3 transform -rotate-1 mb-2">
+          <input 
+            type="checkbox" 
+            checked={completedQuest}
+            onChange={(e) => setCompletedQuest(e.target.checked)}
+            className="w-6 h-6 sm:w-8 sm:h-8 mt-1 border-4 border-black rounded accent-black cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)] shrink-0" 
+          />
+          <div className="flex flex-col">
+            <span className="font-black uppercase tracking-tight text-black text-sm sm:text-base leading-tight">⚔️ Does this fulfill Today's Mission?</span>
+            <span className="font-bold text-[10px] sm:text-xs text-slate-900 mt-1 italic">"{TODAYS_QUEST}"</span>
+            {completedQuest && <span className="mt-1 bg-black text-amber-300 font-black text-[9px] px-2 py-0.5 rounded w-max uppercase tracking-widest animate-pulse">Daily Reward Boost Unlocked</span>}
           </div>
         </div>
 
@@ -1347,16 +1384,20 @@ function App() {
         claimedNodes.forEach((n, idx) => ranks[n.id] = idx + 1);
 
         setGlobalGraph({
-          // We added user_id here so the frontend can find your node in the sea of nodes!
           nodes: dbNodes.map(n => {
             const nodeFollowers = followMap[n.id] || [];
+            const didQuestToday = n.last_quest_date === new Date().toISOString().split('T')[0];
+
             return {
               id: n.id, shape: n.shape, type: n.type, value: n.value, 
               socials: n.socials, is_claimed: n.is_claimed, user_id: n.user_id,
               rank: ranks[n.id] || '-',
-              reactions: aggregatedNodeReacts[n.id] || {}, // Include persistent node reactions
-              followersCount: nodeFollowers.length, // Include Full Sub/Fans Global Total Data!
-              isFollowedByMe: activeUserId ? nodeFollowers.includes(activeUserId) : false // Flag telling Profile Menu App you strictly follow!
+              reactions: aggregatedNodeReacts[n.id] || {}, 
+              followersCount: nodeFollowers.length, 
+              isFollowedByMe: activeUserId ? nodeFollowers.includes(activeUserId) : false, 
+              questsCompleted: n.quests_completed || 0,
+              questStreak: n.quest_streak || 0,
+              glowingQuestHalo: didQuestToday
             };
           }),
           links: approvedLinks.map(l => ({ 
@@ -1364,8 +1405,9 @@ function App() {
               target: l.target, 
               customColor: l.custom_color, 
               helpsCount: l.helps_count || 1,
-              comment: l.comment || '', // Included comments!
-              reactions: aggregatedLinkReacts[`${l.source}|${l.target}`] || {} // Include persistent link reactions
+              comment: l.comment || '', 
+              reactions: aggregatedLinkReacts[`${l.source}|${l.target}`] || {},
+              isQuestMode: l.is_quest 
             }))
         });
       } else {
@@ -1622,6 +1664,14 @@ function App() {
           <div style={{ top: linkPopup.y, left: linkPopup.x }} className="fixed z-50 transform -translate-x-1/2 -translate-y-[120%] pointer-events-auto animate-in fade-in zoom-in duration-200">
              <div className="bg-white border-4 border-black rounded-xl p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex flex-col gap-2 min-w-[200px] max-w-[250px] relative">
                <button onClick={() => setLinkPopup(null)} className="absolute -top-3 -right-3 bg-red-400 text-black border-2 border-black rounded-full w-7 h-7 flex items-center justify-center font-black text-xs hover:scale-110 shadow-[2px_2px_0px_rgba(0,0,0,1)] z-10 cursor-pointer">✖</button>
+               
+               {/* SPECIAL EXCLUSIVE BANNER IF THEY CHECKED THE MISSION BOX NATIVELY! */}
+               {linkPopup.link.isQuestMode && (
+                 <div className="bg-yellow-400 text-black border-2 border-black p-1 text-[9px] font-black uppercase tracking-widest text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] rounded mb-1 animate-pulse flex items-center justify-center gap-1">
+                   ⚔️ Mission Verified
+                 </div>
+               )}
+
                <div className="text-[10px] font-black uppercase border-b-2 border-black pb-1 mb-1 text-center bg-lime-300 rounded-md border-2 p-1.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] tracking-tight">
                  {typeof linkPopup.link.source === 'object' ? linkPopup.link.source.id : linkPopup.link.source} 
                  <span className="mx-1 text-xs">➔</span> 
@@ -1629,7 +1679,7 @@ function App() {
                </div>
                
                {/* THE LINK STORY/COMMENT */}
-               <div className="text-xs font-bold text-slate-800 bg-slate-50 p-2 rounded-lg border-2 border-black">
+               <div className={`text-xs font-bold text-slate-800 bg-slate-50 p-2 rounded-lg border-2 ${linkPopup.link.isQuestMode ? 'border-amber-400 border-dashed bg-amber-50' : 'border-black'}`}>
                  {linkPopup.link.comment ? `"${linkPopup.link.comment}"` : "No story provided for this good deed."}
                </div>
 
@@ -1767,7 +1817,7 @@ function App() {
                       GLOBAL NETWORK LIVE
                     </div>
 
-                    {/* REFRESH BUTTON overrides Glass inheritance keeping manual interaction valid exclusively here */}
+                    {/* NEW BLUE SQUARE REFRESH BUTTON overrides Glass inheritance keeping manual interaction valid exclusively here */}
                     <button 
                       onClick={handleManualRefresh}
                       className="pointer-events-auto bg-blue-500 hover:bg-blue-400 text-white border-2 sm:border-4 border-black rounded-lg sm:rounded-xl w-8 h-8 sm:w-11 sm:h-11 flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-1 hover:-translate-y-1 transition-all cursor-pointer active:scale-95 ml-1"
@@ -1777,7 +1827,17 @@ function App() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                     </button>
+                  </div>
 
+                  {/* GLOBAL FLOATING DAILY QUEST BAR TARGET WIDGET IN DEAD CENTER SCREENS PASSING PHYSICS TARGET SCALES COMPLETELY BYPASS INTERACT MAP PAN INTERCEPTS! */}
+                  <div className={`absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 flex items-center justify-center w-[85%] max-w-sm transition-all duration-300 pointer-events-none z-10 ${isMapInteracting ? '-translate-y-24 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                      <div className="bg-yellow-400 border-4 border-black p-3 sm:p-4 rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,1)] transform rotate-1 w-full text-center relative pointer-events-auto cursor-help" title="Anyone fulfilling this map directive connects a Gold/Shiny Map Chain today!">
+                        <div className="absolute -top-3 sm:-top-4 -left-3 sm:-left-4 text-3xl sm:text-4xl bg-white border-4 border-black rounded-full w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-12 select-none animate-bounce z-20">📜</div>
+                        <h2 className="text-black font-black uppercase text-xs sm:text-sm tracking-widest pl-6 sm:pl-10 text-center leading-none inline-block">Today's <br/><span className="text-pink-600 bg-white border-2 border-black px-2 mt-1 py-0.5 rounded shadow-[1px_1px_0px_rgba(0,0,0,1)] inline-block relative -rotate-2 top-0.5 text-[10px]">Active Mission</span></h2>
+                        <div className="bg-white/80 border-2 border-black border-dashed mt-3 rounded-xl p-2 font-black text-[11px] sm:text-[13px] leading-tight flex-wrap tracking-tight drop-shadow-sm flex text-slate-800 break-words h-auto overflow-hidden">
+                          {TODAYS_QUEST}
+                        </div>
+                      </div>
                   </div>
 
                   {/* BOTTOM SECTION: ALL ON ONE ROW (flex-row) */}

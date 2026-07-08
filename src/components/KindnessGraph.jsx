@@ -296,6 +296,17 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
 
             ctx.save();
             
+            // ✨ GOLDEN HALO QUEST TRACKING SHINE OVERRIDES DEFAULTS !
+            if (node.glowingQuestHalo && !isGhost && !isHovered) {
+                // If accomplished standard challenge natively, grant 3D burning Gold Glow Ring mapping under character!
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, nodeRadius + 5, 0, 2 * Math.PI, false);
+                ctx.fillStyle = "rgba(250, 204, 21, 0.5)"; // Burning transparent yellow ring buffer base math overlap
+                ctx.shadowColor = '#fbbf24'; // Yellow Bright 
+                ctx.shadowBlur = 25; 
+                ctx.fill();
+            }
+
             // ✨ HOVER POP ANIMATION ✨
             if (isHovered && !isGhost) {
               ctx.translate(node.x, node.y);
@@ -306,11 +317,16 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
               ctx.shadowBlur = 20;
               ctx.shadowOffsetX = 0;
               ctx.shadowOffsetY = 0;
-            } else if (!isGhost) {
+            } else if (!isGhost && !node.glowingQuestHalo) {
               ctx.shadowColor = '#000000';
               ctx.shadowBlur = 0;
               ctx.shadowOffsetX = 4;
               ctx.shadowOffsetY = 4;
+            } else if (node.glowingQuestHalo) {
+              // Lock structural boundaries firmly below actual rendered objects strictly 
+              ctx.shadowColor = '#000000';
+              ctx.shadowOffsetX = 2; 
+              ctx.shadowOffsetY = 2;
             }
             
             drawShape(ctx, node.x, node.y, nodeRadius, shape);
