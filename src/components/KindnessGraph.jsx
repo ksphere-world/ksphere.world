@@ -169,7 +169,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           // dagMode has been REMOVED here to allow multiple independent networks to float freely!
           backgroundColor="transparent"
           
-          linkHoverPrecision={15} // 🔥 MASSIVELY expands the invisible clicking area of thin lines!
+          linkHoverPrecision={8} // 🔧 REDUCED: Prevents thick invisible link hitboxes from swallowing nearby node clicks!
           onNodeHover={setHoverNode}
           onLinkHover={setHoverLink}
           
@@ -294,11 +294,11 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           enableZoom={true}
           enableNodeDrag={true} /* 🔥 REVERTED MAGIC BULLET 🔥 D3's drag behavior actually mathematically synthesizes clicks on squishy 1-3 pixel finger jitters! Leaving this TRUE is absolutely required for mobile node taps. */
           
-          // 🔥 PRECISION HITBOXES: Optimized to safely frame physical fingertips exclusively circumventing complex Graphic Array text engine intersections cleanly reliably tracking elegantly purely natively preventing layout boundaries collapsing structural properties beautifully flawlessly locally intelligently safely logically effectively dynamically securely precisely cleanly!  
+          // 🔥 PRECISION HITBOXES: Optimized hitboxes to exactly fit visual nodes, preventing giant invisible bubbles from stealing clicks from neighboring profiles!  
           nodePointerAreaPaint={(node, color, ctx) => {
             const isGhost = node.ghost;
             const nodeRadius = isGhost ? 6 : 14 + ((node.impactCount || 0) * 3); 
-            const thumbBuffer = 15; // Extends roughly a single fingertip around physics node, completely escaping mapping overlap crashes purely globally 
+            const thumbBuffer = 2; // 🔧 MASSIVELY REDUCED: The nodes visually scale up (28px+). An extra 15px caused massive invisible cannibalization!
 
             ctx.fillStyle = color;
             ctx.beginPath();

@@ -1607,6 +1607,24 @@ function App() {
     window.dispatchEvent(new CustomEvent('recenter-graph')); // Tells the map to animate & recenter
   };
 
+  // 🔥 STABLE CLICK HANDLERS: Prevents ForceGraph from unbinding touch events mid-tap when UI state changes!
+  const handleNodeClick = useCallback((node, event) => {
+    const p = getTapPos(event);
+    setNodeMenu({ node, x: p.x, y: p.y });
+    setLinkPopup(null);
+  }, []);
+
+  const handleLinkClick = useCallback((link, event) => {
+    const p = getTapPos(event);
+    setLinkPopup({ link, x: p.x, y: p.y });
+    setNodeMenu(null);
+  }, []);
+
+  const handleBackgroundClick = useCallback(() => {
+    setNodeMenu(null);
+    setLinkPopup(null);
+  }, []);
+
   return (
     <Router>
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
@@ -1948,9 +1966,9 @@ function App() {
           >
             <KindnessGraph 
               data={globalGraph} 
-              onNodeClick={(node, event) => { const p = getTapPos(event); setNodeMenu({ node, x: p.x, y: p.y }); setLinkPopup(null); }} 
-              onLinkClick={(link, event) => { const p = getTapPos(event); setLinkPopup({ link, x: p.x, y: p.y }); setNodeMenu(null); }}
-              onBackgroundClick={() => { setNodeMenu(null); setLinkPopup(null); }}
+              onNodeClick={handleNodeClick} 
+              onLinkClick={handleLinkClick}
+              onBackgroundClick={handleBackgroundClick}
             /> 
           </div>
 
