@@ -63,6 +63,63 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
+  // 📱 THE ULTIMATE MOBILE TAP FIX: 
+  // touch-action:'none' on the wrapper stops Android Chrome from generating a synthetic 'click'.
+  // We detect real taps manually and dispatch a real mouse click so the ForceGraph engine processes it natively!
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let startPos = null;
+    let startTime = 0;
+    let cancelled = false;
+
+    const TAP_MAX_DISTANCE = 14; // px of allowed finger wobble
+    const TAP_MAX_DURATION = 500; // ms
+
+    const handleTouchStart = (e) => {
+      if (e.touches.length !== 1) { cancelled = true; startPos = null; return; }
+      cancelled = false;
+      const t = e.touches[0];
+      startPos = { x: t.clientX, y: t.clientY };
+      startTime = Date.now();
+    };
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) cancelled = true; // pinch/zoom, not a tap
+    };
+
+    const handleTouchEnd = (e) => {
+      if (!startPos || cancelled) { startPos = null; cancelled = false; return; }
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startPos.x;
+      const dy = t.clientY - startPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const duration = Date.now() - startTime;
+      startPos = null;
+
+      if (dist < TAP_MAX_DISTANCE && duration < TAP_MAX_DURATION) {
+        const canvas = container.querySelector('canvas');
+        if (!canvas) return;
+
+        const opts = { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY, view: window };
+        canvas.dispatchEvent(new MouseEvent('mousedown', opts));
+        canvas.dispatchEvent(new MouseEvent('mouseup', opts));
+        canvas.dispatchEvent(new MouseEvent('click', opts));
+      }
+    };
+
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   useEffect(() => {
     if (!data) return;
     
@@ -292,18 +349,8 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           warmupTicks={100}
           cooldownTicks={50}
           enableZoom={true}
-          enableNodeDrag={true} // Must be true so we can catch sloppy thumbs below!
+          enableNodeDrag={true}
           
-          // 🔥 THE SLOPPY THUMB HACK 🔥 
-          // On mobile, if a fat thumb squishes by 1 pixel, D3 reads it as a "Drag" and cancels the click.
-          // By catching the end of a drag on mobile, we can artificially force the click event to fire!
-          onNodeDragEnd={(node) => {
-            if (window.innerWidth < 768 && onNodeClick) {
-               // Fire the click menu dead-center of the screen safely!
-               onNodeClick(node, { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
-            }
-          }}
-
           // 🔥 FAT-FINGER HITBOXES: We draw an invisible circle over the node, AND an invisible massive rectangle over the text label!
           nodePointerAreaPaint={(node, color, ctx) => {
             const isGhost = node.ghost;
