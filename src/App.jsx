@@ -1250,6 +1250,8 @@ function App() {
   const [showNodeManager, setShowNodeManager] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [nodeMenu, setNodeMenu] = useState(null); // Interactive map popup for nodes
+  const [linkPopup, setLinkPopup] = useState(null); // Interactive map popup for arrows
   const [showQRModal, setShowQRModal] = useState(false); // NEW STATE FOR QR
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
@@ -1276,14 +1278,32 @@ function App() {
     const { data: dbLinks, error: linksError } = await supabase.from('links').select('*');
 
     if (!nodesError && !linksError && dbNodes.length > 0) {
+        // Pre-calculate ranks for ALL users so we can show them on map clicks!
+        const helpCounts = {};
+        const approvedLinks = dbLinks.filter(l => l.status === 'approved' || !l.status);
+        
+        approvedLinks.forEach(l => {
+            helpCounts[l.source] = (helpCounts[l.source] || 0) + (l.helps_count || 1);
+        });
+
+        const claimedNodes = dbNodes.filter(n => n.is_claimed);
+        claimedNodes.sort((a, b) => (helpCounts[b.id] || 0) - (helpCounts[a.id] || 0));
+        const ranks = {};
+        claimedNodes.forEach((n, idx) => ranks[n.id] = idx + 1);
+
         setGlobalGraph({
           // We added user_id here so the frontend can find your node in the sea of nodes!
-          nodes: dbNodes.map(n => ({ id: n.id, shape: n.shape, type: n.type, value: n.value, socials: n.socials, is_claimed: n.is_claimed, user_id: n.user_id })),
-          links: dbLinks.filter(l => l.status === 'approved' || !l.status).map(l => ({ 
+          nodes: dbNodes.map(n => ({ 
+            id: n.id, shape: n.shape, type: n.type, value: n.value, 
+            socials: n.socials, is_claimed: n.is_claimed, user_id: n.user_id,
+            rank: ranks[n.id] || '-' 
+          })),
+          links: approvedLinks.map(l => ({ 
               source: l.source, 
               target: l.target, 
               customColor: l.custom_color, 
-              helpsCount: l.helps_count || 1 
+              helpsCount: l.helps_count || 1,
+              comment: l.comment || '' // Included comments!
             }))
         });
       } else {
@@ -1443,6 +1463,41 @@ function App() {
         {showNodeManager && <NodeManagerModal session={session} onClose={() => setShowNodeManager(false)} onRefreshGraph={fetchGlobalGraph} />}
         {selectedNode && <NodeDetailsModal node={selectedNode} onClose={() => setSelectedNode(null)} />}
         
+        {/* INTERACTIVE MAP OVERLAYS */}
+        {nodeMenu && (
+          <div style={{ top: nodeMenu.y, left: nodeMenu.x }} className="fixed z-50 transform -translate-x-1/2 -translate-y-[120%] pointer-events-auto animate-in fade-in zoom-in duration-200">
+            <div className="bg-white border-4 border-black rounded-xl p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex flex-col gap-2 min-w-[160px] relative">
+               <button onClick={() => setNodeMenu(null)} className="absolute -top-3 -right-3 bg-red-400 text-black border-2 border-black rounded-full w-7 h-7 flex items-center justify-center font-black text-xs hover:scale-110 shadow-[2px_2px_0px_rgba(0,0,0,1)] z-10 cursor-pointer">✖</button>
+               <div className="text-center font-black uppercase text-sm border-b-2 border-black pb-1 mb-1">{nodeMenu.node.id}</div>
+               <div className="bg-yellow-300 border-2 border-black rounded-lg px-2 py-1 text-xs font-black uppercase text-center shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                 🏆 Rank: #{nodeMenu.node.rank}
+               </div>
+               <button onClick={() => { setSelectedNode(nodeMenu.node); setNodeMenu(null); }} className="bg-cyan-300 hover:bg-cyan-200 border-2 border-black rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-transform cursor-pointer">
+                 Tap to see profile
+               </button>
+               {/* Little speech bubble arrow */}
+               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white border-b-4 border-r-4 border-black rotate-45"></div>
+            </div>
+          </div>
+        )}
+
+        {linkPopup && (
+          <div style={{ top: linkPopup.y, left: linkPopup.x }} className="fixed z-50 transform -translate-x-1/2 -translate-y-[120%] pointer-events-auto animate-in fade-in zoom-in duration-200">
+             <div className="bg-white border-4 border-black rounded-xl p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex flex-col gap-2 min-w-[200px] max-w-[250px] relative">
+               <button onClick={() => setLinkPopup(null)} className="absolute -top-3 -right-3 bg-red-400 text-black border-2 border-black rounded-full w-7 h-7 flex items-center justify-center font-black text-xs hover:scale-110 shadow-[2px_2px_0px_rgba(0,0,0,1)] z-10 cursor-pointer">✖</button>
+               <div className="text-[10px] font-black uppercase border-b-2 border-black pb-1 mb-1 text-center bg-lime-300 rounded-md border-2 p-1.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] tracking-tight">
+                 {typeof linkPopup.link.source === 'object' ? linkPopup.link.source.id : linkPopup.link.source} 
+                 <span className="mx-1 text-xs">➔</span> 
+                 {typeof linkPopup.link.target === 'object' ? linkPopup.link.target.id : linkPopup.link.target}
+               </div>
+               <div className="text-xs font-bold text-slate-700 italic bg-slate-50 p-2 rounded-lg border-2 border-black border-dashed">
+                 {linkPopup.link.comment ? `"${linkPopup.link.comment}"` : "No story provided for this good deed."}
+               </div>
+               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white border-b-4 border-r-4 border-black rotate-45"></div>
+             </div>
+          </div>
+        )}
+        
         {/* QUICK CONNECT QR MODAL */}
         {showQRModal && myPrimaryNode && <QuickQRModal myPrimaryNode={myPrimaryNode} onClose={() => setShowQRModal(false)} onRefreshGraph={fetchGlobalGraph} />}
         
@@ -1508,7 +1563,12 @@ function App() {
             onPointerUpCapture={handleMapInteractionEnd}
             onPointerCancelCapture={handleMapInteractionEnd}
           >
-            <KindnessGraph data={globalGraph} onNodeClick={setSelectedNode} /> 
+            <KindnessGraph 
+              data={globalGraph} 
+              onNodeClick={(node, event) => { setNodeMenu({ node, x: event.clientX, y: event.clientY }); setLinkPopup(null); }} 
+              onLinkClick={(link, event) => { setLinkPopup({ link, x: event.clientX, y: event.clientY }); setNodeMenu(null); }}
+              onBackgroundClick={() => { setNodeMenu(null); setLinkPopup(null); }}
+            /> 
           </div>
 
           <Routes>

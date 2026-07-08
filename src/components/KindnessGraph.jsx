@@ -20,7 +20,7 @@ const drawShape = (ctx, x, y, r, shape) => {
   }
 };
 
-export default function KindnessGraph({ data, onNodeClick }) {
+export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgroundClick }) {
   const containerRef = useRef(null);
   const fgRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
@@ -119,7 +119,9 @@ export default function KindnessGraph({ data, onNodeClick }) {
           width={dimensions.width}
           height={dimensions.height}
           graphData={processedData}
-          onNodeClick={(node) => onNodeClick && onNodeClick(node)}
+          onNodeClick={(node, event) => onNodeClick && onNodeClick(node, event)}
+          onLinkClick={(link, event) => onLinkClick && onLinkClick(link, event)}
+          onBackgroundClick={(event) => onBackgroundClick && onBackgroundClick(event)}
           // dagMode has been REMOVED here to allow multiple independent networks to float freely!
           backgroundColor="transparent"
           
