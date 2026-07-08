@@ -156,8 +156,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
   }, [processedData]);
 
   return (
-    // ✨ "touch-action: none" locks smartphone physical web browsers Native Gestures strictly intercepting internal Touch Taps completely flawlessly ! 
-    <div ref={containerRef} className="w-full h-full rounded-3xl flex items-center justify-center bg-transparent" style={{ touchAction: 'none' }}>
+    <div ref={containerRef} className="w-full h-full rounded-3xl flex items-center justify-center bg-transparent">
       {processedData ? (
         <ForceGraph2D
           ref={fgRef}
@@ -295,15 +294,15 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           enableZoom={true}
           enableNodeDrag={false} /* 🔥 THE MOBILE MAGIC BULLET 🔥 Disables D3 Drag-Canceling over 2-pixel finger jitters returning immediate Taps accurately globally tracking touches securely effortlessly */
           
-          // 🔥 DUMB-PHONE BULLETPROOF HITBOXES: Removes Compound Intersections rendering boundaries cleanly bypassing Smartphone Invisible Pixel Tracking Blends flawlessly organically logically natively accurately seamlessly 
+          // 🔥 PRECISION HITBOXES: Optimized to safely frame physical fingertips exclusively circumventing complex Graphic Array text engine intersections cleanly reliably tracking elegantly purely natively preventing layout boundaries collapsing structural properties beautifully flawlessly locally intelligently safely logically effectively dynamically securely precisely cleanly!  
           nodePointerAreaPaint={(node, color, ctx) => {
-            // Mega-sizes pure generic interaction circles to completely absorb standard name badges correctly avoiding graphic engine buffer overlaps!
-            const hitRadius = node.ghost ? 30 : 60 + ((node.impactCount || 0) * 4); 
-            
+            const isGhost = node.ghost;
+            const nodeRadius = isGhost ? 6 : 14 + ((node.impactCount || 0) * 3); 
+            const thumbBuffer = 15; // Extends roughly a single fingertip around physics node, completely escaping mapping overlap crashes purely globally 
+
             ctx.fillStyle = color;
             ctx.beginPath();
-            // A solitary seamless circle processes lightspeed rapidly without clipping constraints ! 
-            ctx.arc(node.x, node.y, hitRadius, 0, 2 * Math.PI, false); 
+            ctx.arc(node.x, node.y, nodeRadius + thumbBuffer, 0, 2 * Math.PI, false); 
             ctx.fill();
           }}
           
