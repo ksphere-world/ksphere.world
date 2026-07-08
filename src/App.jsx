@@ -1798,7 +1798,15 @@ function App() {
                          if (currentEffect === item.id) return;
                          const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
                          if (n) { n.cosmetics = { ...n.cosmetics, effect: item.id }; setGlobalGraph(prev => ({ ...prev })); }
-                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: item.id, p_arrow: myPrimaryNode?.cosmetics?.arrow }); fetchGlobalGraph();
+                         
+                         // SAFELY converts undefined fields into explicit NULL parameters locking database tracking
+                         await supabase.rpc('equip_cosmetics', { 
+                           p_node: myPrimaryNode.id, 
+                           p_shape: n?.shape || null, 
+                           p_effect: item.id, 
+                           p_arrow: n?.cosmetics?.arrow || null 
+                         }); 
+                         fetchGlobalGraph();
                     }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.effect === item.id ? 'border-pink-500 bg-pink-100 ring-2 ring-pink-500 transform -translate-y-1 scale-105' : 'border-black bg-white hover:bg-slate-100'}`}>
                       <span className="text-3xl mb-1">{item.icon}</span><span className="text-[10px] uppercase font-black">{item.label}</span>
                     </button>
@@ -1813,7 +1821,15 @@ function App() {
                          if (myPrimaryNode.shape === item.id) return;
                          const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
                          if (n) { n.shape = item.id; setGlobalGraph(prev => ({ ...prev })); }
-                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: item.id, p_effect: n?.cosmetics?.effect, p_arrow: myPrimaryNode?.cosmetics?.arrow }); fetchGlobalGraph();
+
+                         // Safely locks out memory drops ensuring the DB always detects API 
+                         await supabase.rpc('equip_cosmetics', { 
+                           p_node: myPrimaryNode.id, 
+                           p_shape: item.id, 
+                           p_effect: n?.cosmetics?.effect || null, 
+                           p_arrow: n?.cosmetics?.arrow || null 
+                         }); 
+                         fetchGlobalGraph();
                     }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode.shape || 'circle') === item.id ? 'border-lime-500 bg-lime-100 transform -translate-y-1 scale-105' : 'border-black bg-white hover:bg-slate-100'}`}>
                       <span className="text-3xl mb-1">{item.icon}</span><span className="text-[10px] uppercase font-black">{item.label}</span>
                     </button>
@@ -1828,7 +1844,15 @@ function App() {
                          if (myPrimaryNode?.cosmetics?.arrow === item.id) return;
                          const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
                          if (n) { n.cosmetics = { ...n.cosmetics, arrow: item.id }; setGlobalGraph(prev => ({ ...prev })); }
-                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: item.id }); fetchGlobalGraph();
+
+                         // Explicit assignments universally matching DB parameter needs accurately. 
+                         await supabase.rpc('equip_cosmetics', { 
+                           p_node: myPrimaryNode.id, 
+                           p_shape: n?.shape || null, 
+                           p_effect: n?.cosmetics?.effect || null, 
+                           p_arrow: item.id 
+                         }); 
+                         fetchGlobalGraph();
                     }} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.arrow === item.id ? 'border-blue-500 bg-blue-100 transform -translate-y-1 scale-105' : 'border-black bg-white hover:bg-slate-100'}`}>
                       <span className="text-2xl">{item.icon}</span><span className="text-[10px] mt-1 uppercase font-black">{item.label}</span>
                     </button>
