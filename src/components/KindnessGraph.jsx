@@ -201,13 +201,35 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             const isHovered = link === hoverLink;
             const totalReacts = link.reactions ? Object.values(link.reactions).reduce((a, b) => a + b, 0) : 0;
             const hasLabel = link.helpsCount > 1;
+            
+            const start = link.source;
+            const end = link.target;
+            if (typeof start !== 'object' || typeof end !== 'object') return;
+
+            // 🔥 DEBUG VISUAL: DRAW LINK HITBOX IN GREEN 🔥
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            
+            if (link.curvature) {
+               const curveApex = dist * link.curvature;
+               // Draw actual curve path
+               const ctrlX = start.x + dx/2 + (-dy / dist) * curveApex * 2;
+               const ctrlY = start.y + dy/2 + (dx / dist) * curveApex * 2;
+               ctx.quadraticCurveTo(ctrlX, ctrlY, end.x, end.y);
+            } else {
+               ctx.lineTo(end.x, end.y);
+            }
+            ctx.lineWidth = 16; // 8px precision on both sides = 16px total touch area
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)'; // Translucent glowing green
+            ctx.stroke();
+            ctx.restore();
 
             // FIX: Check applies ANY time reaction logic > 0 exist OR helps count > 1 threshold pops (Solves Emojis Missing on Refresh/Curved arrows forever)
             if (hasLabel || totalReacts > 0) {
-              const start = link.source;
-              const end = link.target;
-              // Wait until coordinates are calculated by the physics engine
-              if (typeof start !== 'object' || typeof end !== 'object') return;
               
               const dx = end.x - start.x;
               const dy = end.y - start.y;
@@ -314,6 +336,13 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             const type = node.type || 'color'; 
             const value = node.value || '#10b981'; 
             const eff = node.cosmetics?.effect || 'none'; // GRABS K-SHOP AURA LAYER INSTANTLY GLOBALLY OVER OVERRIDES
+
+            // 🔥 DEBUG VISUAL: DRAW NODE HITBOX IN RED 🔥
+            const thumbBuffer = 2; // Matches your pointerArea settings
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.4)'; // Translucent red
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, nodeRadius + thumbBuffer, 0, 2 * Math.PI, false);
+            ctx.fill();
 
             ctx.save();
             
