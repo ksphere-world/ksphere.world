@@ -201,35 +201,13 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             const isHovered = link === hoverLink;
             const totalReacts = link.reactions ? Object.values(link.reactions).reduce((a, b) => a + b, 0) : 0;
             const hasLabel = link.helpsCount > 1;
-            
-            const start = link.source;
-            const end = link.target;
-            if (typeof start !== 'object' || typeof end !== 'object') return;
-
-            // 🔥 DEBUG VISUAL: DRAW LINK HITBOX IN GREEN 🔥
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(start.x, start.y);
-            const dx = end.x - start.x;
-            const dy = end.y - start.y;
-            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            
-            if (link.curvature) {
-               const curveApex = dist * link.curvature;
-               // Draw actual curve path
-               const ctrlX = start.x + dx/2 + (-dy / dist) * curveApex * 2;
-               const ctrlY = start.y + dy/2 + (dx / dist) * curveApex * 2;
-               ctx.quadraticCurveTo(ctrlX, ctrlY, end.x, end.y);
-            } else {
-               ctx.lineTo(end.x, end.y);
-            }
-            ctx.lineWidth = 16; // 8px precision on both sides = 16px total touch area
-            ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)'; // Translucent glowing green
-            ctx.stroke();
-            ctx.restore();
 
             // FIX: Check applies ANY time reaction logic > 0 exist OR helps count > 1 threshold pops (Solves Emojis Missing on Refresh/Curved arrows forever)
             if (hasLabel || totalReacts > 0) {
+              const start = link.source;
+              const end = link.target;
+              // Wait until coordinates are calculated by the physics engine
+              if (typeof start !== 'object' || typeof end !== 'object') return;
               
               const dx = end.x - start.x;
               const dy = end.y - start.y;
@@ -314,18 +292,41 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           warmupTicks={100}
           cooldownTicks={50}
           enableZoom={true}
-          enableNodeDrag={true} /* 🔥 REVERTED MAGIC BULLET 🔥 D3's drag behavior actually mathematically synthesizes clicks on squishy 1-3 pixel finger jitters! Leaving this TRUE is absolutely required for mobile node taps. */
+          enableNodeDrag={false} /* 🔥 THE JELLY FINGER FIX 🔥 With massive hitboxes, if this is true, rolling your thumb 1 pixel cancels the click and starts a drag. Setting to false forces pure clicks! */
           
-          // 🔥 PRECISION HITBOXES: Optimized hitboxes to exactly fit visual nodes, preventing giant invisible bubbles from stealing clicks from neighboring profiles!  
+          // 🔥 FAT-FINGER HITBOXES: We draw an invisible circle over the node, AND an invisible massive rectangle over the text label!
           nodePointerAreaPaint={(node, color, ctx) => {
             const isGhost = node.ghost;
             const nodeRadius = isGhost ? 6 : 14 + ((node.impactCount || 0) * 3); 
-            const thumbBuffer = 2; // 🔧 MASSIVELY REDUCED: The nodes visually scale up (28px+). An extra 15px caused massive invisible cannibalization!
+            
+            // CRITICAL: We MUST use the engine's generated 'color' variable here, this acts as the secret invisible hit-detection layer!
+            ctx.fillStyle = color; 
 
-            ctx.fillStyle = color;
+            // 1. Hitbox for the Main Icon/Avatar
             ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeRadius + thumbBuffer, 0, 2 * Math.PI, false); 
+            ctx.arc(node.x, node.y, nodeRadius + 10, 0, 2 * Math.PI, false); 
             ctx.fill();
+
+            // 2. Hitbox for the Text Label (This is what you were missing!)
+            if (!isGhost) {
+              const label = node.id;
+              const fontSize = 12;
+              ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
+              const textWidth = ctx.measureText(label).width;
+              const badgeWidth = textWidth + 16;
+              const badgeHeight = fontSize + 10;
+              const badgeY = node.y + nodeRadius + 8;
+
+              ctx.beginPath();
+              // Giant rectangle covering the label with an extra 10px padding for sloppy thumbs
+              ctx.rect(
+                (node.x - badgeWidth / 2) - 10, 
+                badgeY - 5, 
+                badgeWidth + 20, 
+                badgeHeight + 20
+              );
+              ctx.fill();
+            }
           }}
           
           nodeCanvasObject={(node, ctx) => {

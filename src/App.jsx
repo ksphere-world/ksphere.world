@@ -1335,8 +1335,7 @@ function App() {
     // SAFELY DELAYS DISAPPEARING BY A MICROSCOPIC FRACTION! 
     // This allows rapid Mobile "Taps" (takes ~60ms-90ms) to conclude beautifully inside D3.js untouched natively before altering HTML boundaries mapping structures disrupting touch listeners.  
     interactTimeout.current = setTimeout(() => {
-      // 🔥 DEBUG: Commented this out! React re-rendering mid-touch is likely destroying the click event!
-      // setIsMapInteracting(true); 
+      setIsMapInteracting(true);
     }, 150); 
   };
 
@@ -1345,8 +1344,7 @@ function App() {
     if (interactTimeout.current) clearTimeout(interactTimeout.current);
     // UI swoops back seamlessly gracefully 
     interactTimeout.current = setTimeout(() => {
-      // 🔥 DEBUG: Commented out!
-      // setIsMapInteracting(false);
+      setIsMapInteracting(false);
     }, 800); 
   };
 
