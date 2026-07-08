@@ -25,6 +25,8 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
   const fgRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
   const [processedData, setProcessedData] = useState(null); // Safely holds memory
+  const [hoverNode, setHoverNode] = useState(null); // NEW: Tracks hovered profile
+  const [hoverLink, setHoverLink] = useState(null); // NEW: Tracks hovered arrow
 
   // NEW: Listens for the Refresh button click to re-warm physics and zoom perfectly to fit the map
   useEffect(() => {
@@ -125,11 +127,15 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           // dagMode has been REMOVED here to allow multiple independent networks to float freely!
           backgroundColor="transparent"
           
-          linkColor={(link) => link.customColor || '#000000'}
-          linkWidth={3} 
-          linkDirectionalArrowLength={12}
+          linkHoverPrecision={15} // 🔥 MASSIVELY expands the invisible clicking area of thin lines!
+          onNodeHover={setHoverNode}
+          onLinkHover={setHoverLink}
+          
+          linkColor={(link) => link === hoverLink ? '#f472b6' : (link.customColor || '#000000')}
+          linkWidth={(link) => link === hoverLink ? 6 : 3} 
+          linkDirectionalArrowLength={(link) => link === hoverLink ? 16 : 12}
           linkDirectionalArrowRelPos={0.75} /* Shifted arrow head towards target so it doesn't overlap the middle label! */
-          linkDirectionalArrowColor={(link) => link.customColor || '#000000'}
+          linkDirectionalArrowColor={(link) => link === hoverLink ? '#f472b6' : (link.customColor || '#000000')}
           linkCurvature={(link) => link.curvature || 0}
           
           linkCanvasObjectMode={() => 'after'}
@@ -166,22 +172,33 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
               const textWidth = ctx.measureText(label).width;
               const bgWidth = textWidth + 8;
               const bgHeight = fontSize + 6;
+              const isHovered = link === hoverLink;
               
-              // Draw Yellow Pill Background
-              ctx.fillStyle = '#facc15';
+              // Draw Pill Background
+              ctx.fillStyle = isHovered ? '#f472b6' : '#facc15'; // Turns Pink on Hover
               ctx.beginPath();
-              ctx.roundRect(textPos.x - bgWidth/2, textPos.y - bgHeight/2, bgWidth, bgHeight, 6);
+              
+              if (isHovered) {
+                // Popped up slightly bigger
+                ctx.roundRect(textPos.x - (bgWidth*1.2)/2, textPos.y - (bgHeight*1.2)/2, bgWidth*1.2, bgHeight*1.2, 8);
+                ctx.shadowColor = '#f472b6';
+                ctx.shadowBlur = 10;
+              } else {
+                ctx.roundRect(textPos.x - bgWidth/2, textPos.y - bgHeight/2, bgWidth, bgHeight, 6);
+              }
               ctx.fill();
+              ctx.shadowBlur = 0; // Reset shadow so it doesn't bleed
               
               // Draw Pill Border
-              ctx.lineWidth = 1.5;
+              ctx.lineWidth = isHovered ? 2.5 : 1.5;
               ctx.strokeStyle = '#000000';
               ctx.stroke();
 
               // Draw Text
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
-              ctx.fillStyle = '#000000';
+              ctx.fillStyle = isHovered ? '#ffffff' : '#000000';
+              if (isHovered) ctx.font = `900 ${fontSize + 2}px "Inter", sans-serif`; // Bolder text
               ctx.fillText(label, textPos.x, textPos.y + 0.5); // +0.5 fixes canvas vertical alignment
             }
           }}
@@ -191,15 +208,45 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           cooldownTicks={50}
           enableZoom={true}
           
+          // 🔥 FAT HITBOXES: Makes the entire Name Badge AND Profile highly clickable!
+          nodePointerAreaPaint={(node, color, ctx) => {
+            const isGhost = node.ghost;
+            const nodeRadius = isGhost ? 6 : 14 + (node.impactCount * 3);
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, nodeRadius + 15, 0, 2 * Math.PI, false); // Fatter circle hitbox
+            ctx.fill();
+            
+            const fontSize = isGhost ? 10 : 12;
+            ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
+            const textWidth = ctx.measureText(node.id).width;
+            const badgeWidth = textWidth + 16;
+            const badgeHeight = fontSize + 10;
+            const badgeY = node.y + nodeRadius + 8;
+            ctx.fillRect((node.x - badgeWidth / 2) - 5, badgeY - 5, badgeWidth + 10, badgeHeight + 10); // Fatter badge hitbox
+          }}
+          
           nodeCanvasObject={(node, ctx) => {
             const isGhost = node.ghost;
+            const isHovered = node === hoverNode;
             const nodeRadius = isGhost ? 6 : 14 + (node.impactCount * 3);
             const shape = node.shape || 'circle';
             const type = node.type || 'color'; 
             const value = node.value || '#10b981'; 
 
             ctx.save();
-            if (!isGhost) {
+            
+            // ✨ HOVER POP ANIMATION ✨
+            if (isHovered && !isGhost) {
+              ctx.translate(node.x, node.y);
+              ctx.scale(1.25, 1.25); // Scale up 125% when mouse enters
+              ctx.translate(-node.x, -node.y);
+              
+              ctx.shadowColor = '#f472b6'; // Glowing pink aura
+              ctx.shadowBlur = 20;
+              ctx.shadowOffsetX = 0;
+              ctx.shadowOffsetY = 0;
+            } else if (!isGhost) {
               ctx.shadowColor = '#000000';
               ctx.shadowBlur = 0;
               ctx.shadowOffsetX = 4;
