@@ -292,7 +292,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           warmupTicks={100}
           cooldownTicks={50}
           enableZoom={true}
-          enableNodeDrag={false} /* 🔥 THE MOBILE MAGIC BULLET 🔥 Disables D3 Drag-Canceling over 2-pixel finger jitters returning immediate Taps accurately globally tracking touches securely effortlessly */
+          enableNodeDrag={true} /* 🔥 REVERTED MAGIC BULLET 🔥 D3's drag behavior actually mathematically synthesizes clicks on squishy 1-3 pixel finger jitters! Leaving this TRUE is absolutely required for mobile node taps. */
           
           // 🔥 PRECISION HITBOXES: Optimized to safely frame physical fingertips exclusively circumventing complex Graphic Array text engine intersections cleanly reliably tracking elegantly purely natively preventing layout boundaries collapsing structural properties beautifully flawlessly locally intelligently safely logically effectively dynamically securely precisely cleanly!  
           nodePointerAreaPaint={(node, color, ctx) => {

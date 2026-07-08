@@ -1350,10 +1350,10 @@ function App() {
 
   // ROBUST POLYFILL TRANSLATOR CONSTRUCT: FIXES 'clientX IS UNDEFINED' MOBILE TOUCHSCREEN MAPPING BUG COMPLETELY!
   const getTapPos = (e) => {
-    if (e.clientX !== undefined && e.clientY !== undefined) return { x: e.clientX, y: e.clientY };
-    if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-    if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    return { x: window.innerWidth / 2, y: window.innerHeight / 2 }; // Base fail-safes ensuring bounds natively overlap mathematically flawlessly mapped tracking constraints visually cleanly natively without dropping components rendering geometries mapping arrays overlapping cleanly efficiently securely naturally structurally logic mapping globally properly completely safely gracefully flawlessly flawlessly logically perfectly cleanly completely ! 
+    if (e && typeof e.clientX === 'number') return { x: e.clientX, y: e.clientY };
+    if (e && e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e && e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    return { x: window.innerWidth / 2, y: window.innerHeight / 2 }; // Safe fallback center screen avoiding null crash
   };
 
   // 1. Fetch Global Graph wrapped in useCallback so it's globally available
@@ -1941,6 +1941,7 @@ function App() {
           {/* ALWAYS RENDER MAP IN BACKGROUND (Prevents unmounting & scattering when switching pages!) */}
           <div 
             className="absolute inset-0 z-0"
+            style={{ touchAction: 'none' }} // 🔥 MAGIC BULLET 1: Blocks mobile browser scroll interception allowing Canvas to process Taps accurately!
             onPointerDownCapture={handleMapInteractionStart}
             onPointerUpCapture={handleMapInteractionEnd}
             onPointerCancelCapture={handleMapInteractionEnd}
