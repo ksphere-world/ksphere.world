@@ -82,8 +82,17 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
 
       // Map out the previous coordinates safely
       const oldNodeMap = new Map();
+      const oldLinkMap = new Map(); // 🔥 WE FORGOT TO MEMORIZE ARROWS! (This caused snapping)
+      
       if (prev && prev.nodes) {
         prev.nodes.forEach(n => oldNodeMap.set(n.id, n));
+      }
+      if (prev && prev.links) {
+        prev.links.forEach(l => {
+           const sId = typeof l.source === 'object' ? l.source.id : l.source;
+           const tId = typeof l.target === 'object' ? l.target.id : l.target;
+           oldLinkMap.set(`${sId}|${tId}`, l); // Safe pointer reference stored
+        });
       }
 
       // 3. PREVENT SCATTER! Apply previous physics state (x,y,vx,vy)
@@ -98,6 +107,24 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           if (oldNode.vy !== undefined) newNode.vy = oldNode.vy;
         }
         return newNode;
+      });
+
+      const links = data.links.map(l => {
+        const sId = typeof l.source === 'object' ? l.source.id : l.source;
+        const tId = typeof l.target === 'object' ? l.target.id : l.target;
+        const oldLink = oldLinkMap.get(`${sId}|${tId}`);
+        
+        // Reusing OLD LINK objects tells Physics Engine NOTHING CHANGED! (No shaking arrows/curves!)
+        if (oldLink) {
+           oldLink.reactions = l.reactions; 
+           oldLink.comment = l.comment;
+           oldLink.helpsCount = l.helpsCount || 1;
+           return oldLink;
+        }
+
+        // Generate newly born curves cleanly natively if entirely non-existent memory map tracking hit 
+        const hasReverse = linkPairs.has(`${tId}|${sId}`);
+        return { ...l, curvature: hasReverse ? 0.25 : 0 };
       });
 
       return { nodes, links };
@@ -142,7 +169,12 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx) => {
-            if (link.helpsCount > 1) {
+            const isHovered = link === hoverLink;
+            const totalReacts = link.reactions ? Object.values(link.reactions).reduce((a, b) => a + b, 0) : 0;
+            const hasLabel = link.helpsCount > 1;
+
+            // FIX: Check applies ANY time reaction logic > 0 exist OR helps count > 1 threshold pops (Solves Emojis Missing on Refresh/Curved arrows forever)
+            if (hasLabel || totalReacts > 0) {
               const start = link.source;
               const end = link.target;
               // Wait until coordinates are calculated by the physics engine
@@ -152,80 +184,78 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
               const dy = end.y - start.y;
               const distance = Math.sqrt(dx * dx + dy * dy) || 1;
               
-              // Calculate straight midpoint
+              // Calculate straight midpoint base tracking geometry logic standard layout scaling UI elements onto DOM overlay
               let textPos = {
                 x: start.x + dx / 2,
                 y: start.y + dy / 2
               };
 
-              // If the arrow is curved, push the badge perfectly to the curve's apex using normal vector math!
+              // If arrow relies curve geometry offsets strictly recalculating logic relative normal matrix alignment scaling curve offset apex values specifically (Correct curve tracking mathematical vectors vs 2D standard forcegraph) 
               if (link.curvature) {
-                const nx = -dy / distance; 
-                const ny = dx / distance;
-                const offset = (distance * link.curvature) / 2;
-                textPos.x += nx * offset;
-                textPos.y += ny * offset;
+                const curveApex = distance * link.curvature; 
+                textPos.x += (-dy / distance) * curveApex; 
+                textPos.y += (dx / distance) * curveApex;
               }
 
-              const label = `${link.helpsCount}x`;
-              const fontSize = 10;
-              ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
+              let drawReactionX = textPos.x;
+              let drawReactionY = textPos.y;
               
-              const textWidth = ctx.measureText(label).width;
-              const bgWidth = textWidth + 8;
-              const bgHeight = fontSize + 6;
-              const isHovered = link === hoverLink;
-              
-              // Draw Pill Background
-              ctx.fillStyle = isHovered ? '#f472b6' : '#facc15'; // Turns Pink on Hover
-              ctx.beginPath();
-              
-              if (isHovered) {
-                // Popped up slightly bigger
-                ctx.roundRect(textPos.x - (bgWidth*1.2)/2, textPos.y - (bgHeight*1.2)/2, bgWidth*1.2, bgHeight*1.2, 8);
-                ctx.shadowColor = '#f472b6';
-                ctx.shadowBlur = 10;
-              } else {
-                ctx.roundRect(textPos.x - bgWidth/2, textPos.y - bgHeight/2, bgWidth, bgHeight, 6);
-              }
-              ctx.fill();
-              ctx.shadowBlur = 0; // Reset shadow so it doesn't bleed
-              
-              // Draw Pill Border
-              ctx.lineWidth = isHovered ? 2.5 : 1.5;
-              ctx.strokeStyle = '#000000';
-              ctx.stroke();
+              // DRAW HELP BADGE CONDITIONAL LOOP PROCESSING EXPLICITLY INDEPENDENT! 
+              if (hasLabel) {
+                  const label = `${link.helpsCount}x`;
+                  const fontSize = 10;
+                  ctx.font = `900 ${isHovered ? fontSize + 2 : fontSize}px "Inter", sans-serif`;
+                  
+                  const textWidth = ctx.measureText(label).width;
+                  const bgWidth = textWidth + 8;
+                  const bgHeight = fontSize + 6;
+                  
+                  ctx.fillStyle = isHovered ? '#f472b6' : '#facc15'; // Turns Pink on Hover UI POP!
+                  ctx.beginPath();
+                  if (isHovered) {
+                    // Popped slightly larger bounding radius scaled offsets
+                    ctx.roundRect(textPos.x - (bgWidth*1.2)/2, textPos.y - (bgHeight*1.2)/2, bgWidth*1.2, bgHeight*1.2, 8);
+                    ctx.shadowColor = '#f472b6';
+                    ctx.shadowBlur = 10;
+                  } else {
+                    ctx.roundRect(textPos.x - bgWidth/2, textPos.y - bgHeight/2, bgWidth, bgHeight, 6);
+                  }
+                  ctx.fill();
+                  ctx.shadowBlur = 0; 
+                  
+                  ctx.lineWidth = isHovered ? 2.5 : 1.5;
+                  ctx.strokeStyle = '#000000';
+                  ctx.stroke();
 
-              // Draw Text
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillStyle = isHovered ? '#ffffff' : '#000000';
-              if (isHovered) ctx.font = `900 ${fontSize + 2}px "Inter", sans-serif`; // Bolder text
-              ctx.fillText(label, textPos.x, textPos.y + 0.5); // +0.5 fixes canvas vertical alignment
-              
-              // ✨ RENDER REACTIONS ATTACHED TO THE STORY ARROW ✨
-              if (link.reactions) {
-                const totalReacts = Object.values(link.reactions).reduce((a, b) => a + b, 0);
-                if (totalReacts > 0) {
-                  // Grab the most popular emoji received by this story!
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillStyle = isHovered ? '#ffffff' : '#000000';
+                  ctx.fillText(label, textPos.x, textPos.y + 0.5); 
+                  
+                  // Scale emojis upwards properly relative to parent offset pills for dynamic mapping stacking! 
+                  drawReactionX = textPos.x + bgWidth/2 - 4; 
+                  drawReactionY = textPos.y - bgHeight - 4;
+              }
+
+              // ✨ EXPLICITLY FORCES CURVES / ARROWS REGARDLESS TO DROP REACTION TRACKER ANCHORS! ✨
+              if (totalReacts > 0) {
                   const topEmoji = Object.entries(link.reactions).sort((a,b)=>b[1]-a[1])[0][0];
                   
                   ctx.fillStyle = '#ffffff';
                   ctx.beginPath();
-                  ctx.roundRect(textPos.x + bgWidth/2 - 4, textPos.y - bgHeight - 4, 18, 14, 4); // Pops it up and slightly right
+                  ctx.roundRect(drawReactionX - 10, drawReactionY - 10, 20, 20, 5); // Clean square 
                   ctx.fill();
                   ctx.lineWidth = 1;
                   ctx.strokeStyle = '#000000';
                   ctx.stroke();
 
-                  ctx.font = '10px Arial';
+                  ctx.font = '12px Arial'; // Enhanced rendering 
                   ctx.textAlign = 'center';
                   ctx.textBaseline = 'middle';
                   ctx.fillStyle = '#000000';
-                  ctx.fillText(topEmoji, textPos.x + bgWidth/2 + 5, textPos.y - bgHeight + 3.5);
-                }
+                  // Placed squarely anchored centered!
+                  ctx.fillText(topEmoji, drawReactionX, drawReactionY + 1.5);
               }
-
             }
           }}
 
