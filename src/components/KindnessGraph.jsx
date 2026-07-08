@@ -293,22 +293,20 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           cooldownTicks={50}
           enableZoom={true}
           
-          // 🔥 FAT HITBOXES: Makes the entire Name Badge AND Profile highly clickable!
+          // 🔥 FAT HITBOXES: Optimized pure-math geometry securely completely bypasses slow Android Font-Text measurement limits saving CPUs native interaction events processing smoothly unconditionally natively instantly seamlessly dependably elegantly 
           nodePointerAreaPaint={(node, color, ctx) => {
             const isGhost = node.ghost;
-            const nodeRadius = isGhost ? 6 : 14 + (node.impactCount * 3);
+            const nodeRadius = isGhost ? 6 : 14 + ((node.impactCount || 0) * 3);
+            
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeRadius + 15, 0, 2 * Math.PI, false); // Fatter circle hitbox
+            
+            // Central secure Fatter Circle overlapping Hitbox ensuring direct Avatar tracking drops perfectly aligned completely!
+            ctx.arc(node.x, node.y, nodeRadius + 22, 0, 2 * Math.PI, false); 
             ctx.fill();
             
-            const fontSize = isGhost ? 10 : 12;
-            ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
-            const textWidth = ctx.measureText(node.id).width;
-            const badgeWidth = textWidth + 16;
-            const badgeHeight = fontSize + 10;
-            const badgeY = node.y + nodeRadius + 8;
-            ctx.fillRect((node.x - badgeWidth / 2) - 5, badgeY - 5, badgeWidth + 10, badgeHeight + 10); // Fatter badge hitbox
+            // Standard geometric Box capturing Nameplates generically explicitly without heavy slow rendering metric algorithms parsing text components randomly efficiently  
+            ctx.fillRect(node.x - 35, node.y + nodeRadius - 5, 70, 30);
           }}
           
           nodeCanvasObject={(node, ctx) => {
