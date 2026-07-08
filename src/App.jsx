@@ -1523,23 +1523,23 @@ function App() {
                      title={`React with ${emoji}`}
                      onClick={async () => {
                         if (!session) return alert("🔒 Sign in to react!");
-                        
-                        // 1. Optimistic Fast Local UI Update
+
+                        // Prevent destructive UI scatter by mutating memory object safely instead of cloning everything.
+                        const activeNode = nodeMenu.node;
+                        const currVal = ((activeNode.reactions || {})[emoji] || 0);
+                        activeNode.reactions = { ...(activeNode.reactions || {}), [emoji]: currVal + 1 };
+
                         setGlobalGraph(prev => ({
-                           ...prev,
-                           nodes: prev.nodes.map(n => n.id === nodeMenu.node.id ? 
-                             { ...n, reactions: { ...(n.reactions || {}), [emoji]: ((n.reactions || {})[emoji] || 0) + 1 } } : n)
+                           nodes: prev.nodes.map(n => n.id === activeNode.id ? activeNode : n), // Perfect Reference Keep
+                           links: prev.links
                         }));
-                        setNodeMenu(null); // Close the popup for snap experience
+                        setNodeMenu(null); 
                         
-                        // 2. Perform True DB update via Supabase Function we made!
+                        // Sent in background secretly (No immediate hammer API syncing!)
                         await supabase.rpc('toggle_node_reaction', { 
-                          p_node: nodeMenu.node.id, 
+                          p_node: activeNode.id, 
                           p_emoji: emoji 
                         });
-                        
-                        // 3. Ensure truthy state resolves in the background invisibly!
-                        fetchGlobalGraph();
                      }}
                      className="hover:scale-[1.3] active:scale-95 hover:-translate-y-1 transition-all cursor-pointer text-base bg-white rounded-md border border-black shadow-[1px_1px_0px_rgba(0,0,0,1)] px-1"
                    >{emoji}</button>
@@ -1586,31 +1586,27 @@ function App() {
                         
                         const menuS = typeof linkPopup.link.source === 'object' ? linkPopup.link.source.id : linkPopup.link.source;
                         const menuT = typeof linkPopup.link.target === 'object' ? linkPopup.link.target.id : linkPopup.link.target;
+                        const activeLink = linkPopup.link;
 
-                        // 1. Instantly visual feedback local to browser
+                        const currVal = ((activeLink.reactions || {})[emoji] || 0);
+                        activeLink.reactions = { ...(activeLink.reactions || {}), [emoji]: currVal + 1 };
+
                         setGlobalGraph(prev => ({
-                           ...prev,
+                           nodes: prev.nodes,
                            links: prev.links.map(l => {
                              const s = typeof l.source === 'object' ? l.source.id : l.source;
                              const t = typeof l.target === 'object' ? l.target.id : l.target;
-                             
-                             if (s === menuS && t === menuT) {
-                               return { ...l, reactions: { ...(l.reactions || {}), [emoji]: ((l.reactions || {})[emoji] || 0) + 1 } };
-                             }
-                             return l;
+                             return (s === menuS && t === menuT) ? activeLink : l; 
                            })
                         }));
-                        setLinkPopup(null); // Close map menu
+                        setLinkPopup(null);
 
-                        // 2. Perform backend secure DB call 
+                        // Sent secretly so database fetches safely WITHOUT overlapping data states
                         await supabase.rpc('toggle_link_reaction', { 
                           p_source: menuS, 
                           p_target: menuT,
                           p_emoji: emoji 
                         });
-                        
-                        // 3. Invisible resync for perfection
-                        fetchGlobalGraph();
                      }}
                      className="hover:scale-[1.3] active:scale-95 hover:-translate-y-1 transition-all cursor-pointer text-lg bg-pink-50 rounded-md border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] px-1"
                    >{emoji}</button>
