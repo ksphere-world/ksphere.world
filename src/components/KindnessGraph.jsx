@@ -29,13 +29,34 @@ const drawShape = (ctx, x, y, r, shape) => {
   }
 };
 
+// 🧮 MATH HELPER: Calculates distance from your finger tap to a straight line (the edges)
+const distToSegment = (px, py, x1, y1, x2, y2) => {
+  const A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let param = -1;
+  if (lenSq !== 0) param = dot / lenSq;
+  let xx, yy;
+  if (param < 0) { xx = x1; yy = y1; }
+  else if (param > 1) { xx = x2; yy = y2; }
+  else { xx = x1 + param * C; yy = y1 + param * D; }
+  const dx = px - xx, dy = py - yy;
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
 export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgroundClick }) {
   const containerRef = useRef(null);
   const fgRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
-  const [processedData, setProcessedData] = useState(null); // Safely holds memory
-  const [hoverNode, setHoverNode] = useState(null); // NEW: Tracks hovered profile
-  const [hoverLink, setHoverLink] = useState(null); // NEW: Tracks hovered arrow
+  const [processedData, setProcessedData] = useState(null); 
+  const [hoverNode, setHoverNode] = useState(null); 
+  const [hoverLink, setHoverLink] = useState(null); 
+
+  // 🐞 DEBUG SYSTEM: State to hold the live math logs
+  const [debugLogs, setDebugLogs] = useState([]);
+  const logDebug = (msg) => {
+    setDebugLogs(prev => [`[${new Date().toLocaleTimeString().split(' ')[0]}] ${msg}`, ...prev].slice(0, 6)); // Keeps last 6 logs
+  };
 
   // NEW: Listens for the Refresh button click to re-warm physics and zoom perfectly to fit the map
   useEffect(() => {
@@ -63,9 +84,8 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // 📱 THE ULTIMATE MOBILE TAP FIX: 
-  // touch-action:'none' on the wrapper stops Android Chrome from generating a synthetic 'click'.
-  // We detect real taps manually and dispatch a real mouse click so the ForceGraph engine processes it natively!
+  // 📱 THE PURE MATH BYPASS: We do not trust the browser or canvas to detect clicks anymore.
+  // We manually convert screen taps to graph coordinates and calculate distance using Pythagoras!
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -73,9 +93,6 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
     let startPos = null;
     let startTime = 0;
     let cancelled = false;
-
-    const TAP_MAX_DISTANCE = 14; // px of allowed finger wobble
-    const TAP_MAX_DURATION = 500; // ms
 
     const handleTouchStart = (e) => {
       if (e.touches.length !== 1) { cancelled = true; startPos = null; return; }
@@ -86,7 +103,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
     };
 
     const handleTouchMove = (e) => {
-      if (e.touches.length > 1) cancelled = true; // pinch/zoom, not a tap
+      if (e.touches.length > 1) cancelled = true;
     };
 
     const handleTouchEnd = (e) => {
@@ -98,14 +115,59 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
       const duration = Date.now() - startTime;
       startPos = null;
 
-      if (dist < TAP_MAX_DISTANCE && duration < TAP_MAX_DURATION) {
-        const canvas = container.querySelector('canvas');
-        if (!canvas) return;
+      // If they didn't drag their finger far, it's a Tap!
+      if (dist < 15 && duration < 500) {
+        if (!fgRef.current || !data) return;
+        
+        // 1. Convert Screen Tap to internal Graph Canvas Coordinates
+        const graphPos = fgRef.current.screen2GraphCoords(t.clientX, t.clientY);
+        logDebug(`👆 Screen Tap: (${t.clientX|0}, ${t.clientY|0}) ➔ Graph mapped: (${graphPos.x|0}, ${graphPos.y|0})`);
 
-        const opts = { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY, view: window };
-        canvas.dispatchEvent(new MouseEvent('mousedown', opts));
-        canvas.dispatchEvent(new MouseEvent('mouseup', opts));
-        canvas.dispatchEvent(new MouseEvent('click', opts));
+        let hitNode = null;
+        let hitLink = null;
+
+        // 2. COLLISION MATH: Check all nodes
+        for (const n of data.nodes) {
+          const nDx = n.x - graphPos.x;
+          const nDy = n.y - graphPos.y;
+          const nodeDist = Math.sqrt(nDx * nDx + nDy * nDy);
+          const hitboxRadius = (n.ghost ? 6 : 14 + ((n.impactCount || 0) * 3)) + 15; // 15px fat finger padding
+          
+          if (nodeDist <= hitboxRadius) {
+            hitNode = n;
+            logDebug(`🎯 HIT NODE: ${n.id} (Distance: ${nodeDist|0}px)`);
+            break; // We found the hit, stop looping!
+          }
+        }
+
+        // 3. COLLISION MATH: Check all edges (Only if we missed nodes)
+        if (!hitNode) {
+          for (const l of data.links) {
+            const start = l.source;
+            const end = l.target;
+            if (typeof start !== 'object' || typeof end !== 'object') continue;
+            
+            const edgeDist = distToSegment(graphPos.x, graphPos.y, start.x, start.y, end.x, end.y);
+            if (edgeDist <= 15) { // 15px fat finger padding for thin lines
+              hitLink = l;
+              logDebug(`🔗 HIT LINK: ${start.id}➔${end.id} (Distance: ${edgeDist|0}px)`);
+              break;
+            }
+          }
+        }
+
+        // 4. FORCE EXECUTION: Bypass canvas completely and trigger the UI directly!
+        const fakeEvent = { clientX: t.clientX, clientY: t.clientY };
+        if (hitNode && onNodeClick) {
+          logDebug(`⚡ FIRING NODE UI MENU FOR: ${hitNode.id}`);
+          onNodeClick(hitNode, fakeEvent);
+        } else if (hitLink && onLinkClick) {
+          logDebug(`⚡ FIRING EDGE UI MENU`);
+          onLinkClick(hitLink, fakeEvent);
+        } else {
+          logDebug(`❌ HIT BACKGROUND: Missed all hitboxes.`);
+          if (onBackgroundClick) onBackgroundClick(fakeEvent);
+        }
       }
     };
 
@@ -118,7 +180,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
     };
-  }, []);
+  }, [data, onNodeClick, onLinkClick, onBackgroundClick]);
 
   useEffect(() => {
     if (!data) return;
@@ -213,7 +275,16 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
   }, [processedData]);
 
   return (
-    <div ref={containerRef} className="w-full h-full rounded-3xl flex items-center justify-center bg-transparent">
+    <div ref={containerRef} className="w-full h-full rounded-3xl flex items-center justify-center bg-transparent relative">
+      
+      {/* 🐞 LIVE DEBUG PANEL - Allows us to literally read the engine's math on mobile! */}
+      <div className="absolute top-2 left-2 z-50 bg-black/80 border-2 border-red-500 rounded-lg p-2 text-green-400 font-mono text-[9px] sm:text-xs pointer-events-none flex flex-col gap-1 w-[80%] max-w-[300px]">
+        <div className="font-bold text-white border-b border-red-500 mb-1">🐞 PHYSICS MATH DEBUGGER</div>
+        {debugLogs.length === 0 ? <span>Waiting for taps...</span> : debugLogs.map((log, i) => (
+          <span key={i} className="leading-tight">{log}</span>
+        ))}
+      </div>
+
       {processedData ? (
         <ForceGraph2D
           ref={fgRef}
