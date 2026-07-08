@@ -1,5 +1,5 @@
 // frontend/src/components/KindnessGraph.jsx
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 
 const drawShape = (ctx, x, y, r, shape) => {
@@ -29,19 +29,15 @@ const drawShape = (ctx, x, y, r, shape) => {
   }
 };
 
-// 🧮 MATH HELPER: Calculates distance from your finger tap to a straight line (the edges)
-const distToSegment = (px, py, x1, y1, x2, y2) => {
-  const A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
-  const dot = A * C + B * D;
-  const lenSq = C * C + D * D;
-  let param = -1;
-  if (lenSq !== 0) param = dot / lenSq;
-  let xx, yy;
-  if (param < 0) { xx = x1; yy = y1; }
-  else if (param > 1) { xx = x2; yy = y2; }
-  else { xx = x1 + param * C; yy = y1 + param * D; }
-  const dx = px - xx, dy = py - yy;
-  return Math.sqrt(dx * dx + dy * dy);
+// 🧮 MATH HELPER: Distance from point p to line segment a-b (used for link hit-testing)
+const distToSegment = (p, a, b) => {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projX = a.x + t * dx, projY = a.y + t * dy;
+  return Math.hypot(p.x - projX, p.y - projY);
 };
 
 export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgroundClick }) {
@@ -78,92 +74,96 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // 🛡️ BRAVE BROWSER BYPASS: 
-  // Brave scrambles Canvas pixels to block tracking, which breaks force-graph's native click detection.
-  // We use pure geometric math to calculate collisions instead, ensuring it works perfectly on all privacy browsers.
+  // 🛡️ BRAVE FIX: react-force-graph normally detects clicks by reading pixel 
+  // colors off a hidden canvas. Brave's Shields ("Block fingerprinting") 
+  // intentionally corrupts canvas getImageData results to stop tracking — 
+  // which also breaks this library's hit-testing. We bypass that entirely by 
+  // doing our own geometry-based hit test in graph coordinates!
+  const handleManualClick = useCallback((clientX, clientY) => {
+    if (!fgRef.current || !processedData) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const graphPos = fgRef.current.screen2GraphCoords(clientX - rect.left, clientY - rect.top);
+    const zoomScale = fgRef.current.zoom() || 1;
+
+    // 1. Check nodes first (match the same radius used for drawing/hitboxes)
+    let bestNode = null, bestNodeDist = Infinity;
+    processedData.nodes.forEach(n => {
+      if (typeof n.x !== 'number') return;
+      const baseRadius = n.ghost ? 6 : 14 + ((n.impactCount || 0) * 3);
+      const r = baseRadius + (15 / zoomScale); // 15px screen thumb padding converted to graph space
+      const d = Math.hypot(n.x - graphPos.x, n.y - graphPos.y);
+      if (d <= r && d < bestNodeDist) { bestNode = n; bestNodeDist = d; }
+    });
+    
+    if (bestNode) {
+      onNodeClick && onNodeClick(bestNode, { clientX, clientY });
+      return;
+    }
+
+    // 2. Check links (15 screen-px tolerance, converted into graph-space)
+    const threshold = 15 / zoomScale;
+    let bestLink = null, bestLinkDist = Infinity;
+    processedData.links.forEach(l => {
+      if (typeof l.source !== 'object' || typeof l.target !== 'object') return;
+      const d = distToSegment(graphPos, l.source, l.target);
+      if (d <= threshold && d < bestLinkDist) { bestLink = l; bestLinkDist = d; }
+    });
+    
+    if (bestLink) {
+      onLinkClick && onLinkClick(bestLink, { clientX, clientY });
+      return;
+    }
+
+    // 3. Nothing hit → background click
+    onBackgroundClick && onBackgroundClick({ clientX, clientY });
+  }, [processedData, onNodeClick, onLinkClick, onBackgroundClick]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    let startPos = null;
-    let startTime = 0;
-    let cancelled = false;
+    let startPos = null, startTime = 0, cancelled = false;
+    let ignoreNextClick = false;
+    const TAP_MAX_DISTANCE = 14;
+    const TAP_MAX_DURATION = 500;
+
+    const handleMouseClick = (e) => {
+      if (ignoreNextClick) return;
+      handleManualClick(e.clientX, e.clientY);
+    };
 
     const handleTouchStart = (e) => {
       if (e.touches.length !== 1) { cancelled = true; startPos = null; return; }
       cancelled = false;
-      const t = e.touches[0];
-      startPos = { x: t.clientX, y: t.clientY };
+      startPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       startTime = Date.now();
     };
-
-    const handleTouchMove = (e) => {
-      if (e.touches.length > 1) cancelled = true;
-    };
-
+    const handleTouchMove = (e) => { if (e.touches.length > 1) cancelled = true; };
     const handleTouchEnd = (e) => {
       if (!startPos || cancelled) { startPos = null; cancelled = false; return; }
       const t = e.changedTouches[0];
-      const dx = t.clientX - startPos.x;
-      const dy = t.clientY - startPos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dist = Math.hypot(t.clientX - startPos.x, t.clientY - startPos.y);
       const duration = Date.now() - startTime;
       startPos = null;
-
-      if (dist < 15 && duration < 500) {
-        if (!fgRef.current || !data) return;
-        
-        const graphPos = fgRef.current.screen2GraphCoords(t.clientX, t.clientY);
-        let hitNode = null;
-        let hitLink = null;
-
-        for (const n of data.nodes) {
-          const nDx = n.x - graphPos.x;
-          const nDy = n.y - graphPos.y;
-          const nodeDist = Math.sqrt(nDx * nDx + nDy * nDy);
-          const hitboxRadius = (n.ghost ? 6 : 14 + ((n.impactCount || 0) * 3)) + 15; 
-          
-          if (nodeDist <= hitboxRadius) {
-            hitNode = n;
-            break; 
-          }
-        }
-
-        if (!hitNode) {
-          for (const l of data.links) {
-            const start = l.source;
-            const end = l.target;
-            if (typeof start !== 'object' || typeof end !== 'object') continue;
-            
-            const edgeDist = distToSegment(graphPos.x, graphPos.y, start.x, start.y, end.x, end.y);
-            if (edgeDist <= 15) { 
-              hitLink = l;
-              break;
-            }
-          }
-        }
-
-        const fakeEvent = { clientX: t.clientX, clientY: t.clientY };
-        if (hitNode && onNodeClick) {
-          onNodeClick(hitNode, fakeEvent);
-        } else if (hitLink && onLinkClick) {
-          onLinkClick(hitLink, fakeEvent);
-        } else if (onBackgroundClick) {
-          onBackgroundClick(fakeEvent);
-        }
+      if (dist < TAP_MAX_DISTANCE && duration < TAP_MAX_DURATION) {
+        handleManualClick(t.clientX, t.clientY);
+        ignoreNextClick = true;
+        setTimeout(() => { ignoreNextClick = false; }, 500); // swallow any trailing ghost click
       }
     };
 
+    container.addEventListener('click', handleMouseClick);
     container.addEventListener('touchstart', handleTouchStart, { passive: true });
     container.addEventListener('touchmove', handleTouchMove, { passive: true });
     container.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
+      container.removeEventListener('click', handleMouseClick);
       container.removeEventListener('touchstart', handleTouchStart);
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [data, onNodeClick, onLinkClick, onBackgroundClick]);
+  }, [handleManualClick]);
 
   useEffect(() => {
     if (!data) return;
@@ -265,9 +265,9 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           width={dimensions.width}
           height={dimensions.height}
           graphData={processedData}
-          onNodeClick={(node, event) => onNodeClick && onNodeClick(node, event)}
-          onLinkClick={(link, event) => onLinkClick && onLinkClick(link, event)}
-          onBackgroundClick={(event) => onBackgroundClick && onBackgroundClick(event)}
+          // 🛡️ BRAVE FIX: Native pixel-based click handlers REMOVED! 
+          // We use our manual geometry event listeners attached to the container wrapper instead!
+          
           // dagMode has been REMOVED here to allow multiple independent networks to float freely!
           backgroundColor="transparent"
           
