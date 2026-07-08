@@ -340,7 +340,23 @@ function TutorialModal({ onClose }) {
 // --- NODE DETAILS & SOCIAL LINKS MODAL ---
 function NodeDetailsModal({ node, onClose }) {
   if (!node || node.ghost) return null;
-  const socials = node.socials || {};
+  
+  // FIX: Safely parse socials in case Supabase returned it as a string, ignoring empty spaces!
+  let socials = {};
+  try {
+    socials = typeof node.socials === 'string' ? JSON.parse(node.socials) : (node.socials || {});
+  } catch (e) {
+    socials = {};
+  }
+
+  // Check if at least one link actually contains text
+  const hasLinks = Boolean(
+    socials.instagram?.trim() || 
+    socials.twitter?.trim() || 
+    socials.youtube?.trim() || 
+    socials.facebook?.trim() || 
+    socials.website?.trim()
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -370,38 +386,38 @@ function NodeDetailsModal({ node, onClose }) {
           <h3 className="font-black text-sm uppercase mb-3 text-black">🌐 Connect with Helper</h3>
 
           <div className="flex flex-wrap items-center justify-center gap-2 w-full">
-            {socials.instagram && (
+            {socials.instagram?.trim() && (
               <a href={socials.instagram} target="_blank" rel="noopener noreferrer" 
                 className="bg-pink-400 hover:bg-pink-300 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
                 📸 Instagram
               </a>
             )}
-            {socials.twitter && (
+            {socials.twitter?.trim() && (
               <a href={socials.twitter} target="_blank" rel="noopener noreferrer" 
                 className="bg-cyan-300 hover:bg-cyan-200 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
                 🐦 Twitter / X
               </a>
             )}
-            {socials.youtube && (
+            {socials.youtube?.trim() && (
               <a href={socials.youtube} target="_blank" rel="noopener noreferrer" 
                 className="bg-red-400 hover:bg-red-300 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
                 🔴 YouTube
               </a>
             )}
-            {socials.facebook && (
+            {socials.facebook?.trim() && (
               <a href={socials.facebook} target="_blank" rel="noopener noreferrer" 
                 className="bg-blue-400 hover:bg-blue-300 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
                 📘 Facebook
               </a>
             )}
-            {socials.website && (
+            {socials.website?.trim() && (
               <a href={socials.website} target="_blank" rel="noopener noreferrer" 
                 className="bg-yellow-300 hover:bg-yellow-200 text-black border-2 border-black rounded-xl px-3 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
                 🌐 Website
               </a>
             )}
 
-            {!socials.instagram && !socials.twitter && !socials.youtube && !socials.facebook && !socials.website && (
+            {!hasLinks && (
               <p className="text-xs font-bold text-slate-500 italic bg-slate-100 p-3 rounded-xl border-2 border-black border-dashed w-full">
                 No social links added by this user yet.
               </p>
@@ -1472,9 +1488,18 @@ function App() {
                <div className="bg-yellow-300 border-2 border-black rounded-lg px-2 py-1 text-xs font-black uppercase text-center shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                  🏆 Rank: #{nodeMenu.node.rank}
                </div>
-               <button onClick={() => { setSelectedNode(nodeMenu.node); setNodeMenu(null); }} className="bg-cyan-300 hover:bg-cyan-200 border-2 border-black rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-transform cursor-pointer">
-                 Tap to see profile
-               </button>
+               
+               {/* SECURITY LOCK: Only logged-in users can click the profile! */}
+               {session ? (
+                 <button onClick={() => { setSelectedNode(nodeMenu.node); setNodeMenu(null); }} className="bg-cyan-300 hover:bg-cyan-200 border-2 border-black rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-transform cursor-pointer">
+                   Tap to see profile
+                 </button>
+               ) : (
+                 <button onClick={() => alert("🔒 Please sign in using the top-right button to view detailed user profiles!")} className="bg-slate-200 text-slate-500 border-2 border-slate-400 rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-not-allowed">
+                   🔒 Sign in to see profile
+                 </button>
+               )}
+
                {/* Little speech bubble arrow */}
                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white border-b-4 border-r-4 border-black rotate-45"></div>
             </div>

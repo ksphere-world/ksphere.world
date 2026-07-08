@@ -57,20 +57,22 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
   useEffect(() => {
     if (!data) return;
     
-    // Using setTimeout makes this update asynchronous, safely bypassing React's strict cascading render warnings!
-    const timer = setTimeout(() => {
-      setProcessedData(prev => {
-        const helpCount = {};
-        data.nodes.forEach(n => helpCount[n.id] = 0);
+// Using setTimeout makes this update asynchronous, safely bypassing React's strict cascading render warnings!
+      const timer = setTimeout(() => {
+        setProcessedData(prev => {
+          const helpCount = {};
+          data.nodes.forEach(n => helpCount[n.id] = 0);
+          
+          const linkPairs = new Set();
+          data.links.forEach(l => {
+          const s = typeof l.source === 'object' ? l.source.id : l.source;
+          const t = typeof l.target === 'object' ? l.target.id : l.target;
+          linkPairs.add(`${s}|${t}`);
+          
+          // FIX: Add the actual number of helps to the impact count, not just 1!
+          if (helpCount[s] !== undefined) helpCount[s] += (l.helpsCount || 1); 
+        });
         
-        const linkPairs = new Set();
-        data.links.forEach(l => {
-        const s = typeof l.source === 'object' ? l.source.id : l.source;
-        const t = typeof l.target === 'object' ? l.target.id : l.target;
-        linkPairs.add(`${s}|${t}`);
-        if (helpCount[s] !== undefined) helpCount[s] += 1;
-      });
-
       const links = data.links.map(l => {
         const s = typeof l.source === 'object' ? l.source.id : l.source;
         const t = typeof l.target === 'object' ? l.target.id : l.target;
