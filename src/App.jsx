@@ -1294,12 +1294,14 @@ function App() {
       { data: dbNodes, error: nodesError }, 
       { data: dbLinks, error: linksError },
       { data: dbNodeReacts },
-      { data: dbLinkReacts }
+      { data: dbLinkReacts },
+      { data: dbFollows } // NEW: Followers Tracker Response payload
     ] = await Promise.all([
       supabase.from('nodes').select('*'),
       supabase.from('links').select('*'),
       supabase.from('node_reactions').select('node_id, emoji'),
-      supabase.from('link_reactions').select('source_id, target_id, emoji')
+      supabase.from('link_reactions').select('source_id, target_id, emoji'),
+      supabase.from('node_follows').select('following_node_id, follower_id') // NEW: Background DB call seamlessly stacked
     ]);
 
     if (!nodesError && !linksError && dbNodes.length > 0) {
@@ -1317,6 +1319,19 @@ function App() {
           if (!aggregatedLinkReacts[key]) aggregatedLinkReacts[key] = {};
           aggregatedLinkReacts[key][r.emoji] = (aggregatedLinkReacts[key][r.emoji] || 0) + 1;
         });
+
+        // Fast In-Memory Parser building Live Profiles Sub/Fan mapping logic directly
+        const followMap = {};
+        if (dbFollows) {
+           dbFollows.forEach(f => {
+              if (!followMap[f.following_node_id]) followMap[f.following_node_id] = [];
+              followMap[f.following_node_id].push(f.follower_id);
+           });
+        }
+        
+        // Pinpoints YOU within tracking network to colorize toggles based strictly on authenticated vision layout overrides
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        const activeUserId = authSession?.user?.id;
         
         // Pre-calculate ranks for ALL users so we can show them on map clicks!
         const helpCounts = {};
@@ -1333,12 +1348,17 @@ function App() {
 
         setGlobalGraph({
           // We added user_id here so the frontend can find your node in the sea of nodes!
-          nodes: dbNodes.map(n => ({ 
-            id: n.id, shape: n.shape, type: n.type, value: n.value, 
-            socials: n.socials, is_claimed: n.is_claimed, user_id: n.user_id,
-            rank: ranks[n.id] || '-',
-            reactions: aggregatedNodeReacts[n.id] || {} // Include persistent node reactions
-          })),
+          nodes: dbNodes.map(n => {
+            const nodeFollowers = followMap[n.id] || [];
+            return {
+              id: n.id, shape: n.shape, type: n.type, value: n.value, 
+              socials: n.socials, is_claimed: n.is_claimed, user_id: n.user_id,
+              rank: ranks[n.id] || '-',
+              reactions: aggregatedNodeReacts[n.id] || {}, // Include persistent node reactions
+              followersCount: nodeFollowers.length, // Include Full Sub/Fans Global Total Data!
+              isFollowedByMe: activeUserId ? nodeFollowers.includes(activeUserId) : false // Flag telling Profile Menu App you strictly follow!
+            };
+          }),
           links: approvedLinks.map(l => ({ 
               source: l.source, 
               target: l.target, 
@@ -1511,8 +1531,16 @@ function App() {
             <div className="bg-white border-4 border-black rounded-xl p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex flex-col gap-2 min-w-[160px] relative">
                <button onClick={() => setNodeMenu(null)} className="absolute -top-3 -right-3 bg-red-400 text-black border-2 border-black rounded-full w-7 h-7 flex items-center justify-center font-black text-xs hover:scale-110 shadow-[2px_2px_0px_rgba(0,0,0,1)] z-10 cursor-pointer">✖</button>
                <div className="text-center font-black uppercase text-sm border-b-2 border-black pb-1 mb-1">{nodeMenu.node.id}</div>
-               <div className="bg-yellow-300 border-2 border-black rounded-lg px-2 py-1 text-xs font-black uppercase text-center shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-                 🏆 Rank: #{nodeMenu.node.rank}
+               {/* Advanced Dynamic Metric Badge Scaling */}
+               <div className="flex gap-2 w-full">
+                 <div className="bg-yellow-300 flex-1 border-2 border-black rounded-lg px-1.5 py-1 text-[10px] font-black uppercase text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] flex flex-col justify-center whitespace-nowrap">
+                   <span>🏆 Rank</span>
+                   <span className="text-sm">#{nodeMenu.node.rank}</span>
+                 </div>
+                 <div className="bg-purple-300 flex-1 border-2 border-black rounded-lg px-1.5 py-1 text-[10px] font-black uppercase text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] flex flex-col justify-center">
+                   <span>👥 Fans</span>
+                   <span className="text-sm">{nodeMenu.node.followersCount || 0}</span>
+                 </div>
                </div>
                
                {/* 💖 LIVE PROFILE REACTION BAR */}
@@ -1548,12 +1576,41 @@ function App() {
                </div>
 
                {session ? (
-                 <button onClick={() => { setSelectedNode(nodeMenu.node); setNodeMenu(null); }} className="bg-cyan-300 hover:bg-cyan-200 border-2 border-black rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-transform cursor-pointer">
-                   Tap to see profile
-                 </button>
+                 <div className="flex flex-col gap-1.5 mt-0.5">
+                   {/* DYNAMIC FOLLOW BUTTON - Safety feature blocks clicking/following yourself natively via map! */}
+                   {nodeMenu.node.user_id !== session?.user?.id && (
+                     <button onClick={async () => {
+                        const isFollowing = nodeMenu.node.isFollowedByMe;
+                        const newFollowCount = isFollowing ? Math.max(0, (nodeMenu.node.followersCount || 0) - 1) : (nodeMenu.node.followersCount || 0) + 1;
+                        
+                        // 1. Instantly fake App visual metrics & flip Menu memory variables safely without resetting frame/layout logic overlays cleanly
+                        setNodeMenu(prev => ({
+                           ...prev, 
+                           node: { ...prev.node, isFollowedByMe: !isFollowing, followersCount: newFollowCount } 
+                        }));
+
+                        setGlobalGraph(prev => ({
+                           nodes: prev.nodes.map(n => n.id === nodeMenu.node.id 
+                             ? { ...n, isFollowedByMe: !isFollowing, followersCount: newFollowCount } 
+                             : n),
+                           links: prev.links
+                        }));
+
+                        // 2. Transact completely automatically hitting database cleanly mapping interactions globally syncing all devices simultaneously updates locally without resetting screen geometry overlaps!
+                        await supabase.rpc('toggle_follow_node', { p_target_node: nodeMenu.node.id });
+                        fetchGlobalGraph();
+                     }} className={`w-full border-2 border-black rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-transform cursor-pointer flex items-center justify-center gap-1 ${nodeMenu.node.isFollowedByMe ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-lime-400 hover:bg-lime-300 text-black'}`}>
+                       {nodeMenu.node.isFollowedByMe ? 'Following ✅' : 'Follow ➕'}
+                     </button>
+                   )}
+
+                   <button onClick={() => { setSelectedNode(nodeMenu.node); setNodeMenu(null); }} className="w-full bg-cyan-300 hover:bg-cyan-200 border-2 border-black rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-transform cursor-pointer">
+                     Tap to see profile 🔎
+                   </button>
+                 </div>
                ) : (
-                 <button onClick={() => alert("🔒 Please sign in using the top-right button to view detailed user profiles!")} className="bg-slate-200 text-slate-500 border-2 border-slate-400 rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-not-allowed">
-                   🔒 Sign in to see profile
+                 <button onClick={() => alert("🔒 Please sign in using the top-right button to view detailed user profiles!")} className="w-full bg-slate-200 text-slate-500 border-2 border-slate-400 rounded-lg px-2 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-not-allowed">
+                   🔒 Sign in to view
                  </button>
                )}
                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white border-b-4 border-r-4 border-black rotate-45"></div>

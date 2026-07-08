@@ -101,6 +101,8 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           oldNode.type = n.type;
           oldNode.value = n.value;
           oldNode.rank = n.rank; // Safe Syncs
+          oldNode.followersCount = n.followersCount; // Explicitly locked dynamic Fan variable property!
+          oldNode.isFollowedByMe = n.isFollowedByMe; // Logic control layout constraint active variable retained accurately permanently preventing memory loop failure syncs drops 
           oldNode.is_claimed = n.is_claimed;
           oldNode.impactCount = helpCount[n.id] || 0;
           return oldNode; // Returned pure Engine Memory perfectly untouched 
