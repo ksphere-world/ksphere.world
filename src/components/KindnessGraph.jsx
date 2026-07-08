@@ -292,6 +292,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           warmupTicks={100}
           cooldownTicks={50}
           enableZoom={true}
+          enableNodeDrag={false} /* 🔥 THE MOBILE MAGIC BULLET 🔥 Disables D3 Drag-Canceling over 2-pixel finger jitters returning immediate Taps accurately globally tracking touches securely effortlessly */
           
           // 🔥 FAT HITBOXES: Optimized pure-math geometry securely completely bypasses slow Android Font-Text measurement limits saving CPUs native interaction events processing smoothly unconditionally natively instantly seamlessly dependably elegantly 
           nodePointerAreaPaint={(node, color, ctx) => {
