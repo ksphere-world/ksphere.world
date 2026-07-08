@@ -65,24 +65,17 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           
           const linkPairs = new Set();
           data.links.forEach(l => {
-          const s = typeof l.source === 'object' ? l.source.id : l.source;
-          const t = typeof l.target === 'object' ? l.target.id : l.target;
-          linkPairs.add(`${s}|${t}`);
-          
-          // FIX: Add the actual number of helps to the impact count, not just 1!
-          if (helpCount[s] !== undefined) helpCount[s] += (l.helpsCount || 1); 
-        });
-
-      const links = data.links.map(l => {
-        const s = typeof l.source === 'object' ? l.source.id : l.source;
-        const t = typeof l.target === 'object' ? l.target.id : l.target;
-        const hasReverse = linkPairs.has(`${t}|${s}`);
-        return { ...l, curvature: hasReverse ? 0.25 : 0 };
-      });
+            const s = typeof l.source === 'object' ? l.source.id : l.source;
+            const t = typeof l.target === 'object' ? l.target.id : l.target;
+            linkPairs.add(`${s}|${t}`);
+            
+            // FIX: Add the actual number of helps to the impact count, not just 1!
+            if (helpCount[s] !== undefined) helpCount[s] += (l.helpsCount || 1); 
+          });
 
       // Map out the previous coordinates safely
       const oldNodeMap = new Map();
-      const oldLinkMap = new Map(); // 🔥 WE FORGOT TO MEMORIZE ARROWS! (This caused snapping)
+      const oldLinkMap = new Map(); 
       
       if (prev && prev.nodes) {
         prev.nodes.forEach(n => oldNodeMap.set(n.id, n));
@@ -113,17 +106,18 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
         const sId = typeof l.source === 'object' ? l.source.id : l.source;
         const tId = typeof l.target === 'object' ? l.target.id : l.target;
         const oldLink = oldLinkMap.get(`${sId}|${tId}`);
+        const hasReverse = linkPairs.has(`${tId}|${sId}`); // Dynamic curve math
         
         // Reusing OLD LINK objects tells Physics Engine NOTHING CHANGED! (No shaking arrows/curves!)
         if (oldLink) {
            oldLink.reactions = l.reactions; 
            oldLink.comment = l.comment;
            oldLink.helpsCount = l.helpsCount || 1;
+           oldLink.curvature = hasReverse ? 0.25 : 0; // Curve recalculates silently when chains reverse back at each other!
            return oldLink;
         }
 
-        // Generate newly born curves cleanly natively if entirely non-existent memory map tracking hit 
-        const hasReverse = linkPairs.has(`${tId}|${sId}`);
+        // Generate newly born curves cleanly natively 
         return { ...l, curvature: hasReverse ? 0.25 : 0 };
       });
 
