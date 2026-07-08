@@ -1523,23 +1523,24 @@ function App() {
                      title={`React with ${emoji}`}
                      onClick={async () => {
                         if (!session) return alert("🔒 Sign in to react!");
-
-                        // Prevent destructive UI scatter by mutating memory object safely instead of cloning everything.
-                        const activeNode = nodeMenu.node;
-                        const currVal = ((activeNode.reactions || {})[emoji] || 0);
-                        activeNode.reactions = { ...(activeNode.reactions || {}), [emoji]: currVal + 1 };
-
+                        
+                        // 1. SAFELY fake a visual local update exclusively within App Schema bounds
                         setGlobalGraph(prev => ({
-                           nodes: prev.nodes.map(n => n.id === activeNode.id ? activeNode : n), // Perfect Reference Keep
+                           nodes: prev.nodes.map(n => n.id === nodeMenu.node.id 
+                             ? { ...n, reactions: { ...(n.reactions || {}), [emoji]: (n.reactions?.[emoji] || 0) + 1 } }
+                             : n),
                            links: prev.links
                         }));
-                        setNodeMenu(null); 
+                        setNodeMenu(null); // Instant Snap Closure UI!
                         
-                        // Sent in background secretly (No immediate hammer API syncing!)
+                        // 2. Perform DB logic (safely handles Unlike/Like toggles in DB natively)
                         await supabase.rpc('toggle_node_reaction', { 
-                          p_node: activeNode.id, 
+                          p_node: nodeMenu.node.id, 
                           p_emoji: emoji 
                         });
+                        
+                        // 3. True DB State immediately overwrites faked values silently & perfectly (resolves Double click errors!)
+                        fetchGlobalGraph();
                      }}
                      className="hover:scale-[1.3] active:scale-95 hover:-translate-y-1 transition-all cursor-pointer text-base bg-white rounded-md border border-black shadow-[1px_1px_0px_rgba(0,0,0,1)] px-1"
                    >{emoji}</button>
@@ -1586,27 +1587,31 @@ function App() {
                         
                         const menuS = typeof linkPopup.link.source === 'object' ? linkPopup.link.source.id : linkPopup.link.source;
                         const menuT = typeof linkPopup.link.target === 'object' ? linkPopup.link.target.id : linkPopup.link.target;
-                        const activeLink = linkPopup.link;
-
-                        const currVal = ((activeLink.reactions || {})[emoji] || 0);
-                        activeLink.reactions = { ...(activeLink.reactions || {}), [emoji]: currVal + 1 };
-
+                        
+                        // 1. SAFELY fake a visual local update cleanly via App Object Clone definitions only
                         setGlobalGraph(prev => ({
                            nodes: prev.nodes,
                            links: prev.links.map(l => {
                              const s = typeof l.source === 'object' ? l.source.id : l.source;
                              const t = typeof l.target === 'object' ? l.target.id : l.target;
-                             return (s === menuS && t === menuT) ? activeLink : l; 
+                             
+                             if (s === menuS && t === menuT) {
+                               return { ...l, reactions: { ...(l.reactions || {}), [emoji]: (l.reactions?.[emoji] || 0) + 1 } };
+                             }
+                             return l; 
                            })
                         }));
-                        setLinkPopup(null);
+                        setLinkPopup(null); // Fast local ui dismissal
 
-                        // Sent secretly so database fetches safely WITHOUT overlapping data states
+                        // 2. Perform DB Toggle logic on Supabase seamlessly 
                         await supabase.rpc('toggle_link_reaction', { 
                           p_source: menuS, 
                           p_target: menuT,
                           p_emoji: emoji 
                         });
+                        
+                        // 3. Resolves UI into factual DB Truth (Solves double hits + tracks removals securely avoiding Engine loss errors!) 
+                        fetchGlobalGraph();
                      }}
                      className="hover:scale-[1.3] active:scale-95 hover:-translate-y-1 transition-all cursor-pointer text-lg bg-pink-50 rounded-md border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] px-1"
                    >{emoji}</button>
