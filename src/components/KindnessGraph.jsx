@@ -439,6 +439,27 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
               ctx.fillText(value, node.x, node.y + 1);
             }
 
+            // 👑 DAILY QUEST WINNER CROWN EQUIPMENT NATIVELY MATHEMATICAL TRACKING 👑
+            if (node.glowingQuestHalo && !isGhost) {
+              ctx.save();
+              // Offset explicitly calculating Left-Hand forehead radius mathematical drop anchoring !
+              ctx.translate(node.x - (nodeRadius * 0.6), node.y - (nodeRadius * 0.9)); 
+              ctx.rotate(-0.35); // Crisp aesthetically tilted dynamic constraint
+              
+              ctx.font = `${Math.max(16, nodeRadius * 1.4)}px Arial`; // Naturally scales if users get fatter sizes!
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              
+              // Slap pure visual contrasting black backdrop tracking onto emoji to prevent clipping color burns!
+              ctx.shadowColor = 'rgba(0,0,0,0.8)';
+              ctx.shadowBlur = 6;
+              ctx.shadowOffsetX = 2;
+              ctx.shadowOffsetY = 2;
+              
+              ctx.fillText('👑', 0, 0);
+              ctx.restore();
+            }
+
             const label = node.id;
             const fontSize = isGhost ? 10 : 12;
             ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
