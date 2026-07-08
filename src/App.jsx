@@ -1290,10 +1290,34 @@ function App() {
 
   // 1. Fetch Global Graph wrapped in useCallback so it's globally available
   const fetchGlobalGraph = useCallback(async () => {
-    const { data: dbNodes, error: nodesError } = await supabase.from('nodes').select('*');
-    const { data: dbLinks, error: linksError } = await supabase.from('links').select('*');
+    const [ 
+      { data: dbNodes, error: nodesError }, 
+      { data: dbLinks, error: linksError },
+      { data: dbNodeReacts },
+      { data: dbLinkReacts }
+    ] = await Promise.all([
+      supabase.from('nodes').select('*'),
+      supabase.from('links').select('*'),
+      supabase.from('node_reactions').select('node_id, emoji'),
+      supabase.from('link_reactions').select('source_id, target_id, emoji')
+    ]);
 
     if (!nodesError && !linksError && dbNodes.length > 0) {
+        
+        // --- ASSEMBLE ALL REACTIONS LOCALLY FAST! ---
+        const aggregatedNodeReacts = {};
+        if (dbNodeReacts) dbNodeReacts.forEach(r => {
+          if (!aggregatedNodeReacts[r.node_id]) aggregatedNodeReacts[r.node_id] = {};
+          aggregatedNodeReacts[r.node_id][r.emoji] = (aggregatedNodeReacts[r.node_id][r.emoji] || 0) + 1;
+        });
+
+        const aggregatedLinkReacts = {};
+        if (dbLinkReacts) dbLinkReacts.forEach(r => {
+          const key = `${r.source_id}|${r.target_id}`;
+          if (!aggregatedLinkReacts[key]) aggregatedLinkReacts[key] = {};
+          aggregatedLinkReacts[key][r.emoji] = (aggregatedLinkReacts[key][r.emoji] || 0) + 1;
+        });
+        
         // Pre-calculate ranks for ALL users so we can show them on map clicks!
         const helpCounts = {};
         const approvedLinks = dbLinks.filter(l => l.status === 'approved' || !l.status);
@@ -1312,14 +1336,16 @@ function App() {
           nodes: dbNodes.map(n => ({ 
             id: n.id, shape: n.shape, type: n.type, value: n.value, 
             socials: n.socials, is_claimed: n.is_claimed, user_id: n.user_id,
-            rank: ranks[n.id] || '-' 
+            rank: ranks[n.id] || '-',
+            reactions: aggregatedNodeReacts[n.id] || {} // Include persistent node reactions
           })),
           links: approvedLinks.map(l => ({ 
               source: l.source, 
               target: l.target, 
               customColor: l.custom_color, 
               helpsCount: l.helps_count || 1,
-              comment: l.comment || '' // Included comments!
+              comment: l.comment || '', // Included comments!
+              reactions: aggregatedLinkReacts[`${l.source}|${l.target}`] || {} // Include persistent link reactions
             }))
         });
       } else {
@@ -1495,14 +1521,25 @@ function App() {
                    <button 
                      key={emoji}
                      title={`React with ${emoji}`}
-                     onClick={() => {
-                        // Instant Visual Injection into Local State so the map re-draws with the emoji
+                     onClick={async () => {
+                        if (!session) return alert("🔒 Sign in to react!");
+                        
+                        // 1. Optimistic Fast Local UI Update
                         setGlobalGraph(prev => ({
                            ...prev,
                            nodes: prev.nodes.map(n => n.id === nodeMenu.node.id ? 
                              { ...n, reactions: { ...(n.reactions || {}), [emoji]: ((n.reactions || {})[emoji] || 0) + 1 } } : n)
                         }));
-                        setNodeMenu(null);
+                        setNodeMenu(null); // Close the popup for snap experience
+                        
+                        // 2. Perform True DB update via Supabase Function we made!
+                        await supabase.rpc('toggle_node_reaction', { 
+                          p_node: nodeMenu.node.id, 
+                          p_emoji: emoji 
+                        });
+                        
+                        // 3. Ensure truthy state resolves in the background invisibly!
+                        fetchGlobalGraph();
                      }}
                      className="hover:scale-[1.3] active:scale-95 hover:-translate-y-1 transition-all cursor-pointer text-base bg-white rounded-md border border-black shadow-[1px_1px_0px_rgba(0,0,0,1)] px-1"
                    >{emoji}</button>
@@ -1544,14 +1581,18 @@ function App() {
                    <button 
                      key={emoji}
                      title={`React with ${emoji}`}
-                     onClick={() => {
+                     onClick={async () => {
+                        if (!session) return alert("🔒 Sign in to react!");
+                        
+                        const menuS = typeof linkPopup.link.source === 'object' ? linkPopup.link.source.id : linkPopup.link.source;
+                        const menuT = typeof linkPopup.link.target === 'object' ? linkPopup.link.target.id : linkPopup.link.target;
+
+                        // 1. Instantly visual feedback local to browser
                         setGlobalGraph(prev => ({
                            ...prev,
                            links: prev.links.map(l => {
                              const s = typeof l.source === 'object' ? l.source.id : l.source;
                              const t = typeof l.target === 'object' ? l.target.id : l.target;
-                             const menuS = typeof linkPopup.link.source === 'object' ? linkPopup.link.source.id : linkPopup.link.source;
-                             const menuT = typeof linkPopup.link.target === 'object' ? linkPopup.link.target.id : linkPopup.link.target;
                              
                              if (s === menuS && t === menuT) {
                                return { ...l, reactions: { ...(l.reactions || {}), [emoji]: ((l.reactions || {})[emoji] || 0) + 1 } };
@@ -1559,7 +1600,17 @@ function App() {
                              return l;
                            })
                         }));
-                        setLinkPopup(null);
+                        setLinkPopup(null); // Close map menu
+
+                        // 2. Perform backend secure DB call 
+                        await supabase.rpc('toggle_link_reaction', { 
+                          p_source: menuS, 
+                          p_target: menuT,
+                          p_emoji: emoji 
+                        });
+                        
+                        // 3. Invisible resync for perfection
+                        fetchGlobalGraph();
                      }}
                      className="hover:scale-[1.3] active:scale-95 hover:-translate-y-1 transition-all cursor-pointer text-lg bg-pink-50 rounded-md border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] px-1"
                    >{emoji}</button>
