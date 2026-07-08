@@ -189,6 +189,13 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           linkCurvature={(link) => link.curvature || 0}
           linkLineDash={(link) => link.arrowStyle === 'dashed' ? [6, 6] : null} // NATIVELY PUSHES GLOWING/DASHED PARTICLES OVER ARROW PHYSICS SMOOTHLY
           
+          // 🔥 MAGIC CONTINUOUS ANIMATION LOOP WAKER 🔥
+          // Forcing 1 tracking particle permanently holds the Canvas drawing 60fps perpetually unlocking perfect uninterrupted Cosmetic Renders!
+          linkDirectionalParticles={1}
+          linkDirectionalParticleWidth={(link) => link.arrowStyle === 'electric' ? 4 : 0.01} 
+          linkDirectionalParticleColor={(link) => link.arrowStyle === 'electric' ? '#ffffff' : 'rgba(0,0,0,0)'}
+          linkDirectionalParticleSpeed={0.015}
+
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx) => {
             const isHovered = link === hoverLink;
