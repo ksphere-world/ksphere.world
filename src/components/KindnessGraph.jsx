@@ -88,36 +88,44 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
         });
       }
 
-      // 3. PREVENT SCATTER! Apply previous physics state (x,y,vx,vy)
+      // 3. SECURE THE PHYSICS POINTERS! 
+      // Do NOT create new memory objects. We will surgically reuse the exact engine memory and just inject updated values!
       const nodes = data.nodes.map(n => {
         const oldNode = oldNodeMap.get(n.id);
-        const newNode = { ...n, impactCount: helpCount[n.id] || 0 };
         
         if (oldNode) {
-          if (oldNode.x !== undefined) newNode.x = oldNode.x;
-          if (oldNode.y !== undefined) newNode.y = oldNode.y;
-          if (oldNode.vx !== undefined) newNode.vx = oldNode.vx;
-          if (oldNode.vy !== undefined) newNode.vy = oldNode.vy;
+          // Keep identical invisible D3 coordinates internally, but rewrite visual properties to the existing object.
+          oldNode.reactions = n.reactions;
+          oldNode.socials = n.socials;
+          oldNode.shape = n.shape;
+          oldNode.type = n.type;
+          oldNode.value = n.value;
+          oldNode.rank = n.rank; // Safe Syncs
+          oldNode.is_claimed = n.is_claimed;
+          oldNode.impactCount = helpCount[n.id] || 0;
+          return oldNode; // Returned pure Engine Memory perfectly untouched 
         }
-        return newNode;
+        
+        // The Engine generates physics states only if a strictly brand new one spawned right now 
+        return { ...n, impactCount: helpCount[n.id] || 0 };
       });
 
       const links = data.links.map(l => {
         const sId = typeof l.source === 'object' ? l.source.id : l.source;
         const tId = typeof l.target === 'object' ? l.target.id : l.target;
         const oldLink = oldLinkMap.get(`${sId}|${tId}`);
-        const hasReverse = linkPairs.has(`${tId}|${sId}`); // Dynamic curve math
+        const hasReverse = linkPairs.has(`${tId}|${sId}`);
         
-        // Reusing OLD LINK objects tells Physics Engine NOTHING CHANGED! (No shaking arrows/curves!)
+        // If engine memory is there safely swap cosmetic fields flawlessly
         if (oldLink) {
            oldLink.reactions = l.reactions; 
            oldLink.comment = l.comment;
            oldLink.helpsCount = l.helpsCount || 1;
-           oldLink.curvature = hasReverse ? 0.25 : 0; // Curve recalculates silently when chains reverse back at each other!
+           oldLink.curvature = hasReverse ? 0.25 : 0; 
            return oldLink;
         }
 
-        // Generate newly born curves cleanly natively 
+        // Safe Engine Entry Memory Initializer Hook Phase Drop for completely unheard nodes spawning
         return { ...l, curvature: hasReverse ? 0.25 : 0 };
       });
 
