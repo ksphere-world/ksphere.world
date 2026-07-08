@@ -50,13 +50,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
   const [processedData, setProcessedData] = useState(null); 
   const [hoverNode, setHoverNode] = useState(null); 
-  const [hoverLink, setHoverLink] = useState(null); 
-
-  // 🐞 DEBUG SYSTEM: State to hold the live math logs
-  const [debugLogs, setDebugLogs] = useState([]);
-  const logDebug = (msg) => {
-    setDebugLogs(prev => [`[${new Date().toLocaleTimeString().split(' ')[0]}] ${msg}`, ...prev].slice(0, 6)); // Keeps last 6 logs
-  };
+  const [hoverLink, setHoverLink] = useState(null);
 
   // NEW: Listens for the Refresh button click to re-warm physics and zoom perfectly to fit the map
   useEffect(() => {
@@ -84,8 +78,9 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // 📱 THE PURE MATH BYPASS: We do not trust the browser or canvas to detect clicks anymore.
-  // We manually convert screen taps to graph coordinates and calculate distance using Pythagoras!
+  // 🛡️ BRAVE BROWSER BYPASS: 
+  // Brave scrambles Canvas pixels to block tracking, which breaks force-graph's native click detection.
+  // We use pure geometric math to calculate collisions instead, ensuring it works perfectly on all privacy browsers.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -115,32 +110,25 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
       const duration = Date.now() - startTime;
       startPos = null;
 
-      // If they didn't drag their finger far, it's a Tap!
       if (dist < 15 && duration < 500) {
         if (!fgRef.current || !data) return;
         
-        // 1. Convert Screen Tap to internal Graph Canvas Coordinates
         const graphPos = fgRef.current.screen2GraphCoords(t.clientX, t.clientY);
-        logDebug(`👆 Screen Tap: (${t.clientX|0}, ${t.clientY|0}) ➔ Graph mapped: (${graphPos.x|0}, ${graphPos.y|0})`);
-
         let hitNode = null;
         let hitLink = null;
 
-        // 2. COLLISION MATH: Check all nodes
         for (const n of data.nodes) {
           const nDx = n.x - graphPos.x;
           const nDy = n.y - graphPos.y;
           const nodeDist = Math.sqrt(nDx * nDx + nDy * nDy);
-          const hitboxRadius = (n.ghost ? 6 : 14 + ((n.impactCount || 0) * 3)) + 15; // 15px fat finger padding
+          const hitboxRadius = (n.ghost ? 6 : 14 + ((n.impactCount || 0) * 3)) + 15; 
           
           if (nodeDist <= hitboxRadius) {
             hitNode = n;
-            logDebug(`🎯 HIT NODE: ${n.id} (Distance: ${nodeDist|0}px)`);
-            break; // We found the hit, stop looping!
+            break; 
           }
         }
 
-        // 3. COLLISION MATH: Check all edges (Only if we missed nodes)
         if (!hitNode) {
           for (const l of data.links) {
             const start = l.source;
@@ -148,25 +136,20 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             if (typeof start !== 'object' || typeof end !== 'object') continue;
             
             const edgeDist = distToSegment(graphPos.x, graphPos.y, start.x, start.y, end.x, end.y);
-            if (edgeDist <= 15) { // 15px fat finger padding for thin lines
+            if (edgeDist <= 15) { 
               hitLink = l;
-              logDebug(`🔗 HIT LINK: ${start.id}➔${end.id} (Distance: ${edgeDist|0}px)`);
               break;
             }
           }
         }
 
-        // 4. FORCE EXECUTION: Bypass canvas completely and trigger the UI directly!
         const fakeEvent = { clientX: t.clientX, clientY: t.clientY };
         if (hitNode && onNodeClick) {
-          logDebug(`⚡ FIRING NODE UI MENU FOR: ${hitNode.id}`);
           onNodeClick(hitNode, fakeEvent);
         } else if (hitLink && onLinkClick) {
-          logDebug(`⚡ FIRING EDGE UI MENU`);
           onLinkClick(hitLink, fakeEvent);
-        } else {
-          logDebug(`❌ HIT BACKGROUND: Missed all hitboxes.`);
-          if (onBackgroundClick) onBackgroundClick(fakeEvent);
+        } else if (onBackgroundClick) {
+          onBackgroundClick(fakeEvent);
         }
       }
     };
@@ -276,15 +259,6 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
 
   return (
     <div ref={containerRef} className="w-full h-full rounded-3xl flex items-center justify-center bg-transparent relative">
-      
-      {/* 🐞 LIVE DEBUG PANEL - Allows us to literally read the engine's math on mobile! */}
-      <div className="absolute top-2 left-2 z-50 bg-black/80 border-2 border-red-500 rounded-lg p-2 text-green-400 font-mono text-[9px] sm:text-xs pointer-events-none flex flex-col gap-1 w-[80%] max-w-[300px]">
-        <div className="font-bold text-white border-b border-red-500 mb-1">🐞 PHYSICS MATH DEBUGGER</div>
-        {debugLogs.length === 0 ? <span>Waiting for taps...</span> : debugLogs.map((log, i) => (
-          <span key={i} className="leading-tight">{log}</span>
-        ))}
-      </div>
-
       {processedData ? (
         <ForceGraph2D
           ref={fgRef}
