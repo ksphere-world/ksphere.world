@@ -1326,25 +1326,29 @@ function App() {
   ];
 
   // --- MAP INTERACTION LOGIC (HIDES UI ON MOBILE PANNING) ---
-  const [isMapInteracting, setIsMapInteracting] = useState(false);
   const interactTimeout = useRef(null);
 
+  // 🔥 THE RE-RENDER FIX: We use direct DOM manipulation instead of React State! 
+  // Updating React State mid-touch forces a Canvas re-render, instantly killing the tap event!
   const handleMapInteractionStart = () => {
-    if (window.innerWidth >= 768) return; // Ignore on desktop/big iPads
+    if (window.innerWidth >= 768) return;
     if (interactTimeout.current) clearTimeout(interactTimeout.current);
-    // SAFELY DELAYS DISAPPEARING BY A MICROSCOPIC FRACTION! 
-    // This allows rapid Mobile "Taps" (takes ~60ms-90ms) to conclude beautifully inside D3.js untouched natively before altering HTML boundaries mapping structures disrupting touch listeners.  
     interactTimeout.current = setTimeout(() => {
-      setIsMapInteracting(true);
+      const topUI = document.getElementById('ui-top');
+      const botUI = document.getElementById('ui-bottom');
+      if (topUI) { topUI.style.transform = 'translateY(-5rem)'; topUI.style.opacity = '0'; }
+      if (botUI) { botUI.style.transform = 'translateY(10rem)'; botUI.style.opacity = '0'; botUI.style.pointerEvents = 'none'; }
     }, 150); 
   };
 
   const handleMapInteractionEnd = () => {
     if (window.innerWidth >= 768) return;
     if (interactTimeout.current) clearTimeout(interactTimeout.current);
-    // UI swoops back seamlessly gracefully 
     interactTimeout.current = setTimeout(() => {
-      setIsMapInteracting(false);
+      const topUI = document.getElementById('ui-top');
+      const botUI = document.getElementById('ui-bottom');
+      if (topUI) { topUI.style.transform = 'translateY(0)'; topUI.style.opacity = '1'; }
+      if (botUI) { botUI.style.transform = 'translateY(0)'; botUI.style.opacity = '1'; botUI.style.pointerEvents = 'auto'; }
     }, 800); 
   };
 
@@ -1978,7 +1982,7 @@ function App() {
                   
                   {/* TOP LEFT: LIVE BADGE & REFRESH BUTTON */}
                   {/* Disabled pointer blocking dynamically, letting interactive boundaries control click propagation directly */}
-                  <div className={`flex flex-col items-start gap-2 sm:gap-3 pointer-events-none select-none transition-all duration-300 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? '-translate-y-20 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                  <div id="ui-top" className="flex flex-col items-start gap-2 sm:gap-3 pointer-events-none select-none transition-all duration-300 ease-in-out md:translate-y-0 md:opacity-100">
                     
                     {/* Elements function structurally like mirror-glass so users scroll freely hitting map limits natively! */}
                     <div className="bg-white border-2 sm:border-4 border-black px-2 py-1 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl shadow-[2px_2px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] font-black text-[9px] sm:text-sm flex items-center gap-1.5 sm:gap-2 transform -rotate-2 w-max pointer-events-none">
@@ -2017,7 +2021,7 @@ function App() {
                   </div>
 
                   {/* BOTTOM SECTION: ALL ON ONE ROW (flex-row) */}
-                  <div className={`flex flex-row justify-between items-end gap-2 sm:gap-6 pointer-events-none w-full transition-all duration-300 ease-in-out md:translate-y-0 md:opacity-100 ${isMapInteracting ? 'translate-y-40 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                  <div id="ui-bottom" className="flex flex-row justify-between items-end gap-2 sm:gap-6 pointer-events-none w-full transition-all duration-300 ease-in-out md:translate-y-0 md:opacity-100">
                     
                     {/* BOTTOM LEFT: USER INFO */}
                     <div className="flex flex-col items-start gap-1.5 sm:gap-3 w-auto pointer-events-none select-none">

@@ -292,8 +292,18 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           warmupTicks={100}
           cooldownTicks={50}
           enableZoom={true}
-          enableNodeDrag={false} /* 🔥 THE JELLY FINGER FIX 🔥 With massive hitboxes, if this is true, rolling your thumb 1 pixel cancels the click and starts a drag. Setting to false forces pure clicks! */
+          enableNodeDrag={true} // Must be true so we can catch sloppy thumbs below!
           
+          // 🔥 THE SLOPPY THUMB HACK 🔥 
+          // On mobile, if a fat thumb squishes by 1 pixel, D3 reads it as a "Drag" and cancels the click.
+          // By catching the end of a drag on mobile, we can artificially force the click event to fire!
+          onNodeDragEnd={(node) => {
+            if (window.innerWidth < 768 && onNodeClick) {
+               // Fire the click menu dead-center of the screen safely!
+               onNodeClick(node, { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
+            }
+          }}
+
           // 🔥 FAT-FINGER HITBOXES: We draw an invisible circle over the node, AND an invisible massive rectangle over the text label!
           nodePointerAreaPaint={(node, color, ctx) => {
             const isGhost = node.ghost;
@@ -319,12 +329,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
 
               ctx.beginPath();
               // Giant rectangle covering the label with an extra 10px padding for sloppy thumbs
-              ctx.rect(
-                (node.x - badgeWidth / 2) - 10, 
-                badgeY - 5, 
-                badgeWidth + 20, 
-                badgeHeight + 20
-              );
+              ctx.rect((node.x - badgeWidth / 2) - 10, badgeY - 5, badgeWidth + 20, badgeHeight + 20);
               ctx.fill();
             }
           }}
@@ -336,14 +341,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             const shape = node.shape || 'circle';
             const type = node.type || 'color'; 
             const value = node.value || '#10b981'; 
-            const eff = node.cosmetics?.effect || 'none'; // GRABS K-SHOP AURA LAYER INSTANTLY GLOBALLY OVER OVERRIDES
-
-            // 🔥 DEBUG VISUAL: DRAW NODE HITBOX IN RED 🔥
-            const thumbBuffer = 2; // Matches your pointerArea settings
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.4)'; // Translucent red
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeRadius + thumbBuffer, 0, 2 * Math.PI, false);
-            ctx.fill();
+            const eff = node.cosmetics?.effect || 'none';
 
             ctx.save();
             
