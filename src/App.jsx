@@ -1349,8 +1349,8 @@ function App() {
     { id: 'diamond', label: 'Diamond', icon: '💎', price: 250 }
   ];
   const SHOP_SHAPES = [
-    { id: 'circle', label: 'Circle', icon: '🟡' }, { id: 'square', label: 'Square', icon: '🔲' }, 
-    { id: 'hexagon', label: 'Tech Hex', icon: '⬢' }, { id: 'star', label: 'Star', icon: '⭐' }
+    { id: 'circle', label: 'Circle', icon: '🟡', price: 0 }, { id: 'square', label: 'Square', icon: '🔲', price: 0 }, 
+    { id: 'hexagon', label: 'Tech Hex', icon: '⬢', price: 50 }, { id: 'star', label: 'Star', icon: '⭐', price: 100 }
   ];
   const SHOP_ARROWS = [
     { id: 'classic', label: 'Standard', icon: '➡️', price: 0 }, 
@@ -1360,6 +1360,28 @@ function App() {
     { id: 'dna', label: 'DNA Helix', icon: '🧬', price: 200 },
     { id: 'footprints', label: 'Paws', icon: '🐾', price: 200 }
   ];
+
+  // Helper to render standard Store Item Buttons beautifully
+  const renderShopButton = (item, categoryStr, currentEquippedId) => {
+    const isOwned = !item.price || item.price === 0 || (myPrimaryNode?.unlockedCosmetics || []).includes(item.id);
+    const isEquipped = currentEquippedId === item.id || (!currentEquippedId && !item.id);
+    
+    return (
+      <button key={item.id || item.label} onClick={() => handleShopItemClick(item, categoryStr, currentEquippedId)} 
+        className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${isEquipped ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+        <span className="text-3xl mb-1">{item.icon}</span>
+        <span className="text-[9px] uppercase font-black mb-2 text-center leading-tight h-6 flex items-center">{item.label}</span>
+        
+        {!isOwned ? (
+           <span className="bg-yellow-300 border-2 border-black rounded-lg px-2 py-0.5 text-[10px] font-black shadow-[1px_1px_0px_rgba(0,0,0,1)]">🪙 {item.price}</span>
+        ) : isEquipped ? (
+           <span className="bg-lime-400 border-2 border-black rounded-lg px-2 py-0.5 text-[9px] font-black uppercase shadow-[1px_1px_0px_rgba(0,0,0,1)]">Equipped</span>
+        ) : (
+           <span className="bg-slate-200 border-2 border-black rounded-lg px-2 py-0.5 text-[9px] font-black uppercase text-slate-600 shadow-[1px_1px_0px_rgba(0,0,0,1)]">Equip</span>
+        )}
+      </button>
+    );
+  };
 
   // --- MAP INTERACTION LOGIC (HIDES UI ON MOBILE PANNING) ---
   const interactTimeout = useRef(null);
@@ -1485,7 +1507,8 @@ function App() {
               mapTheme: cosmeticsPayload.mapTheme || 'classic', // 🗺️ Inject Theme Memory
               frame: cosmeticsPayload.frame || 'none', // 🖼️ Inject Frame Memory
               verified: cosmeticsPayload.verified || false, // 💎 Inject Verification Memory
-              coins: n.karma_coins || 300, // 💰 Inject Fake Coin Balance for now!
+              coins: n.karma_coins || 100, // 💰 Real Coin Balance!
+              unlockedCosmetics: n.unlocked_cosmetics || [], // 🔓 Inventory Data
               cosmetics: cosmeticsPayload
             };
           }),
@@ -1650,6 +1673,64 @@ function App() {
   const handleManualRefresh = () => {
     fetchGlobalGraph();
     window.dispatchEvent(new CustomEvent('recenter-graph')); // Tells the map to animate & recenter
+  };
+
+  // 🛒 UNIVERSAL K-SHOP PURCHASING & EQUIPPING ENGINE
+  const handleShopItemClick = async (item, categoryStr, currentEquipped) => {
+    const isOwned = !item.price || item.price === 0 || (myPrimaryNode?.unlockedCosmetics || []).includes(item.id);
+
+    if (isOwned) {
+      if (currentEquipped === item.id) return; // Already equipped
+      try { playSound('pop'); } catch (error) { console.warn("Audio skipped", error); }
+
+      // Equip: Update local visual state instantly!
+      setGlobalGraph(prev => ({
+        nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { 
+          ...n, shape: categoryStr === 'shape' ? item.id : n.shape, cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id } 
+        } : n),
+        links: categoryStr === 'arrow' 
+          ? prev.links.map(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id ? { ...l, arrowStyle: item.id } : l) 
+          : prev.links
+      }));
+
+      const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+      await supabase.rpc('equip_cosmetics', { 
+        p_node: myPrimaryNode.id, p_shape: categoryStr === 'shape' ? item.id : n?.shape, p_effect: categoryStr === 'effect' ? item.id : n?.cosmetics?.effect, 
+        p_arrow: categoryStr === 'arrow' ? item.id : n?.cosmetics?.arrow, p_title: categoryStr === 'title' ? item.id : n?.cosmetics?.title, 
+        p_map_theme: categoryStr === 'mapTheme' ? item.id : n?.cosmetics?.mapTheme, p_frame: categoryStr === 'frame' ? item.id : n?.cosmetics?.frame, p_verified: n?.cosmetics?.verified 
+      });
+    } else {
+      // Buy Mode
+      if ((myPrimaryNode?.coins || 0) < item.price) {
+        alert(`🔒 Not enough Karma Coins! You need ${item.price} 🪙 to unlock this item. Keep logging good deeds!`);
+        return;
+      }
+      if (!window.confirm(`Unlock "${item.label}" for ${item.price} 🪙?`)) return;
+
+      try { playSound('buy'); } catch (error) { console.warn("Audio skipped", error); }
+
+      // Purchase: Deduct coins, add to inventory, AND auto-equip instantly locally!
+      setGlobalGraph(prev => ({
+        nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { 
+          ...n, coins: n.coins - item.price, unlockedCosmetics: [...(n.unlockedCosmetics || []), item.id],
+          shape: categoryStr === 'shape' ? item.id : n.shape, cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id }
+        } : n),
+        links: categoryStr === 'arrow' 
+          ? prev.links.map(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id ? { ...l, arrowStyle: item.id } : l) 
+          : prev.links
+      }));
+
+      // Server Transaction
+      const { data: success } = await supabase.rpc('buy_cosmetic', { p_node: myPrimaryNode.id, p_item_id: item.id, p_price: item.price });
+      if (success) {
+        const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+        await supabase.rpc('equip_cosmetics', { 
+          p_node: myPrimaryNode.id, p_shape: categoryStr === 'shape' ? item.id : n?.shape, p_effect: categoryStr === 'effect' ? item.id : n?.cosmetics?.effect, 
+          p_arrow: categoryStr === 'arrow' ? item.id : n?.cosmetics?.arrow, p_title: categoryStr === 'title' ? item.id : n?.cosmetics?.title, 
+          p_map_theme: categoryStr === 'mapTheme' ? item.id : n?.cosmetics?.mapTheme, p_frame: categoryStr === 'frame' ? item.id : n?.cosmetics?.frame, p_verified: n?.cosmetics?.verified 
+        });
+      }
+    }
   };
 
   // 🔥 STABLE CLICK HANDLERS: Prevents ForceGraph from unbinding touch events mid-tap when UI state changes!
@@ -1872,10 +1953,10 @@ function App() {
              <div className="bg-white border-4 border-black p-5 sm:p-7 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] transform w-full max-w-xl text-center relative animate-in slide-in-from-bottom max-h-[90vh] overflow-y-auto">
                 <button onClick={() => setShowShopModal(false)} className="absolute -top-3 -right-3 bg-red-500 text-white border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
                 
-                <div className="inline-block bg-yellow-400 px-6 py-2 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2 mb-4 relative">
+ <div className="inline-block bg-yellow-400 px-8 py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2 mb-4 relative">
                   <h2 className="text-black font-black uppercase text-xl sm:text-2xl tracking-widest leading-none drop-shadow-md">🛒 K-Shop </h2>
-                  <div className="absolute -top-3 -left-3 bg-white border-2 border-black rounded-full px-3 py-1 text-xs font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] transform rotate-6">
-                    <span className="animate-pulse text-pink-600">FREE MODE</span>
+                  <div className="absolute -top-4 -right-4 bg-white border-4 border-black rounded-full px-4 py-1.5 text-sm sm:text-base font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] transform rotate-6 flex items-center gap-1.5">
+                    🪙 <span className="text-lime-600 font-black">{myPrimaryNode?.coins || 0}</span>
                   </div>
                 </div>
 
@@ -1893,7 +1974,7 @@ function App() {
                       <button 
                          onClick={async () => {
                              const isVerif = !(myPrimaryNode?.cosmetics?.verified);
-                             try { playSound('buy'); } catch(error) { console.warn("Audio skipped", error); }
+                             try { playSound('pop'); } catch (error) { console.warn("Audio skipped", error); }
                              setGlobalGraph(prev => ({
                                  ...prev, 
                                  nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, verified: isVerif, cosmetics: { ...(n.cosmetics || {}), verified: isVerif } } : n)
@@ -1914,106 +1995,37 @@ function App() {
                 {/* 1. MAP THEMES */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-blue-200 p-2 rounded tracking-widest text-xs">🗺️ Map Themes</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_THEMES.map(item => (
-                    <button key={item.id} onClick={async () => {
-                         // Bulletproof React State Update
-                         setGlobalGraph(prev => ({
-                           ...prev, 
-                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, mapTheme: item.id, cosmetics: { ...(n.cosmetics || {}), mapTheme: item.id } } : n)
-                         }));
-                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.title, p_frame: n?.cosmetics?.frame, p_map_theme: item.id }); 
-                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.cosmetics?.mapTheme || 'classic') === item.id ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
-                    </button>
-                  ))}
+                  {SHOP_THEMES.map(item => renderShopButton(item, 'mapTheme', myPrimaryNode?.cosmetics?.mapTheme || 'classic'))}
                 </div>
 
                 {/* 2. TITLES */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-green-200 p-2 rounded tracking-widest text-xs">🏷️ Equippable Titles</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5 mt-3 flex-wrap">
-                  {SHOP_TITLES.map(item => (
-                    <button key={item.label} onClick={async () => {
-                         setGlobalGraph(prev => ({
-                           ...prev, 
-                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, title: item.id, cosmetics: { ...(n.cosmetics || {}), title: item.id } } : n)
-                         }));
-                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame, p_title: item.id }); 
-                    }} className={`flex flex-col items-center p-2 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.title === item.id || (!myPrimaryNode?.cosmetics?.title && !item.id) ? 'border-green-500 bg-green-100 ring-2 ring-green-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-2xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5 mt-3">
+                  {SHOP_TITLES.map(item => renderShopButton(item, 'title', myPrimaryNode?.cosmetics?.title))}
                 </div>
 
                 {/* 3. FRAMES */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-emerald-200 p-2 rounded tracking-widest text-xs">🖼️ Node Frames</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_FRAMES.map(item => (
-                    <button key={item.id} onClick={async () => {
-                         setGlobalGraph(prev => ({
-                           ...prev, 
-                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, cosmetics: { ...(n.cosmetics || {}), frame: item.id } } : n)
-                         }));
-                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: item.id }); 
-                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.cosmetics?.frame || 'none') === item.id ? 'border-emerald-500 bg-emerald-100 ring-2 ring-emerald-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
-                    </button>
-                  ))}
+                  {SHOP_FRAMES.map(item => renderShopButton(item, 'frame', myPrimaryNode?.cosmetics?.frame || 'none'))}
                 </div>
 
                 {/* 4. AURAS */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-violet-200 p-2 rounded tracking-widest text-xs">✨ Aura Effects</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_EFFECTS.map(item => (
-                    <button key={item.id} onClick={async () => {
-                         setGlobalGraph(prev => ({
-                           ...prev, 
-                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, cosmetics: { ...(n.cosmetics || {}), effect: item.id } } : n)
-                         }));
-                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_arrow: n?.cosmetics?.arrow, p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame, p_effect: item.id }); 
-                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.cosmetics?.effect || 'none') === item.id ? 'border-pink-500 bg-pink-100 ring-2 ring-pink-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
-                    </button>
-                  ))}
+                  {SHOP_EFFECTS.map(item => renderShopButton(item, 'effect', myPrimaryNode?.cosmetics?.effect || 'none'))}
                 </div>
 
-                {/* 4.5 SHAPES (Added back to clear unused variable warning!) */}
+                {/* 4.5 SHAPES */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-cyan-200 p-2 rounded tracking-widest text-xs">🟢 Map Tokens (Shapes)</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_SHAPES.map(item => (
-                    <button key={item.id} onClick={async () => {
-                         try { playSound('buy'); } catch(err) { console.warn("Audio skipped", err); }
-                         setGlobalGraph(prev => ({
-                           ...prev, 
-                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, shape: item.id } : n)
-                         }));
-                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: item.id, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame }); 
-                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.shape || 'circle') === item.id ? 'border-cyan-500 bg-cyan-100 ring-2 ring-cyan-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
-                    </button>
-                  ))}
+                  {SHOP_SHAPES.map(item => renderShopButton(item, 'shape', myPrimaryNode?.shape || 'circle'))}
                 </div>
 
                 {/* 5. BEAMS */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-orange-200 p-2 rounded tracking-widest text-xs">🚀 Connecting Beams</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2 mt-3">
-                  {SHOP_ARROWS.map(item => (
-                    <button key={item.id} onClick={async () => {
-                         try { playSound('buy'); } catch(error) { console.warn("Audio skipped", error); }
-                         setGlobalGraph(prev => ({
-                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, cosmetics: { ...(n.cosmetics || {}), arrow: item.id } } : n),
-                           links: prev.links.map(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id ? { ...l, arrowStyle: item.id } : l)
-                         }));
-                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame, p_arrow: item.id }); 
-                    }} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.cosmetics?.arrow || 'classic') === item.id ? 'border-orange-500 bg-orange-100 ring-2 ring-orange-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-2xl">{item.icon}</span><span className="text-[9px] mt-1 uppercase font-black">{item.label}</span>
-                    </button>
-                  ))}
+                  {SHOP_ARROWS.map(item => renderShopButton(item, 'arrow', myPrimaryNode?.cosmetics?.arrow || 'classic'))}
                 </div>
 
              </div>
