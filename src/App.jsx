@@ -80,18 +80,16 @@ const mockFallbackTree = {
   ],
   links: []
 };
-// --- SETTINGS MODAL ---
 function SettingsModal({ session, onClose }) {
+  const [activeTab, setActiveTab] = useState('profile'); // Gamified Tabs!
   const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
   const [avatarUrl, setAvatarUrl] = useState(session?.user?.user_metadata?.avatar_url || '');
   
-  // K-Tag Modification State
   const [kTag, setKTag] = useState('');
   const [oldKTag, setOldKTag] = useState('');
   const [isKtagLocked, setIsKtagLocked] = useState(false);
   const [lockDaysLeft, setLockDaysLeft] = useState(0);
 
-  // Social Links State
   const initialSocials = session?.user?.user_metadata?.socials || {};
   const [instagram, setInstagram] = useState(initialSocials.instagram || '');
   const [twitter, setTwitter] = useState(initialSocials.twitter || '');
@@ -103,28 +101,16 @@ function SettingsModal({ session, onClose }) {
   const [isUploading, setIsUploading] = useState(false);
   const [msg, setMsg] = useState('');
 
-  // Fetch current node and backend timer on mount
   useEffect(() => {
     const fetchNode = async () => {
       if (!session?.user?.id) return;
-      const { data } = await supabase.from('nodes')
-        .select('id, last_ktag_change')
-        .eq('user_id', session.user.id)
-        .eq('is_claimed', true)
-        .limit(1);
-        
+      const { data } = await supabase.from('nodes').select('id, last_ktag_change').eq('user_id', session.user.id).eq('is_claimed', true).limit(1);
       if (data && data.length > 0) {
-        setKTag(data[0].id);
-        setOldKTag(data[0].id);
-        
-        // Read actual database timer!
+        setKTag(data[0].id); setOldKTag(data[0].id);
         const lastChange = data[0].last_ktag_change;
         if (lastChange) {
           const daysSince = (Date.now() - new Date(lastChange).getTime()) / (1000 * 60 * 60 * 24);
-          if (daysSince < 7) {
-            setIsKtagLocked(true);
-            setLockDaysLeft(Math.ceil(7 - daysSince));
-          }
+          if (daysSince < 7) { setIsKtagLocked(true); setLockDaysLeft(Math.ceil(7 - daysSince)); }
         }
       }
     };
@@ -135,186 +121,110 @@ function SettingsModal({ session, onClose }) {
     try {
       const file = event.target.files?.[0];
       if (!file) return;
-      setIsUploading(true);
-      setMsg('');
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session?.user?.id || 'user'}-${Date.now()}.${fileExt}`;
+      setIsUploading(true); setMsg('');
+      const fileName = `${session?.user?.id || 'user'}-${Date.now()}.${file.name.split('.').pop()}`;
       const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      if (data?.publicUrl) {
-        setAvatarUrl(data.publicUrl);
-        setMsg('✅ Image uploaded successfully!');
-      }
-    } catch (error) {
-      setMsg(`⚠️ Upload failed: ${error.message}`);
-    } finally {
-      setIsUploading(false);
-    }
+      if (data?.publicUrl) { setAvatarUrl(data.publicUrl); setMsg('✅ Image uploaded!'); }
+    } catch (error) { setMsg(`⚠️ Upload failed: ${error.message}`); } finally { setIsUploading(false); }
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
-    setMsg('');
-
+    setIsLoading(true); setMsg('');
     try {
       const socials = { instagram, twitter, youtube, facebook, website };
       let newMetadata = { full_name: name, avatar_url: avatarUrl, socials };
-      
       let cleanNewTag = kTag.toUpperCase().replace(/[^A-Z0-9-]/g, '').trim();
+      
       if (!cleanNewTag) throw new Error("K-Tag cannot be empty.");
-
-      // Migration Logic! Only runs if the input actually changed
       if (cleanNewTag !== oldKTag) {
-        if (isKtagLocked) throw new Error(`K-Tag is locked for ${lockDaysLeft} more days.`);
-        if (cleanNewTag.length < 3) throw new Error("K-Tag must be at least 3 characters.");
-
-        // Check availability
+        if (isKtagLocked) throw new Error(`K-Tag locked for ${lockDaysLeft} days.`);
+        if (cleanNewTag.length < 3) throw new Error("K-Tag must be 3+ chars.");
         const { data: existing } = await supabase.from('nodes').select('id').eq('id', cleanNewTag).limit(1);
-        if (existing && existing.length > 0) throw new Error(`⚠️ K-Tag "${cleanNewTag}" is already taken! Try another.`);
+        if (existing && existing.length > 0) throw new Error(`⚠️ "${cleanNewTag}" is taken!`);
 
         if (oldKTag) {
-          // A single, elegant UPDATE. The backend cascade handles the links!
-          // And the backend trigger handles the 7-day timer!
-          const { error: updateErr } = await supabase.from('nodes').update({ 
-            id: cleanNewTag,
-            socials 
-          }).eq('id', oldKTag);
-          
-          if (updateErr) {
-             // If the timer blocks them, it will show the backend's error message here!
-             throw new Error(updateErr.message || "Failed to update K-Tag.");
-          }
+          const { error: updateErr } = await supabase.from('nodes').update({ id: cleanNewTag, socials }).eq('id', oldKTag);
+          if (updateErr) throw new Error(updateErr.message || "Failed to update K-Tag.");
         } else {
-           // Fallback if they didn't have an ID for some reason
-           await supabase.from('nodes').insert({
-             id: cleanNewTag,
-             user_id: session.user.id,
-             shape: 'circle',
-             type: 'image',
-             value: avatarUrl,
-             socials: socials,
-             is_claimed: true
-           });
+           await supabase.from('nodes').insert({ id: cleanNewTag, user_id: session.user.id, shape: 'circle', type: 'image', value: avatarUrl, socials, is_claimed: true });
         }
-
-        // Database trigger handles the real timestamp automatically now
-        setOldKTag(cleanNewTag);
-        setIsKtagLocked(true);
-        setLockDaysLeft(7);
+        setOldKTag(cleanNewTag); setIsKtagLocked(true); setLockDaysLeft(7);
       } else if (oldKTag) {
-        // If they didn't change their tag, just update socials on their existing node
         await supabase.from('nodes').update({ socials }).eq('id', oldKTag);
       }
-
-      // Sync metadata with authentication
-      const { error } = await supabase.auth.updateUser({ data: newMetadata });
-      if (error) throw new Error("Settings applied but Auth Sync failed.");
-      
-      onClose(); // Success!
-    } catch (error) {
-      setMsg(`⚠️ ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
+      await supabase.auth.updateUser({ data: newMetadata });
+      onClose();
+    } catch (error) { setMsg(`⚠️ ${error.message}`); } finally { setIsLoading(false); }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-2 sm:border-4 border-black rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] w-[95%] sm:w-full max-w-lg relative transform sm:rotate-1 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute top-3 right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
-          ✖
-        </button>
-        <h2 className="text-2xl font-black mb-6 uppercase tracking-tight transform -rotate-2 w-max bg-blue-300 px-3 py-1 border-2 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] text-black">
-          ⚙️ Edit Profile & Links
-        </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg relative animate-in zoom-in duration-200">
         
-        {msg && <p className="mb-4 text-xs font-bold text-slate-900 bg-yellow-200 p-2.5 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">{msg}</p>}
-        
-        <form onSubmit={handleSave} className="flex flex-col gap-5 transform -rotate-1">
-          
-          {/* K-TAG MODIFIER */}
-          <div className="bg-blue-50 border-2 border-black border-dashed p-3 rounded-xl mb-2">
-            <label className="block text-xs font-black uppercase mb-1 text-black flex justify-between">
-              Your Unique K-Tag
-              {isKtagLocked && <span className="text-red-500">🔒 Locked ({lockDaysLeft}d)</span>}
-            </label>
-            <input type="text" value={kTag} onChange={e => setKTag(e.target.value)} required disabled={isKtagLocked}
-              className={`w-full border-4 border-black rounded-xl p-3 font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-colors ${isKtagLocked ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'focus:outline-none focus:bg-white bg-white'}`} />
-            {!isKtagLocked && <p className="text-[10px] font-bold text-slate-600 mt-2 leading-tight">You can change this <b>once every 7 days</b>. Changing it will instantly update your node on the global map!</p>}
-          </div>
-
-          <div>
-            <label className="block text-xs font-black uppercase mb-1 text-black">Display Name</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} required
-              className="w-full border-4 border-black rounded-xl p-3 font-bold focus:outline-none focus:bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors" />
-          </div>
-
-          <div>
-            <label className="block text-xs font-black uppercase mb-1 text-black">Upload New Avatar 🖼️</label>
-            <input 
-              type="file" 
-              accept="image/*" 
-              onChange={handleAvatarUpload}
-              disabled={isUploading}
-              className="w-full border-4 border-black rounded-xl p-2 font-bold focus:outline-none bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-2 file:border-black file:bg-yellow-300 file:font-black file:cursor-pointer hover:file:bg-yellow-200 text-xs cursor-pointer" 
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-black uppercase mb-1 text-black">Or Image URL</label>
-            <input type="url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} required
-              className="w-full border-4 border-black rounded-xl p-2.5 font-bold focus:outline-none focus:bg-blue-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-colors text-xs" />
-          </div>
-
-          {/* SOCIAL LINKS SECTION */}
-          <div className="border-t-4 border-black border-dashed pt-4 flex flex-col gap-3">
-            <h3 className="font-black uppercase text-sm bg-pink-300 px-3 py-1 border-2 border-black rounded-xl w-max shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-              🌐 Social Media Handles
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-black uppercase text-slate-700">📸 Instagram</label>
-                <input type="text" placeholder="https://instagram.com/yourhandle" value={instagram} onChange={e => setInstagram(e.target.value)}
-                  className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-pink-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase text-slate-700">🐦 Twitter / X</label>
-                <input type="text" placeholder="https://x.com/yourhandle" value={twitter} onChange={e => setTwitter(e.target.value)}
-                  className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-cyan-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase text-slate-700">🔴 YouTube</label>
-                <input type="text" placeholder="https://youtube.com/@channel" value={youtube} onChange={e => setYoutube(e.target.value)}
-                  className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-red-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase text-slate-700">📘 Facebook</label>
-                <input type="text" placeholder="https://facebook.com/profile" value={facebook} onChange={e => setFacebook(e.target.value)}
-                  className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-blue-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-black uppercase text-slate-700">🔗 Website / Portfolio</label>
-              <input type="url" placeholder="https://yourwebsite.com" value={website} onChange={e => setWebsite(e.target.value)}
-                className="w-full border-2 border-black rounded-xl p-2 text-xs font-bold focus:bg-lime-50 shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3 bg-slate-100 p-3 rounded-xl border-2 border-black border-dashed mt-1">
-            <img src={avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} alt="Preview" className="w-12 h-12 rounded-full border-2 border-black bg-white object-cover" />
-            <p className="text-xs font-bold text-slate-600">
-              {isUploading ? 'Uploading file...' : 'Preview of your active avatar & social badges.'}
-            </p>
-          </div>
-
-          <button type="submit" disabled={isLoading || isUploading} className="mt-2 bg-lime-400 hover:bg-lime-300 disabled:opacity-50 text-black text-lg font-black py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all uppercase tracking-widest cursor-pointer">
-            {isLoading ? 'Saving...' : 'Save Profile'}
+        {/* TABS (Brawl Stars Slanted Style) */}
+        <div className="flex gap-2 mb-[-10px] relative z-10 pl-4">
+          <button onClick={() => setActiveTab('profile')} style={{ transform: 'skewX(-10deg)' }} className={`px-6 py-3 border-4 border-black font-black uppercase text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all ${activeTab === 'profile' ? 'bg-cyan-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+            <span style={{ transform: 'skewX(10deg)' }} className="inline-block">Identity</span>
           </button>
-        </form>
+          <button onClick={() => setActiveTab('socials')} style={{ transform: 'skewX(-10deg)' }} className={`px-6 py-3 border-4 border-black font-black uppercase text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all ${activeTab === 'socials' ? 'bg-pink-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+            <span style={{ transform: 'skewX(10deg)' }} className="inline-block">Social Links</span>
+          </button>
+        </div>
+
+        {/* MAIN GAMIFIED CARD */}
+        <div className="bg-white border-4 border-black rounded-3xl p-6 shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-20">
+          <button onClick={onClose} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform cursor-pointer">✖</button>
+          
+          {msg && <div className="mb-4 text-xs font-black bg-yellow-300 p-3 border-4 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-1">{msg}</div>}
+          
+          <form onSubmit={handleSave} className="flex flex-col gap-4">
+            
+            {/* TAB 1: PROFILE */}
+            {activeTab === 'profile' && (
+              <div className="flex flex-col gap-4 animate-in slide-in-from-left-4">
+                <div className="bg-cyan-50 border-4 border-black p-4 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                  <label className="text-xs font-black uppercase flex justify-between">Your K-Tag {isKtagLocked && <span className="text-red-500">🔒 Locked ({lockDaysLeft}d)</span>}</label>
+                  <input type="text" value={kTag} onChange={e => setKTag(e.target.value)} disabled={isKtagLocked} className={`w-full border-4 border-black rounded-xl p-3 mt-2 font-black uppercase shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)] ${isKtagLocked ? 'bg-slate-200 text-slate-400' : 'bg-white'}`} />
+                </div>
+                <div>
+                  <label className="text-xs font-black uppercase">Display Name</label>
+                  <input type="text" value={name} onChange={e => setName(e.target.value)} required className="w-full border-4 border-black rounded-xl p-3 font-bold bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:bg-cyan-50 mt-1" />
+                </div>
+                <div className="flex gap-4 items-center">
+                  <img src={avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} className="w-16 h-16 rounded-2xl border-4 border-black object-cover shadow-[4px_4px_0px_rgba(0,0,0,1)] bg-yellow-300" />
+                  <div className="flex-1">
+                    <label className="text-[10px] font-black uppercase">Avatar URL or Upload</label>
+                    <input type="file" accept="image/*" onChange={handleAvatarUpload} className="w-full text-[10px] mt-1 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-2 file:border-black file:bg-yellow-300 file:font-black cursor-pointer" />
+                    <input type="url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://..." className="w-full border-2 border-black rounded-lg p-2 font-bold text-xs mt-1" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: SOCIALS */}
+            {activeTab === 'socials' && (
+              <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-right-4">
+                {[{l:'Instagram', i:'📸', v:instagram, s:setInstagram, c:'pink'}, {l:'Twitter', i:'🐦', v:twitter, s:setTwitter, c:'cyan'}, {l:'YouTube', i:'🔴', v:youtube, s:setYoutube, c:'red'}, {l:'Facebook', i:'📘', v:facebook, s:setFacebook, c:'blue'}].map(s => (
+                  <div key={s.l} className={`bg-${s.c}-50 border-4 border-black rounded-xl p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)]`}>
+                    <label className="text-[10px] font-black uppercase flex items-center gap-1">{s.i} {s.l}</label>
+                    <input type="text" value={s.v} onChange={e => s.s(e.target.value)} className="w-full bg-white border-2 border-black rounded-lg p-2 mt-1 font-bold text-xs" />
+                  </div>
+                ))}
+                <div className="col-span-2 bg-lime-50 border-4 border-black rounded-xl p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                  <label className="text-[10px] font-black uppercase">🌐 Website</label>
+                  <input type="url" value={website} onChange={e => setWebsite(e.target.value)} className="w-full bg-white border-2 border-black rounded-lg p-2 mt-1 font-bold text-xs" />
+                </div>
+              </div>
+            )}
+
+            <button type="submit" disabled={isLoading || isUploading} className="mt-4 bg-lime-400 hover:bg-lime-300 disabled:opacity-50 text-black text-xl font-black py-4 rounded-xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all uppercase tracking-widest cursor-pointer transform -rotate-1">
+              {isLoading ? 'Saving...' : 'Confirm Update ⚡'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
@@ -448,8 +358,8 @@ function NodeDetailsModal({ node, onClose }) {
     </div>
   );
 }
-// --- NODE MANAGER MODAL ---
 function NodeManagerModal({ session, onClose, onRefreshGraph }) {
+  const [activeTab, setActiveTab] = useState('owned'); 
   const [myNodes, setMyNodes] = useState([]);
   const [claimTag, setClaimTag] = useState('');
   const [claimPin, setClaimPin] = useState('');
@@ -458,221 +368,100 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
 
   const fetchMyNodes = useCallback(async () => {
     if (!session?.user?.id) return;
-    const userId = session.user.id;
-
-    const { data } = await supabase
-      .from('nodes')
-      .select('*')
-      .or(`user_id.eq.${userId},created_by.eq.${userId}`)
-      .order('is_claimed', { ascending: false }); // Primary claimed node is forced to the top
-
-    if (data && data.length > 0) {
-      setMyNodes(data);
-    } else {
-      const rawName = session.user.user_metadata?.full_name || 'KIND';
-      const cleanName = rawName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10) || 'MEMBER';
-      const primaryTag = `${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      const { data: newNode } = await supabase.from('nodes').insert({
-        id: primaryTag,
-        user_id: userId,
-        created_by: userId,
-        shape: 'circle',
-        type: 'image',
-        value: session.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
-        socials: session.user.user_metadata?.socials || {},
-        is_claimed: true
-      }).select();
-
-      if (newNode) setMyNodes(newNode);
-      if (onRefreshGraph) onRefreshGraph();
-    }
-  }, [session, onRefreshGraph]);
+    const { data } = await supabase.from('nodes').select('*').or(`user_id.eq.${session.user.id},created_by.eq.${session.user.id}`).order('is_claimed', { ascending: false });
+    if (data) setMyNodes(data);
+  }, [session]);
 
   useEffect(() => {
     let isMounted = true;
-    queueMicrotask(() => {
-      if (isMounted) fetchMyNodes();
-    });
+    queueMicrotask(() => { if (isMounted) fetchMyNodes(); });
     return () => { isMounted = false; };
   }, [fetchMyNodes]);
 
   const handleMerge = async (e) => {
-    e.preventDefault();
-    if (!claimTag.trim()) return;
-    setIsLoading(true);
-    setMsg('');
-
-    const targetTag = myNodes[0]?.id; // Primary Node
-    const sourceTag = claimTag.toUpperCase().trim();
-    const enteredPin = claimPin.toUpperCase().trim();
-
-    if (!targetTag) {
-      setMsg('⚠️ You must have a primary node to merge into.');
-      setIsLoading(false);
-      return;
-    }
-
-    if (targetTag === sourceTag) {
-      setMsg('⚠️ Cannot merge your node into itself!');
-      setIsLoading(false);
-      return;
-    }
-
+    e.preventDefault(); if (!claimTag.trim()) return;
+    setIsLoading(true); setMsg('');
+    const targetTag = myNodes[0]?.id; const sourceTag = claimTag.toUpperCase().trim(); const enteredPin = claimPin.toUpperCase().trim();
+    if (!targetTag) { setMsg('⚠️ Missing primary node.'); setIsLoading(false); return; }
     try {
-      const { data: nodeData, error: fetchError } = await supabase
-        .from('nodes')
-        .select('*')
-        .eq('id', sourceTag)
-        .single();
-
-      if (fetchError || !nodeData) throw new Error("Node not found! Double check the tag.");
-      if (nodeData.is_claimed) throw new Error("This node has already been claimed.");
-      if (nodeData.claim_pin !== enteredPin) throw new Error("Incorrect PIN! Access denied.");
+      const { data: nodeData, error } = await supabase.from('nodes').select('*').eq('id', sourceTag).single();
+      if (error || !nodeData) throw new Error("Node not found!");
+      if (nodeData.is_claimed) throw new Error("Already claimed.");
+      if (nodeData.claim_pin !== enteredPin) throw new Error("Incorrect PIN!");
 
       await supabase.from('links').update({ source: targetTag }).eq('source', sourceTag);
       await supabase.from('links').update({ target: targetTag }).eq('target', sourceTag);
       await supabase.from('nodes').delete().eq('id', sourceTag);
 
-      setMsg(`🎉 Successfully verified and merged ${sourceTag} into your profile!`);
-      setClaimTag('');
-      setClaimPin('');
-      fetchMyNodes();
-      if (onRefreshGraph) onRefreshGraph();
-    } catch (err) {
-      setMsg(`⚠️ ${err.message}`);
-    } finally {
-      setIsLoading(false);
-    }
+      setMsg(`🎉 ${sourceTag} Merged!`); setClaimTag(''); setClaimPin(''); fetchMyNodes(); if (onRefreshGraph) onRefreshGraph();
+    } catch (err) { setMsg(`⚠️ ${err.message}`); } finally { setIsLoading(false); }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-2 sm:border-4 border-black rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] w-[95%] sm:w-full max-w-lg relative transform sm:rotate-1 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute top-3 right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">
-          ✖
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg relative animate-in zoom-in duration-200">
         
-        <h2 className="text-2xl font-black mb-6 uppercase tracking-tight transform -rotate-2 w-max bg-cyan-300 px-3 py-1 border-2 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] text-black">
-          🧩 Node Manager
-        </h2>
+        <div className="flex gap-2 mb-[-10px] relative z-10 pl-4">
+          <button onClick={() => setActiveTab('owned')} style={{ transform: 'skewX(-10deg)' }} className={`px-6 py-3 border-4 border-black font-black uppercase text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all ${activeTab === 'owned' ? 'bg-purple-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+            <span style={{ transform: 'skewX(10deg)' }} className="inline-block">My Nodes</span>
+          </button>
+          <button onClick={() => setActiveTab('merge')} style={{ transform: 'skewX(-10deg)' }} className={`px-6 py-3 border-4 border-black font-black uppercase text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all ${activeTab === 'merge' ? 'bg-yellow-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+            <span style={{ transform: 'skewX(10deg)' }} className="inline-block">Merge Loot</span>
+          </button>
+        </div>
 
-        {msg && <p className="mb-4 text-xs font-bold text-slate-900 bg-yellow-200 p-2.5 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">{msg}</p>}
+        <div className="bg-white border-4 border-black rounded-3xl p-6 shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-20">
+          <button onClick={onClose} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer">✖</button>
+          {msg && <div className="mb-4 text-xs font-black bg-yellow-300 p-3 border-4 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">{msg}</div>}
 
-        <div className="flex flex-col gap-6">
-          <div>
-            <h3 className="font-black text-xs uppercase mb-2 text-black bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md w-max shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-              👑 My Active Nodes
-            </h3>
-            <div className="flex flex-col gap-3">
-              {myNodes.length > 0 ? (
-                myNodes.map((n) => {
-                  // Fix: correctly identify unclaimed nodes even if is_claimed is null in DB
-                  const isUnclaimed = !n.is_claimed || !!n.claim_pin;
-                  const isPrimary = !isUnclaimed && n.user_id === session?.user?.id;
-                  
-                  return (
-                    <div key={n.id} className="flex flex-col gap-2 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-sm uppercase text-black">{n.id}</span>
-                          {isUnclaimed ? (
-                            <span className="text-[10px] bg-yellow-300 border border-black px-1.5 py-0.5 rounded font-black">UNCLAIMED</span>
-                          ) : (
-                            isPrimary && <span className="text-[10px] bg-lime-300 border border-black px-1.5 py-0.5 rounded font-black">PRIMARY</span>
-                          )}
-                        </div>
-                        <span className="text-xs font-bold text-slate-500 uppercase">{n.shape} • {n.type}</span>
-                      </div>
-                      
-                      {isUnclaimed ? (
-                        <div className="bg-white border-2 border-dashed border-black rounded-lg p-2 text-xs font-bold flex justify-between items-center mt-1">
-                          <span>PIN: <span className="text-pink-600 font-black tracking-widest">{n.claim_pin || 'MISSING'}</span></span>
-                          {n.claim_pin && (
-                            <button 
-                              onClick={() => { navigator.clipboard.writeText(`Tag: ${n.id} | PIN: ${n.claim_pin}`); alert('Copied!'); }}
-                              className="bg-black text-white px-2 py-1 rounded-md hover:-translate-y-0.5 transition-transform cursor-pointer"
-                            >
-                              Copy
-                            </button>
-                          )}
-                        </div>
-                      ) : isPrimary ? (
-                        <div className="bg-lime-50 border-2 border-dashed border-black rounded-lg p-2 text-[10px] font-bold text-slate-700 mt-1">
-                          ✅ Active Node. Anyone you help can directly link to your Tag!
-                        </div>
-                      ) : null}
+          {activeTab === 'owned' ? (
+            <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto pr-2">
+              {myNodes.length > 0 ? myNodes.map(n => {
+                const isUnclaimed = !n.is_claimed || !!n.claim_pin;
+                const isPrimary = !isUnclaimed && n.user_id === session?.user?.id;
+                return (
+                  <div key={n.id} className={`border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] ${isPrimary ? 'bg-lime-100' : 'bg-slate-50'}`}>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-black text-lg uppercase tracking-widest">{n.id}</span>
+                      {isPrimary && <span className="text-[10px] bg-lime-400 border-2 border-black px-2 py-1 rounded-lg font-black shadow-[2px_2px_0px_rgba(0,0,0,1)]">PRIMARY</span>}
+                      {isUnclaimed && <span className="text-[10px] bg-yellow-400 border-2 border-black px-2 py-1 rounded-lg font-black shadow-[2px_2px_0px_rgba(0,0,0,1)]">UNCLAIMED</span>}
                     </div>
-                  );
-                })
-              ) : (
-                <p className="text-xs font-bold text-slate-500 italic">No registered nodes found yet.</p>
-              )}
+                    {isUnclaimed && (
+                       <div className="bg-white border-2 border-black border-dashed rounded-lg p-2 flex justify-between items-center text-xs font-black">
+                         <span>PIN: <span className="text-pink-500">{n.claim_pin}</span></span>
+                         <button onClick={() => navigator.clipboard.writeText(`Tag: ${n.id} | PIN: ${n.claim_pin}`)} className="bg-black text-white px-3 py-1 rounded cursor-pointer active:scale-95">Copy</button>
+                       </div>
+                    )}
+                  </div>
+                );
+              }) : <p className="text-center font-black text-slate-400 py-4">No nodes found.</p>}
             </div>
-          </div>
-
-          <div className="border-t-4 border-black border-dashed pt-4">
-            <h3 className="font-black text-xs uppercase mb-2 text-black bg-pink-300 border-2 border-black px-2 py-0.5 rounded-md w-max shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-              🔗 Claim / Merge Unclaimed Node
-            </h3>
-            <p className="text-xs font-bold text-slate-600 mb-3">
-              Type the tag & PIN of a temporary node to claim and merge it into your primary profile!
-            </p>
-            <form onSubmit={handleMerge} className="flex flex-col gap-3">
-              <input 
-                type="text" 
-                placeholder="Unclaimed K-Tag (e.g. SARAH-9921)" 
-                value={claimTag} 
-                onChange={e => setClaimTag(e.target.value)}
-                required
-                className="w-full border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none focus:bg-pink-50 shadow-[3px_3px_0px_rgba(0,0,0,1)]"
-              />
-              <input 
-                type="text" 
-                placeholder="Secret Security PIN (e.g. 1234)" 
-                value={claimPin} 
-                onChange={e => setClaimPin(e.target.value)}
-                required
-                className="w-full border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none focus:bg-yellow-50 shadow-[3px_3px_0px_rgba(0,0,0,1)]"
-              />
-              <button 
-                type="submit" 
-                disabled={isLoading}
-                className="bg-lime-400 hover:bg-lime-300 disabled:opacity-50 text-black font-black py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all uppercase tracking-wider cursor-pointer text-sm"
-              >
-                {isLoading ? 'Verifying...' : 'Verify & Merge Into My Profile ⚡'}
+          ) : (
+            <form onSubmit={handleMerge} className="flex flex-col gap-4">
+              <div className="bg-yellow-50 border-4 border-black border-dashed p-4 rounded-2xl">
+                <p className="text-xs font-black uppercase text-slate-700 mb-3 text-center">Merge an unclaimed node into your profile!</p>
+                <input type="text" placeholder="K-Tag (e.g. SARAH-9921)" value={claimTag} onChange={e => setClaimTag(e.target.value)} required className="w-full border-4 border-black rounded-xl p-3 uppercase font-black focus:bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-4" />
+                <input type="text" placeholder="Secret PIN" value={claimPin} onChange={e => setClaimPin(e.target.value)} required className="w-full border-4 border-black rounded-xl p-3 uppercase font-black focus:bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]" />
+              </div>
+              <button type="submit" disabled={isLoading} className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl font-black py-4 rounded-xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all uppercase tracking-widest cursor-pointer transform rotate-1">
+                {isLoading ? 'Verifying...' : 'Merge Loot 💰'}
               </button>
             </form>
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-// --- VERIFICATION REQUESTS MODAL ---
 function RequestsModal({ session, onClose, onRefreshGraph }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchRequests = useCallback(async () => {
     if (!session?.user?.id) return;
-    
-    // 1. Get user's owned nodes
-    const { data: myNodes } = await supabase
-      .from('nodes')
-      .select('id')
-      .or(`user_id.eq.${session.user.id},created_by.eq.${session.user.id}`);
-    
+    const { data: myNodes } = await supabase.from('nodes').select('id').or(`user_id.eq.${session.user.id},created_by.eq.${session.user.id}`);
     if (!myNodes || myNodes.length === 0) return;
-    const myNodeIds = myNodes.map(n => n.id);
-
-    // 2. Query pending links targeting user's nodes
-    const { data: pendingLinks } = await supabase
-      .from('links')
-      .select('*')
-      .in('source', myNodeIds)
-      .eq('status', 'pending');
-
+    const { data: pendingLinks } = await supabase.from('links').select('*').in('source', myNodes.map(n => n.id)).eq('status', 'pending');
     if (pendingLinks) setPendingRequests(pendingLinks);
   }, [session]);
 
@@ -682,439 +471,229 @@ function RequestsModal({ session, onClose, onRefreshGraph }) {
     return () => { isMounted = false; };
   }, [fetchRequests]);
 
-  const handleApprove = async (req) => {
+  const handleAction = async (req, isApprove) => {
     setIsLoading(true);
-    await supabase.rpc('approve_link_request', {
-      link_source: req.source,
-      link_target: req.target
-    });
-    fetchRequests();
-    if (onRefreshGraph) onRefreshGraph();
-    setIsLoading(false);
-  };
-
-  const handleDecline = async (req) => {
-    setIsLoading(true);
-    await supabase.rpc('decline_link_request', {
-      link_source: req.source,
-      link_target: req.target
-    });
-    fetchRequests();
-    if (onRefreshGraph) onRefreshGraph();
+    await supabase.rpc(isApprove ? 'approve_link_request' : 'decline_link_request', { link_source: req.source, link_target: req.target });
+    fetchRequests(); if (onRefreshGraph) onRefreshGraph();
     setIsLoading(false);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-2 sm:border-4 border-black rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] w-[95%] sm:w-full max-w-md relative transform sm:-rotate-1 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute -top-3 -right-3 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer">
-          ✖
-        </button>
-        <h2 className="text-2xl font-black mb-4 uppercase tracking-tight text-black bg-yellow-300 px-3 py-1 border-2 border-black rounded-xl w-max shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-          🔔 Pending Deed Requests
-        </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-white border-4 border-black rounded-3xl p-6 shadow-[12px_12px_0px_rgba(0,0,0,1)] w-full max-w-2xl relative transform -rotate-1">
+        <button onClick={onClose} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer z-10">✖</button>
+        
+        <div className="bg-blue-400 text-white border-4 border-black inline-block px-6 py-2 rounded-xl font-black text-xl uppercase tracking-widest shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-2 mb-6">
+          🔔 Bounty Board
+        </div>
 
-        <div className="flex flex-col gap-3 max-h-60 overflow-y-auto">
-          {pendingRequests.length > 0 ? (
-            pendingRequests.map((req) => (
-              <div key={`${req.source}-${req.target}`} className="bg-blue-50 border-2 border-black rounded-xl p-3 shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
-                <p className="text-xs font-bold text-slate-800">
-                  <span className="font-black text-black uppercase">{req.target}</span> logged a deed saying you helped them! Connect this to your node (<span className="font-black uppercase">{req.source}</span>)?
-                </p>
+        {pendingRequests.length > 0 ? (
+          <div className="flex overflow-x-auto snap-x gap-4 pb-4 px-2">
+            {pendingRequests.map(req => (
+              <div key={`${req.source}-${req.target}`} className="snap-center shrink-0 w-64 bg-yellow-50 border-4 border-black rounded-2xl p-4 shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col justify-between">
+                <div>
+                  <div className="text-center font-black text-2xl mb-2">🎯</div>
+                  <p className="text-[11px] font-black uppercase text-slate-800 text-center mb-4 leading-tight">
+                    <span className="text-pink-600 text-sm block">{req.target}</span> claims you helped them via <span className="text-cyan-600">{req.source}</span>!
+                  </p>
+                </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleApprove(req)} disabled={isLoading} className="flex-1 bg-lime-400 border-2 border-black rounded-lg py-1.5 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-lime-300 cursor-pointer">
-                    ✅ Verify & Connect
-                  </button>
-                  <button onClick={() => handleDecline(req)} disabled={isLoading} className="flex-1 bg-red-400 border-2 border-black rounded-lg py-1.5 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-red-300 cursor-pointer">
-                    ❌ Decline
-                  </button>
+                  <button onClick={() => handleAction(req, true)} disabled={isLoading} className="flex-1 bg-lime-400 border-2 border-black rounded-xl py-3 font-black text-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer">✅</button>
+                  <button onClick={() => handleAction(req, false)} disabled={isLoading} className="flex-1 bg-red-400 border-2 border-black rounded-xl py-3 font-black text-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer">❌</button>
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-xs font-bold text-slate-500 italic p-4 text-center bg-slate-50 border-2 border-black border-dashed rounded-xl">
-              No pending verification requests right now.
-            </p>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-slate-100 border-4 border-black border-dashed rounded-2xl p-8 text-center shadow-[inset_4px_4px_0px_rgba(0,0,0,0.1)]">
+            <span className="text-4xl block mb-2">🏜️</span>
+            <p className="font-black text-slate-400 uppercase tracking-widest">No pending bounties.</p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// --- UNIFIED LOG KINDNESS FORM ---
 function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const navigate = useNavigate();
+  const [step, setStep] = useState(1); // Gamified Wizard Steps!
   const [helperId, setHelperId] = useState('');
-  const [isAnonymousHelper, setIsAnonymousHelper] = useState(false); // Added Anon State
+  const [isAnonymousHelper, setIsAnonymousHelper] = useState(false);
   const [myId, setMyId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [claimModalUrl, setClaimModalUrl] = useState('');
   const [helperPin, setHelperPin] = useState(''); 
-  const [deedComment, setDeedComment] = useState(''); // 📝 NEW: Store the story
-  const [completedQuest, setCompletedQuest] = useState(false); // 🔥 QUEST FLAG
+  const [deedComment, setDeedComment] = useState('');
+  const [completedQuest, setCompletedQuest] = useState(false);
   
   const [nodeShape, setNodeShape] = useState('circle');
   const [nodeType, setNodeType] = useState('image'); 
   const [nodeValue, setNodeValue] = useState(session?.user?.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kindness'); 
   const [linkColor, setLinkColor] = useState('#cbd5e1'); 
-
   const [existingTags, setExistingTags] = useState([]);
-  const [filteredTags, setFilteredTags] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     const fetchTags = async () => {
       const { data } = await supabase.from('nodes').select('id, is_claimed');
       if (data) setExistingTags(data);
-
       if (session?.user?.id) {
-        // 🛑 STRICT QUERY: Must include is_claimed = true so it doesn't accidentally 
-        // fetch temporary/unclaimed nodes you created for other people!
-        const { data: userNodes } = await supabase.from('nodes').select('id')
-          .eq('user_id', session.user.id)
-          .eq('is_claimed', true)
-          .limit(1);
-        if (userNodes && userNodes.length > 0) {
-          setMyId(userNodes[0].id);
-        }
+        const { data: userNodes } = await supabase.from('nodes').select('id').eq('user_id', session.user.id).eq('is_claimed', true).limit(1);
+        if (userNodes && userNodes.length > 0) setMyId(userNodes[0].id);
       }
     };
     fetchTags();
   }, [session]);
 
-  const handleHelperIdChange = (e) => {
-    const val = e.target.value.toUpperCase();
-    setHelperId(val);
-    if (val.trim()) {
-      const matches = existingTags.filter(n => n.id.includes(val)).map(n => n.id);
-      setFilteredTags(matches);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
-  };
-
   const isNewHelper = isAnonymousHelper || (helperId.trim() !== '' && !existingTags.some(n => n.id === helperId.trim().toUpperCase()));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!session) {
-      setErrorMsg("Please sign in to log a good deed!");
-      return;
-    }
-
-    // 🛑 NEW: Block empty submissions!
-    if (!isAnonymousHelper && !helperId.trim()) {
-      setErrorMsg("Please enter the K-Tag of the person who helped you, or select 'Anonymous'!");
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMsg('');
+    if (!isAnonymousHelper && !helperId.trim()) { setErrorMsg("Enter Helper K-Tag or choose Anonymous!"); return; }
+    setIsLoading(true); setErrorMsg('');
     const finalMyId = myId.toUpperCase().trim();
-    
-    // Generate Anonymous Tag if checked, otherwise use typed text
-    let finalHelperId = isAnonymousHelper 
-      ? `ANON-${Math.floor(10000 + Math.random() * 90000)}` 
-      : helperId.toUpperCase().trim();
-      
-    // Re-calculate inline for safety inside submit
+    let finalHelperId = isAnonymousHelper ? `ANON-${Math.floor(10000 + Math.random() * 90000)}` : helperId.toUpperCase().trim();
     let submittingNewHelper = isAnonymousHelper || (finalHelperId !== '' && !existingTags.some(n => n.id === finalHelperId));
 
     try {
-      const { error: nodeError } = await supabase.from('nodes').upsert({
-        id: finalMyId,
-        user_id: session.user.id,
-        shape: nodeShape,
-        type: nodeType,
-        value: nodeValue,
-        socials: session?.user?.user_metadata?.socials || {},
-        is_claimed: true
-      }, { onConflict: 'id' });
-
+      const { error: nodeError } = await supabase.from('nodes').upsert({ id: finalMyId, user_id: session.user.id, shape: nodeShape, type: nodeType, value: nodeValue, socials: session?.user?.user_metadata?.socials || {}, is_claimed: true }, { onConflict: 'id' });
       if (nodeError) throw nodeError;
 
       if (finalHelperId) {
         if (submittingNewHelper) {
           const secretPin = helperPin.trim() ? helperPin.toUpperCase().trim() : 'PIN-' + Math.floor(100000 + Math.random() * 900000);
-
-          const { error: unclaimedErr } = await supabase.from('nodes').insert({
-            id: finalHelperId,
-            user_id: session.user.id, // ✅ FIXED RLS VIOLATION: Assign temp ownership to creator
-            shape: 'circle',
-            type: 'emoji',
-            value: isAnonymousHelper ? '🕵️‍♂️' : '🌱', // Spy Emoji for Anon!
-            is_claimed: false,
-            claim_pin: secretPin,
-            created_by: session.user.id
-          });
-
+          const { error: unclaimedErr } = await supabase.from('nodes').insert({ id: finalHelperId, user_id: session.user.id, shape: 'circle', type: 'emoji', value: isAnonymousHelper ? '🕵️‍♂️' : '🌱', is_claimed: false, claim_pin: secretPin, created_by: session.user.id });
           if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
-
-          // You created this unclaimed node, trigger the smart backend function
-          const { error: rpcError1 } = await supabase.rpc('log_kindness_link', {
-            p_source: finalHelperId,
-            p_target: finalMyId,
-            p_color: linkColor,
-            p_comment: deedComment,
-            p_is_quest: completedQuest // 🚀 Passing mission flag directly into function natively securely!
-          });
           
-          if (rpcError1) throw new Error(`Link Error: ${rpcError1.message}`);
-
+          await supabase.rpc('log_kindness_link', { p_source: finalHelperId, p_target: finalMyId, p_color: linkColor, p_comment: deedComment, p_is_quest: completedQuest });
           setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
         } else {
-          // Linking to an EXISTING user's node, trigger the smart backend function
-          const { error: rpcError2 } = await supabase.rpc('log_kindness_link', {
-            p_source: finalHelperId,
-            p_target: finalMyId,
-            p_color: linkColor,
-            p_comment: deedComment,
-            p_is_quest: completedQuest // 🚀
-          });
-          
-          if (rpcError2) throw new Error(`Link Error: ${rpcError2.message}`);
+          await supabase.rpc('log_kindness_link', { p_source: finalHelperId, p_target: finalMyId, p_color: linkColor, p_comment: deedComment, p_is_quest: completedQuest });
         }
       }
-
-      onComplete({
-        myId: finalMyId,
-        helperId: finalHelperId || null,
-        isOriginator: !finalHelperId,
-        customShape: nodeShape,
-        customType: nodeType,
-        customValue: nodeValue,
-        customLinkColor: linkColor
-      });
-
-      if (!isNewHelper) {
-        navigate('/dashboard');
-      }
-
-    } catch (error) {
-      setErrorMsg(error.message || "Something went wrong.");
-    } finally {
-      setIsLoading(false);
-    }
+      onComplete({ myId: finalMyId, helperId: finalHelperId || null, isOriginator: !finalHelperId, customShape: nodeShape, customType: nodeType, customValue: nodeValue, customLinkColor: linkColor });
+      if (!isNewHelper) navigate('/dashboard');
+    } catch (error) { setErrorMsg(error.message); } finally { setIsLoading(false); }
   };
 
-  if (isAuthLoading) {
-    return (
-      <div className="w-full max-w-xl mx-auto mt-12 text-center flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-black mb-4"></div>
-        <p className="text-sm font-black uppercase tracking-widest">Checking Auth...</p>
-      </div>
-    );
-  }
-
-  if (!session) {
-    return (
-      <div className="relative w-full max-w-xl mx-auto mt-12 sm:mt-20 p-8 sm:p-12 bg-pink-300 rounded-3xl border-4 border-black text-center shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1 hover:rotate-0 transition-transform mb-20">
-        <button onClick={() => navigate('/')} className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
-        <h2 className="text-3xl sm:text-4xl font-black mb-4 text-black uppercase tracking-tight">🔒 Hold Up!</h2>
-        <p className="text-black font-bold mb-8 text-lg">Sign in to claim your node and log acts of kindness.</p>
-        <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })} 
-          className="bg-lime-400 hover:bg-lime-300 text-black text-xl font-black py-4 px-8 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all flex items-center justify-center gap-3 mx-auto cursor-pointer">
-          <span>🚀</span> Sign in with Google
-        </button>
-      </div>
-    );
-  }
+  if (isAuthLoading || !session) return null; // Let App handle redirect UI
 
   return (
-    <div className="relative w-full max-w-2xl mx-auto mt-4 sm:mt-8 p-4 sm:p-8 bg-white rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] mb-20">
-      <button onClick={() => navigate('/')} className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 bg-red-400 text-black border-4 border-black rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
-      <h1 className="text-xl sm:text-4xl font-black mb-4 sm:mb-6 text-black text-center tracking-tight uppercase transform -rotate-1">
-        🤝 Log an Act of Kindness
-      </h1>
-      
-      {errorMsg && (
-        <div className="bg-red-400 text-white p-4 rounded-xl mb-6 text-sm font-black border-2 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-          ⚠️ {errorMsg}
-        </div>
-      )}
-
+    <div className="w-full max-w-3xl mx-auto px-4">
+      {/* SUCCESS MODAL */}
       {claimModalUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-yellow-300 border-4 border-black rounded-3xl p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-full max-w-md text-center transform -rotate-1">
-            <h2 className="text-2xl font-black uppercase mb-2 text-black">🎉 Deed Logged!</h2>
-            <p className="text-xs font-bold text-slate-800 mb-4">
-              We created a <b>🌱 Unclaimed Seed Node</b> for <b>{helperId}</b>. Share this claim link with them so they can claim their spot on the map!
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-yellow-400 border-4 border-black rounded-3xl p-8 shadow-[12px_12px_0px_rgba(0,0,0,1)] text-center transform -rotate-1 max-w-md">
+            <h2 className="text-3xl font-black uppercase mb-2">🎉 Loot Dropped!</h2>
+            <p className="text-sm font-bold text-slate-800 mb-6 bg-white border-4 border-black p-4 rounded-xl shadow-[inset_4px_4px_0px_rgba(0,0,0,0.1)]">
+              We created a 🌱 Seed Node for <b>{helperId}</b>. Share this link so they can claim their spot!
             </p>
-            <input type="text" readOnly value={claimModalUrl} className="w-full border-2 border-black rounded-xl p-2.5 font-bold text-xs bg-white mb-4 text-center select-all" />
-            <div className="flex gap-2">
-              <button onClick={() => { navigator.clipboard.writeText(claimModalUrl); alert('Claim link copied!'); }} className="flex-1 bg-lime-400 border-2 border-black rounded-xl py-2.5 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer">
-                📋 Copy Link
-              </button>
-              <button onClick={() => { setClaimModalUrl(''); navigate('/dashboard'); }} className="flex-1 bg-black text-white border-2 border-black rounded-xl py-2.5 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer">
-                Done 🚀
-              </button>
+            <input type="text" readOnly value={claimModalUrl} className="w-full border-4 border-black rounded-xl p-3 font-black text-xs bg-white mb-4 text-center select-all" />
+            <div className="flex gap-4">
+              <button onClick={() => { navigator.clipboard.writeText(claimModalUrl); alert('Copied!'); }} className="flex-1 bg-white border-4 border-black rounded-xl py-3 font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer">Copy</button>
+              <button onClick={() => { setClaimModalUrl(''); navigate('/dashboard'); }} className="flex-1 bg-black text-white border-4 border-black rounded-xl py-3 font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer">Done 🚀</button>
             </div>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="relative">
-            <label className="block text-xs font-black text-black mb-1 uppercase">
-              Who Helped You? <span className="text-red-500 font-bold">*</span>
-            </label>
-            <input 
-              type="text" 
-              placeholder="Search or Type Helper's Name..." 
-              value={isAnonymousHelper ? 'ANONYMOUS HELPER 🕵️‍♂️' : helperId} 
-              onChange={handleHelperIdChange} 
-              onFocus={() => { if (helperId && !isAnonymousHelper) setShowSuggestions(true); }}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              autoComplete="off"
-              disabled={isAnonymousHelper}
-              className={`w-full border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)] ${isAnonymousHelper ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-blue-50'}`} 
-            />
-            
-            {/* Added Anonymous Checkbox Feature */}
-            <div className="mt-3 flex items-center gap-2 bg-slate-50 p-2 rounded-lg border-2 border-slate-300 border-dashed">
-              <input 
-                type="checkbox" 
-                id="anonHelper" 
-                checked={isAnonymousHelper} 
-                onChange={(e) => {
-                  setIsAnonymousHelper(e.target.checked);
-                  if (e.target.checked) setHelperId(''); // Clear text if switching to anon
-                }} 
-                className="w-5 h-5 cursor-pointer accent-pink-500 rounded border-black" 
-              />
-              <label htmlFor="anonHelper" className="text-[11px] font-black uppercase text-slate-700 cursor-pointer select-none">
-                Don't know the person? (Create Anonymous Node)
-              </label>
-            </div>
-            
-            {showSuggestions && filteredTags.length > 0 && !isAnonymousHelper && (
-              <ul className="absolute z-20 w-full bg-white border-4 border-black rounded-xl mt-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] max-h-40 overflow-y-auto">
-                {filteredTags.map(tag => (
-                  <li key={tag} onMouseDown={() => { setHelperId(tag); setShowSuggestions(false); }} className="p-3 border-b-2 border-black last:border-0 hover:bg-lime-300 cursor-pointer font-black text-xs uppercase">
-                    {tag}
-                  </li>
-                ))}
-              </ul>
-            )}
+      {/* GAMIFIED WIZARD HEADER */}
+      <div className="flex justify-center mb-8 relative z-10">
+        <div className="bg-white border-4 border-black rounded-2xl flex p-1 shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1">
+          <button onClick={() => setStep(1)} className={`px-6 py-2 font-black uppercase text-sm rounded-xl transition-colors ${step === 1 ? 'bg-cyan-400 border-4 border-black' : 'text-slate-400'}`}>1. The Deed</button>
+          <button onClick={() => setStep(2)} className={`px-6 py-2 font-black uppercase text-sm rounded-xl transition-colors ${step === 2 ? 'bg-pink-400 border-4 border-black' : 'text-slate-400'}`}>2. Customize</button>
+        </div>
+      </div>
 
-            {/* THE PIN CREATOR BOX NOW APPEARS WHEN YOU TYPE A NEW NAME! */}
-            {isNewHelper && (
-              <div className="mt-3 bg-yellow-200 border-2 border-black p-3 rounded-xl text-slate-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
-                <p className="text-[11px] font-black">
-                  ✨ Unregistered Helper! We'll auto-create an Unclaimed Node for them.
-                </p>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black uppercase text-black">Set a Secret PIN (Optional)</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. 1234 or leave blank to auto-generate" 
-                    value={helperPin}
-                    onChange={(e) => setHelperPin(e.target.value)}
-                    className="w-full bg-white border-2 border-black rounded-lg p-2 uppercase font-black text-xs focus:outline-none shadow-[2px_2px_0px_rgba(0,0,0,1)]" 
-                  />
+      {errorMsg && <div className="bg-red-500 text-white p-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] mb-6 font-black text-center transform -rotate-1">⚠️ {errorMsg}</div>}
+
+      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[12px_12px_0px_rgba(0,0,0,1)] relative">
+        <button onClick={() => navigate('/')} className="absolute -top-5 -right-5 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer">✖</button>
+        
+        <form onSubmit={handleSubmit}>
+          
+          {/* STEP 1: THE DEED */}
+          {step === 1 && (
+            <div className="flex flex-col gap-6 animate-in slide-in-from-left">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="bg-blue-50 border-4 border-black p-5 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                  <label className="block text-sm font-black uppercase mb-2">Who Helped You?</label>
+                  <input type="text" placeholder="Helper's K-Tag..." value={isAnonymousHelper ? 'ANONYMOUS 🕵️‍♂️' : helperId} onChange={e => setHelperId(e.target.value.toUpperCase())} disabled={isAnonymousHelper} className="w-full border-4 border-black rounded-xl p-3 uppercase font-black bg-white shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)]" />
+                  <div className="mt-3 flex items-center gap-2">
+                    <input type="checkbox" id="anon" checked={isAnonymousHelper} onChange={e => { setIsAnonymousHelper(e.target.checked); setHelperId(''); }} className="w-5 h-5 accent-pink-500 border-2 border-black rounded cursor-pointer" />
+                    <label htmlFor="anon" className="text-[10px] font-black uppercase cursor-pointer">Make Anonymous</label>
+                  </div>
+                  {isNewHelper && !isAnonymousHelper && helperId && (
+                    <input type="text" placeholder="Set a PIN (Optional)" value={helperPin} onChange={e => setHelperPin(e.target.value)} className="w-full border-2 border-black rounded-lg p-2 mt-3 uppercase font-black text-xs bg-yellow-100" />
+                  )}
+                </div>
+                <div className="bg-slate-100 border-4 border-black p-5 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)] opacity-80">
+                  <label className="block text-sm font-black uppercase mb-2">Your Identity</label>
+                  <input type="text" value={myId} readOnly className="w-full border-4 border-black rounded-xl p-3 uppercase font-black bg-slate-300 text-slate-500 cursor-not-allowed" />
+                  <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Locked to your account</p>
                 </div>
               </div>
-            )}
-          </div>
 
-          <div>
-            <label className="block text-xs font-black text-black mb-1 uppercase">
-              Your Primary K-Tag <span className="text-red-500 font-bold">(Fixed ID)</span>
-            </label>
-            <input type="text" value={myId} readOnly required
-              className="w-full bg-slate-200 border-4 border-black rounded-xl p-3 uppercase font-black focus:outline-none shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-not-allowed text-slate-600" 
-              title="To prevent spam, your account is bound to a single unique K-Tag on the global map." />
-          </div>
-        </div>
+              <div className="bg-gradient-to-r from-yellow-300 to-amber-400 p-5 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] flex items-center gap-4 transform rotate-1">
+                <input type="checkbox" checked={completedQuest} onChange={e => setCompletedQuest(e.target.checked)} className="w-8 h-8 accent-black border-4 border-black rounded cursor-pointer shrink-0" />
+                <div>
+                  <span className="font-black uppercase text-lg block leading-tight">⚔️ Completed Daily Mission?</span>
+                  <span className="font-bold text-xs bg-white/50 px-2 py-0.5 rounded border border-black mt-1 inline-block">"{TODAYS_QUEST}"</span>
+                </div>
+              </div>
 
-        {/* --- DAILY QUEST COMPLETION WIDGET CHECKBOX --- */}
-        <div className="bg-gradient-to-r from-amber-200 to-yellow-400 p-3 sm:p-4 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-start gap-3 transform -rotate-1 mb-2">
-          <input 
-            type="checkbox" 
-            checked={completedQuest}
-            onChange={(e) => setCompletedQuest(e.target.checked)}
-            className="w-6 h-6 sm:w-8 sm:h-8 mt-1 border-4 border-black rounded accent-black cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)] shrink-0" 
-          />
-          <div className="flex flex-col">
-            <span className="font-black uppercase tracking-tight text-black text-sm sm:text-base leading-tight">⚔️ Does this fulfill Today's Mission?</span>
-            <span className="font-bold text-[10px] sm:text-xs text-slate-900 mt-1 italic">"{TODAYS_QUEST}"</span>
-            {completedQuest && <span className="mt-1 bg-black text-amber-300 font-black text-[9px] px-2 py-0.5 rounded w-max uppercase tracking-widest animate-pulse">Daily Reward Boost Unlocked</span>}
-          </div>
-        </div>
+              <textarea placeholder="Tell the story (Optional)" value={deedComment} onChange={e => setDeedComment(e.target.value)} rows="3" className="w-full border-4 border-black rounded-2xl p-4 font-bold bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:bg-pink-50 resize-none"></textarea>
 
-        {/* --- DEED STORY / COMMENT BOX --- */}
-        <div className="flex flex-col gap-2">
-          <label className="block text-xs font-black text-black uppercase">
-            📝 Tell the story (Optional)
-          </label>
-          <textarea 
-            placeholder="How did this person help you? Drop a quick note!" 
-            value={deedComment}
-            onChange={(e) => setDeedComment(e.target.value)}
-            rows="3"
-            className="w-full bg-white border-4 border-black rounded-xl p-3 font-bold text-sm focus:outline-none focus:bg-pink-50 shadow-[4px_4px_0px_rgba(0,0,0,1)] resize-none"
-          ></textarea>
-        </div>
-
-        <div className="border-t-4 border-black border-dashed pt-6">
-          <h2 className="text-lg font-black text-black mb-4 uppercase bg-purple-300 px-3 py-1 border-2 border-black rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] w-max">✨ Node Customization</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-black uppercase">Shape</label>
-              <select value={nodeShape} onChange={(e) => setNodeShape(e.target.value)} className="p-2.5 border-2 border-black rounded-xl bg-white font-bold text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer">
-                <option value="circle">Circle 🟡</option>
-                <option value="square">Square 🟦</option>
-                <option value="hexagon">Hexagon ⬢</option>
-              </select>
+              <button type="button" onClick={() => setStep(2)} className="bg-cyan-400 text-black text-2xl font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all uppercase tracking-widest mt-2 cursor-pointer">
+                Next Step ➔
+              </button>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-black uppercase">Type</label>
-              <select value={nodeType} onChange={(e) => {
-                  setNodeType(e.target.value);
-                  if (e.target.value === 'color') setNodeValue('#10b981');
-                  if (e.target.value === 'emoji') setNodeValue('💖');
-                  if (e.target.value === 'image') setNodeValue(session?.user?.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kindness');
-                }} 
-                className="p-2.5 border-2 border-black rounded-xl bg-white font-bold text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer"
-              >
-                <option value="color">Solid Color 🎨</option>
-                <option value="emoji">Emoji 😎</option>
-                <option value="image">Avatar / Img 🖼️</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-black uppercase">Value</label>
-              {nodeType === 'color' ? (
-                <input type="color" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="w-full h-[42px] p-1 border-2 border-black rounded-xl cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
-              ) : nodeType === 'emoji' ? (
-                <input type="text" maxLength="2" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-2 h-[42px] border-2 border-black rounded-xl bg-white text-center text-xl shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
-              ) : (
-                <input type="url" value={nodeValue} onChange={(e) => setNodeValue(e.target.value)} className="p-2 h-[42px] border-2 border-black rounded-xl bg-white text-xs font-bold shadow-[2px_2px_0px_rgba(0,0,0,1)]" placeholder="https://..." />
-              )}
-            </div>
-          </div>
+          )}
 
-          <div className="mt-4 flex flex-col gap-2">
-            <label className="text-[10px] font-black text-black uppercase">Outgoing Arrow Color</label>
-            <div className="flex flex-wrap gap-2">
-              {['#cbd5e1', '#000000', '#f43f5e', '#a855f7', '#3b82f6', '#facc15', '#22c55e'].map(color => (
-                <button type="button" key={color} onClick={() => setLinkColor(color)}
-                  className={`w-7 h-7 rounded-full border-2 border-black transition-all cursor-pointer ${linkColor === color ? 'scale-110 shadow-[2px_2px_0px_rgba(0,0,0,1)] ring-2 ring-black' : 'opacity-60 hover:opacity-100'}`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+          {/* STEP 2: CUSTOMIZE */}
+          {step === 2 && (
+            <div className="flex flex-col gap-6 animate-in slide-in-from-right">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[{l:'Shape', v:nodeShape, s:setNodeShape, o:[{val:'circle',txt:'Circle 🟡'},{val:'square',txt:'Square 🟦'},{val:'hexagon',txt:'Hexagon ⬢'}]},
+                  {l:'Type', v:nodeType, s:(v) => { setNodeType(v); setNodeValue(v==='color'?'#10b981':v==='emoji'?'💖':session?.user?.user_metadata?.avatar_url); }, o:[{val:'color',txt:'Color 🎨'},{val:'emoji',txt:'Emoji 😎'},{val:'image',txt:'Avatar 🖼️'}]}].map(dd => (
+                  <div key={dd.l} className="bg-pink-50 border-4 border-black p-4 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                    <label className="block text-[10px] font-black uppercase mb-2">{dd.l}</label>
+                    <select value={dd.v} onChange={e => dd.s(e.target.value)} className="w-full border-2 border-black rounded-lg p-2 font-bold text-xs cursor-pointer">
+                      {dd.o.map(opt => <option key={opt.val} value={opt.val}>{opt.txt}</option>)}
+                    </select>
+                  </div>
+                ))}
+                
+                <div className="bg-pink-50 border-4 border-black p-4 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                  <label className="block text-[10px] font-black uppercase mb-2">Value</label>
+                  {nodeType === 'color' ? <input type="color" value={nodeValue} onChange={e => setNodeValue(e.target.value)} className="w-full h-8 border-2 border-black rounded cursor-pointer" /> :
+                   nodeType === 'emoji' ? <input type="text" maxLength="2" value={nodeValue} onChange={e => setNodeValue(e.target.value)} className="w-full border-2 border-black rounded-lg p-1 text-center text-xl" /> :
+                   <input type="url" value={nodeValue} onChange={e => setNodeValue(e.target.value)} className="w-full border-2 border-black rounded-lg p-2 font-bold text-xs" />}
+                </div>
+              </div>
 
-        <button type="submit" disabled={isLoading} className="w-full mt-2 bg-cyan-400 hover:bg-cyan-300 text-black text-lg font-black py-4 px-4 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all uppercase tracking-widest cursor-pointer">
-          {isLoading ? 'Saving... 🌀' : 'Log Good Deed ⚡'}
-        </button>
-      </form>
+              <div className="bg-slate-100 border-4 border-black p-4 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                <label className="block text-[10px] font-black uppercase mb-3 text-center">Beam Color</label>
+                <div className="flex justify-center gap-3">
+                  {['#cbd5e1', '#000000', '#f43f5e', '#a855f7', '#3b82f6', '#facc15', '#22c55e'].map(color => (
+                    <button type="button" key={color} onClick={() => setLinkColor(color)} className={`w-10 h-10 rounded-full border-4 border-black transition-transform cursor-pointer ${linkColor === color ? 'scale-125 shadow-[4px_4px_0px_rgba(0,0,0,1)]' : 'hover:scale-110 opacity-70'}`} style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-2">
+                <button type="button" onClick={() => setStep(1)} className="w-1/3 bg-white text-black text-xl font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all uppercase cursor-pointer">
+                  Back
+                </button>
+                <button type="submit" disabled={isLoading} className="w-2/3 bg-lime-400 text-black text-2xl font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all uppercase tracking-widest cursor-pointer">
+                  {isLoading ? 'Saving...' : 'Log It! ⚡'}
+                </button>
+              </div>
+            </div>
+          )}
+        </form>
+      </div>
     </div>
   );
 }
@@ -1316,7 +895,8 @@ function App() {
   const [linkPopup, setLinkPopup] = useState(null); 
   const [showQRModal, setShowQRModal] = useState(false); 
   const [showQuestModal, setShowQuestModal] = useState(false);
-  const [showShopModal, setShowShopModal] = useState(false); // 🛒 Gamification Cosmetics Window State Variable  
+  const [showShopModal, setShowShopModal] = useState(false); 
+  const [shopTab, setShopTab] = useState('themes'); // 🛒 K-Shop Gamified Navigation Tab
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
   // THE K-SHOP COSMETICS CATALOG DATABASE
@@ -1964,97 +1544,74 @@ function App() {
              </div>
           </div>
         )}
-        {/* 🛒 GAMIFIED K-SHOP (100% FREE & INSTANT EQUIP MODE) */}
+{/* 🛒 GAMIFIED TABBED K-SHOP */}
         {showShopModal && session && myPrimaryNode && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 pointer-events-auto">
-             <div className="bg-white border-4 border-black p-5 sm:p-7 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] transform w-full max-w-xl text-center relative animate-in slide-in-from-bottom max-h-[90vh] overflow-y-auto">
-                <button onClick={() => setShowShopModal(false)} className="absolute -top-3 -right-3 bg-red-500 text-white border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 pointer-events-auto">
+             <div className="w-full max-w-3xl relative animate-in zoom-in duration-200">
                 
- <div className="inline-block bg-yellow-400 px-8 py-3 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2 mb-4 relative">
-                  <h2 className="text-black font-black uppercase text-xl sm:text-2xl tracking-widest leading-none drop-shadow-md">🛒 K-Shop </h2>
-                  <div className="absolute -top-4 -right-4 bg-white border-4 border-black rounded-full px-4 py-1.5 text-sm sm:text-base font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] transform rotate-6 flex items-center gap-1.5">
-                    🪙 <span className="text-lime-600 font-black">{myPrimaryNode?.coins || 0}</span>
-                  </div>
-                </div>
-
-                {/* 0. VERIFICATION BADGE */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-blue-300 p-2 rounded tracking-widest text-xs">💎 Official Verification</div>
-                <div className="flex flex-col gap-2 mt-3 mb-5">
-                   <div className="bg-white hover:bg-blue-50 transition-colors border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center justify-between">
-                      <div className="text-left flex items-center gap-2">
-                         <svg className="w-8 h-8 text-blue-500 fill-current drop-shadow-sm" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                         <div>
-                           <p className="font-black uppercase text-sm text-black">Verified Badge</p>
-                           <p className="text-[10px] font-bold text-slate-500 uppercase">Show the world you're legit!</p>
-                         </div>
-                      </div>
-                      <button 
-                         onClick={async () => {
-                             const isVerif = !(myPrimaryNode?.cosmetics?.verified);
-                             try { playSound('pop'); } catch (error) { console.warn("Audio skipped", error); }
-                             setGlobalGraph(prev => ({
-                                 ...prev, 
-                                 nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, verified: isVerif, cosmetics: { ...(n.cosmetics || {}), verified: isVerif } } : n)
-                             }));
-                             
-                             const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
-                             const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
-
-                             await supabase.rpc('equip_cosmetics', { 
-                                 p_node: myPrimaryNode.id, 
-                                 p_shape: freshData?.shape, 
-                                 p_effect: freshCosm?.effect, 
-                                 p_arrow: freshCosm?.arrow, 
-                                 p_title: freshCosm?.title, 
-                                 p_map_theme: freshCosm?.mapTheme, 
-                                 p_frame: freshCosm?.frame, 
-                                 p_verified: isVerif 
-                             }); 
-                             fetchGlobalGraph();
-                         }}
-                         className={`px-4 py-2 font-black uppercase text-xs rounded-xl border-2 border-black transition-transform active:scale-95 shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer ${myPrimaryNode?.cosmetics?.verified ? 'bg-blue-500 text-white hover:bg-blue-400' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
-                      >
-                         {myPrimaryNode?.cosmetics?.verified ? 'Turn Off' : 'Equip Free'}
-                      </button>
+                {/* FLOATING HEADER & COINS */}
+                <div className="flex justify-between items-end mb-4 relative z-10 px-2">
+                   <div className="bg-yellow-400 border-4 border-black rounded-2xl px-6 py-2 shadow-[8px_8px_0px_rgba(0,0,0,1)] transform -rotate-2">
+                     <h2 className="text-black font-black uppercase text-2xl tracking-widest drop-shadow-sm">🛒 K-Shop</h2>
+                   </div>
+                   <div className="bg-white border-4 border-black rounded-2xl px-6 py-2 shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-2 flex items-center gap-2">
+                     🪙 <span className="text-lime-600 font-black text-xl">{myPrimaryNode?.coins || 0}</span>
                    </div>
                 </div>
 
-                {/* 1. MAP THEMES */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-blue-200 p-2 rounded tracking-widest text-xs">🗺️ Map Themes</div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_THEMES.map(item => renderShopButton(item, 'mapTheme', myPrimaryNode?.cosmetics?.mapTheme || 'classic'))}
+                {/* SHOP TABS (Grid format for mobile compatibility) */}
+                <div className="grid grid-cols-4 sm:flex sm:flex-row gap-2 mb-[-15px] relative z-20 px-4">
+                  {[
+                    { id: 'themes', icon: '🗺️', label: 'Map' }, { id: 'titles', icon: '🏷️', label: 'Titles' },
+                    { id: 'frames', icon: '🖼️', label: 'Frames' }, { id: 'auras', icon: '✨', label: 'Auras' },
+                    { id: 'shapes', icon: '🟢', label: 'Shapes' }, { id: 'beams', icon: '🚀', label: 'Beams' },
+                    { id: 'verified', icon: '💎', label: 'Verify' }
+                  ].map(tab => (
+                    <button key={tab.id} onClick={() => setShopTab(tab.id)} style={{ transform: 'skewX(-5deg)' }} className={`flex-1 flex flex-col items-center justify-center py-2 border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform ${shopTab === tab.id ? 'bg-cyan-400 -translate-y-2' : 'bg-slate-200 hover:bg-slate-100'} cursor-pointer`}>
+                       <span style={{ transform: 'skewX(5deg)' }} className="text-xl mb-0.5">{tab.icon}</span>
+                       <span style={{ transform: 'skewX(5deg)' }} className="text-[9px] font-black uppercase tracking-wider hidden sm:block">{tab.label}</span>
+                    </button>
+                  ))}
                 </div>
 
-                {/* 2. TITLES */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-green-200 p-2 rounded tracking-widest text-xs">🏷️ Equippable Titles</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5 mt-3">
-                  {SHOP_TITLES.map(item => renderShopButton(item, 'title', myPrimaryNode?.cosmetics?.title))}
-                </div>
+                {/* MAIN SHOP CONTENT AREA (Fixed Height to prevent scrolling) */}
+                <div className="bg-white border-4 border-black rounded-3xl p-6 pt-10 shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-10 min-h-[350px]">
+                  <button onClick={() => setShowShopModal(false)} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer z-50">✖</button>
+                  
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    {shopTab === 'themes' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_THEMES.map(item => renderShopButton(item, 'mapTheme', myPrimaryNode?.cosmetics?.mapTheme || 'classic'))}</div>}
+                    {shopTab === 'titles' && <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{SHOP_TITLES.map(item => renderShopButton(item, 'title', myPrimaryNode?.cosmetics?.title))}</div>}
+                    {shopTab === 'frames' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_FRAMES.map(item => renderShopButton(item, 'frame', myPrimaryNode?.cosmetics?.frame || 'none'))}</div>}
+                    {shopTab === 'auras' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_EFFECTS.map(item => renderShopButton(item, 'effect', myPrimaryNode?.cosmetics?.effect || 'none'))}</div>}
+                    {shopTab === 'shapes' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_SHAPES.map(item => renderShopButton(item, 'shape', myPrimaryNode?.shape || 'circle'))}</div>}
+                    {shopTab === 'beams' && <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{SHOP_ARROWS.map(item => renderShopButton(item, 'arrow', myPrimaryNode?.cosmetics?.arrow || 'classic'))}</div>}
+                    
+                    {shopTab === 'verified' && (
+                      <div className="flex items-center justify-center h-full pt-8">
+                        <div className="bg-blue-50 border-4 border-black rounded-2xl p-6 shadow-[6px_6px_0px_rgba(0,0,0,1)] w-full max-w-md text-center transform -rotate-1">
+                          <svg className="w-16 h-16 text-blue-500 fill-current mx-auto mb-4 drop-shadow-md" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                          <h3 className="font-black text-2xl uppercase mb-2">Verified Badge</h3>
+                          <p className="text-xs font-bold text-slate-500 uppercase mb-6">Equip this free badge to stand out on the map!</p>
+                          <button 
+                            onClick={async () => {
+                                const isVerif = !(myPrimaryNode?.cosmetics?.verified);
+                                try { playSound('pop'); } catch (err) { console.warn("Audio skipped", err); }
+                                setGlobalGraph(prev => ({ ...prev, nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, verified: isVerif, cosmetics: { ...(n.cosmetics || {}), verified: isVerif } } : n) }));
+                                const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
+                                const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
+                                await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: freshData?.shape, p_effect: freshCosm?.effect, p_arrow: freshCosm?.arrow, p_title: freshCosm?.title, p_map_theme: freshCosm?.mapTheme, p_frame: freshCosm?.frame, p_verified: isVerif }); 
+                                fetchGlobalGraph();
+                            }}
+                            className={`w-full py-4 font-black uppercase text-xl rounded-xl border-4 border-black transition-transform active:scale-95 shadow-[6px_6px_0px_rgba(0,0,0,1)] cursor-pointer ${myPrimaryNode?.cosmetics?.verified ? 'bg-red-400 text-white' : 'bg-lime-400 text-black'}`}
+                          >
+                            {myPrimaryNode?.cosmetics?.verified ? 'Remove Badge ❌' : 'Equip Badge ✅'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-                {/* 3. FRAMES */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-emerald-200 p-2 rounded tracking-widest text-xs">🖼️ Node Frames</div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_FRAMES.map(item => renderShopButton(item, 'frame', myPrimaryNode?.cosmetics?.frame || 'none'))}
                 </div>
-
-                {/* 4. AURAS */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-violet-200 p-2 rounded tracking-widest text-xs">✨ Aura Effects</div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_EFFECTS.map(item => renderShopButton(item, 'effect', myPrimaryNode?.cosmetics?.effect || 'none'))}
-                </div>
-
-                {/* 4.5 SHAPES */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-cyan-200 p-2 rounded tracking-widest text-xs">🟢 Map Tokens (Shapes)</div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_SHAPES.map(item => renderShopButton(item, 'shape', myPrimaryNode?.shape || 'circle'))}
-                </div>
-
-                {/* 5. BEAMS */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-orange-200 p-2 rounded tracking-widest text-xs">🚀 Connecting Beams</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2 mt-3">
-                  {SHOP_ARROWS.map(item => renderShopButton(item, 'arrow', myPrimaryNode?.cosmetics?.arrow || 'classic'))}
-                </div>
-
              </div>
           </div>
         )}
