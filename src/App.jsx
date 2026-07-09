@@ -874,12 +874,18 @@ function Dashboard({ userData }) {
 }
 
 // 🔊 SOUND EFFECTS CACHE (Moved outside component to satisfy React Compiler!)
+// Swapped to permanent reliable CDNs to fix the NotSupportedError
 const SFX = {
-  pop: new Audio('https://assets.mixkit.co/active_storage/sfx/2997/2997-preview.mp3'),
-  buy: new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'), // Short, pleasant UI pop click!
-  ding: new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3')
+  pop: new Audio('https://s3.amazonaws.com/freecodecamp/simonSound1.mp3'),
+  buy: new Audio('https://s3.amazonaws.com/freecodecamp/simonSound2.mp3'),
+  ding: new Audio('https://s3.amazonaws.com/freecodecamp/simonSound3.mp3')
 };
-const playSound = (type) => { SFX[type].currentTime = 0; SFX[type].play().catch(error => console.log('Audio blocked', error)); };
+const playSound = (type) => { 
+  if (SFX[type]) {
+    SFX[type].currentTime = 0; 
+    SFX[type].play().catch(() => {}); // Catch silently to prevent console spam
+  }
+};
 
 // --- MAIN APP ---
 function App() {
@@ -897,6 +903,7 @@ function App() {
   const [showQuestModal, setShowQuestModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false); 
   const [shopTab, setShopTab] = useState('themes'); // 🛒 K-Shop Gamified Navigation Tab
+  const [confirmPurchase, setConfirmPurchase] = useState(null); // 💎 Custom Checkout Modal State
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
 
   // THE K-SHOP COSMETICS CATALOG DATABASE
@@ -1260,14 +1267,13 @@ function App() {
     fetchGlobalGraph();
     window.dispatchEvent(new CustomEvent('recenter-graph')); // Tells the map to animate & recenter
   };
-
-  // 🛒 UNIVERSAL K-SHOP PURCHASING & EQUIPPING ENGINE
+// 🛒 UNIVERSAL K-SHOP PURCHASING & EQUIPPING ENGINE
   const handleShopItemClick = async (item, categoryStr, currentEquipped) => {
     const isOwned = !item.price || item.price === 0 || (myPrimaryNode?.unlockedCosmetics || []).includes(item.id);
 
     if (isOwned) {
       if (currentEquipped === item.id) return; // Already equipped
-      try { playSound('pop'); } catch (error) { console.warn("Audio skipped", error); }
+      playSound('pop');
 
       // Equip: Update local visual state instantly!
       setGlobalGraph(prev => ({
@@ -1283,61 +1289,55 @@ function App() {
       const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
 
       await supabase.rpc('equip_cosmetics', { 
-        p_node: myPrimaryNode.id, 
-        p_shape: categoryStr === 'shape' ? item.id : freshData?.shape, 
-        p_effect: categoryStr === 'effect' ? item.id : freshCosm?.effect, 
-        p_arrow: categoryStr === 'arrow' ? item.id : freshCosm?.arrow, 
-        p_title: categoryStr === 'title' ? item.id : freshCosm?.title, 
-        p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm?.mapTheme, 
-        p_frame: categoryStr === 'frame' ? item.id : freshCosm?.frame, 
-        p_verified: freshCosm?.verified 
+        p_node: myPrimaryNode.id, p_shape: categoryStr === 'shape' ? item.id : freshData?.shape, 
+        p_effect: categoryStr === 'effect' ? item.id : freshCosm?.effect, p_arrow: categoryStr === 'arrow' ? item.id : freshCosm?.arrow, 
+        p_title: categoryStr === 'title' ? item.id : freshCosm?.title, p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm?.mapTheme, 
+        p_frame: categoryStr === 'frame' ? item.id : freshCosm?.frame, p_verified: freshCosm?.verified 
       });
       fetchGlobalGraph();
     } else {
-      // Buy Mode
-      if ((myPrimaryNode?.coins || 0) < item.price) {
-        alert(`🔒 Not enough Karma Coins! You need ${item.price} 🪙 to unlock this item. Keep logging good deeds!`);
-        return;
-      }
-      if (!window.confirm(`Unlock "${item.label}" for ${item.price} 🪙?`)) return;
+      // Trigger Gamified Confirmation Modal instead of browser alerts!
+      setConfirmPurchase({ item, categoryStr });
+    }
+  };
 
-      try { playSound('buy'); } catch (error) { console.warn("Audio skipped", error); }
+  // 🚀 CUSTOM CHECKOUT EXECUTION
+  const executePurchase = async () => {
+    if (!confirmPurchase) return;
+    const { item, categoryStr } = confirmPurchase;
+    setConfirmPurchase(null); // Close the checkout modal instantly
+    playSound('buy');
 
-      // Purchase: Deduct coins, add to inventory, AND auto-equip instantly locally!
-      setGlobalGraph(prev => ({
-        nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { 
-          ...n, coins: n.coins - item.price, unlockedCosmetics: [...(n.unlockedCosmetics || []), item.id],
-          shape: categoryStr === 'shape' ? item.id : n.shape, cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id }
-        } : n),
-        links: categoryStr === 'arrow' 
-          ? prev.links.map(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id ? { ...l, arrowStyle: item.id } : l) 
-          : prev.links
-      }));
+    // Purchase: Deduct coins, add to inventory, AND auto-equip instantly locally!
+    setGlobalGraph(prev => ({
+      nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { 
+        ...n, coins: n.coins - item.price, unlockedCosmetics: [...(n.unlockedCosmetics || []), item.id],
+        shape: categoryStr === 'shape' ? item.id : n.shape, cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id }
+      } : n),
+      links: categoryStr === 'arrow' 
+        ? prev.links.map(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id ? { ...l, arrowStyle: item.id } : l) 
+        : prev.links
+    }));
 
-      // Server Transaction
-      const { data: success } = await supabase.rpc('buy_cosmetic', { p_node: myPrimaryNode.id, p_item_id: item.id, p_price: item.price });
-      if (success) {
-        const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
-        const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
+    // Server Transaction
+    const { data: success } = await supabase.rpc('buy_cosmetic', { p_node: myPrimaryNode.id, p_item_id: item.id, p_price: item.price });
+    if (success) {
+      const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
+      const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
 
-        await supabase.rpc('equip_cosmetics', { 
-          p_node: myPrimaryNode.id, 
-          p_shape: categoryStr === 'shape' ? item.id : freshData?.shape, 
-          p_effect: categoryStr === 'effect' ? item.id : freshCosm?.effect, 
-          p_arrow: categoryStr === 'arrow' ? item.id : freshCosm?.arrow, 
-          p_title: categoryStr === 'title' ? item.id : freshCosm?.title, 
-          p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm?.mapTheme, 
-          p_frame: categoryStr === 'frame' ? item.id : freshCosm?.frame, 
-          p_verified: freshCosm?.verified 
-        });
-        fetchGlobalGraph();
-      }
+      await supabase.rpc('equip_cosmetics', { 
+        p_node: myPrimaryNode.id, p_shape: categoryStr === 'shape' ? item.id : freshData?.shape, 
+        p_effect: categoryStr === 'effect' ? item.id : freshCosm?.effect, p_arrow: categoryStr === 'arrow' ? item.id : freshCosm?.arrow, 
+        p_title: categoryStr === 'title' ? item.id : freshCosm?.title, p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm?.mapTheme, 
+        p_frame: categoryStr === 'frame' ? item.id : freshCosm?.frame, p_verified: freshCosm?.verified 
+      });
+      fetchGlobalGraph();
     }
   };
 
   // 💰 SIMULATED BANK / COIN ADDER ENGINE
   const handleBuyCoins = async (amount) => {
-    try { playSound('buy'); } catch (err) { console.warn("Audio skipped", err); }
+    playSound('buy'); // The updated playSound helper already handles errors silently now!
     
     // 1. Optimistic UI update for instant feedback
     setGlobalGraph(prev => ({
@@ -1376,6 +1376,36 @@ function App() {
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
         
         {/* MODALS */}
+
+        {/* 💎 GAMIFIED ITEM CHECKOUT MODAL 💎 */}
+        {confirmPurchase && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 pointer-events-auto">
+             <div className="bg-white border-4 border-black p-6 rounded-3xl shadow-[12px_12px_0px_rgba(0,0,0,1)] transform -rotate-1 w-full max-w-sm text-center relative animate-in zoom-in duration-200">
+                <button onClick={() => setConfirmPurchase(null)} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer z-10">✖</button>
+                
+                <h3 className="text-2xl font-black uppercase mb-4 tracking-widest text-black">Unlock Item?</h3>
+                <div className="bg-cyan-50 border-4 border-black rounded-2xl p-6 mb-6 shadow-[inset_4px_4px_0px_rgba(0,0,0,0.1)] flex flex-col items-center">
+                   <div className="text-6xl mb-3 drop-shadow-md">{confirmPurchase.item.icon}</div>
+                   <div className="font-black uppercase text-xl text-black">{confirmPurchase.item.label}</div>
+                   <div className="mt-4 inline-flex items-center gap-2 bg-yellow-300 px-4 py-2 border-4 border-black rounded-xl font-black text-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] transform rotate-2">
+                     🪙 {confirmPurchase.item.price}
+                   </div>
+                </div>
+
+                {(myPrimaryNode?.coins || 0) >= confirmPurchase.item.price ? (
+                  <div className="flex gap-4">
+                     <button onClick={() => setConfirmPurchase(null)} className="flex-1 py-4 font-black uppercase text-lg rounded-xl border-4 border-black bg-slate-200 text-slate-700 hover:bg-slate-300 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all cursor-pointer">Cancel</button>
+                     <button onClick={executePurchase} className="flex-1 py-4 font-black uppercase text-lg rounded-xl border-4 border-black bg-lime-400 text-black hover:bg-lime-300 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all cursor-pointer">Unlock 🚀</button>
+                  </div>
+                ) : (
+                  <div className="bg-red-50 border-4 border-red-500 rounded-2xl p-4 text-red-700 shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)]">
+                     <p className="font-black uppercase mb-1 text-lg">Not Enough Coins!</p>
+                     <p className="text-xs font-bold">You need {confirmPurchase.item.price - (myPrimaryNode?.coins || 0)} more 🪙 to unlock this item. Go log some good deeds or visit the Coin Shop!</p>
+                  </div>
+                )}
+             </div>
+          </div>
+        )}
         {showSettings && <SettingsModal session={session} onClose={() => setShowSettings(false)} />}
         {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
         {showRequests && <RequestsModal session={session} onClose={() => setShowRequests(false)} onRefreshGraph={fetchGlobalGraph} />}
