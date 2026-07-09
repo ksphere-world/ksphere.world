@@ -161,9 +161,15 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
         pointerDownPos = { x: clientX, y: clientY };
         hasDragged = false;
 
-        const { bestNode } = hitTest(clientX, clientY);
+        const { bestNode, bestLink } = hitTest(clientX, clientY);
+        
+        // 🛡️ CRITICAL FIX: We MUST stop propagation if we hit a node OR a link!
+        // Otherwise, ForceGraph's native canvas events steal the mouse click to pan the background!
+        if (bestNode || bestLink) {
+            e.stopPropagation(); 
+        }
+        
         if (bestNode) {
-            e.stopPropagation(); // 🛑 STOP the background from trying to pan!
             isDragging = true;
             dragNode = bestNode;
             fgRef.current.d3ReheatSimulation(); // Wake physics up instantly
@@ -356,28 +362,34 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           
           linkColor={(link) => {
               if (link === hoverLink) return '#f472b6';
-              if (['rainbow', 'dna', 'footprints'].includes(link.arrowStyle)) return 'rgba(0,0,0,0)'; 
+              const style = link.arrowStyle || 'classic';
+              if (['rainbow', 'dna', 'footprints'].includes(style)) return 'rgba(0,0,0,0)'; 
               
-              // FIX: Automatically convert old, invisible light-grey lines to Bold Black!
-              let baseColor = link.customColor || '#000000';
-              if (baseColor.toLowerCase() === '#cbd5e1') baseColor = '#000000'; 
+              // 🛡️ CRITICAL FIX: Aggressively convert ALL light/invisible grey/white strings to Black!
+              let baseColor = (link.customColor || '#000000').trim().toLowerCase();
+              if (baseColor === '#cbd5e1' || baseColor === '#ffffff' || baseColor === '' || baseColor === '#94a3b8') {
+                  baseColor = '#000000'; 
+              }
               
-              return link.arrowStyle === 'electric' ? '#60a5fa' : baseColor;
+              return style === 'electric' ? '#60a5fa' : baseColor;
           }}
           linkWidth={(link) => {
               if (link === hoverLink) return 6;
-              if (['rainbow', 'dna', 'footprints'].includes(link.arrowStyle)) return 0; 
-              return link.arrowStyle === 'electric' ? 5 : 3.5; // Made default lines slightly thicker for visibility
+              const style = link.arrowStyle || 'classic';
+              if (['rainbow', 'dna', 'footprints'].includes(style)) return 0; 
+              return style === 'electric' ? 5 : 3.5; 
           }} 
           linkDirectionalArrowLength={(link) => link === hoverLink ? 16 : 12}
           linkDirectionalArrowRelPos={0.75} 
           linkDirectionalArrowColor={(link) => {
               if (link === hoverLink) return '#f472b6';
-              if (link.arrowStyle === 'electric') return '#2563eb';
+              const style = link.arrowStyle || 'classic';
+              if (style === 'electric') return '#2563eb';
               
-              // FIX: Apply the same invisible grey -> black conversion to the arrowheads
-              let baseColor = link.customColor || '#000000';
-              if (baseColor.toLowerCase() === '#cbd5e1') baseColor = '#000000';
+              let baseColor = (link.customColor || '#000000').trim().toLowerCase();
+              if (baseColor === '#cbd5e1' || baseColor === '#ffffff' || baseColor === '' || baseColor === '#94a3b8') {
+                  baseColor = '#000000';
+              }
               return baseColor;
           }}
           linkCurvature={(link) => link.curvature || 0}
