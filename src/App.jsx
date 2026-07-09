@@ -1327,6 +1327,12 @@ function App() {
     { id: 'Vibe Curator', label: 'Vibe Curator', icon: '✨', price: 250 },
     { id: 'CEO of Kindness', label: 'CEO', icon: '💼', price: 500 }
   ];
+  const SHOP_THEMES = [
+    { id: 'classic', label: 'Classic Grid', icon: '📝', price: 0 },
+    { id: 'midnight', label: 'Midnight', icon: '🌙', price: 100 },
+    { id: 'galaxy', label: 'Deep Space', icon: '🌌', price: 150 },
+    { id: 'sakura', label: 'Sakura Pink', icon: '🌸', price: 150 }
+  ];
   const SHOP_SHAPES = [
     { id: 'circle', label: 'Circle', icon: '🟡' }, { id: 'square', label: 'Square', icon: '🔲' }, 
     { id: 'hexagon', label: 'Tech Hex', icon: '⬢' }, { id: 'star', label: 'Star', icon: '⭐' }
@@ -1457,6 +1463,7 @@ function App() {
               questStreak: n.quest_streak || 0,
               glowingQuestHalo: didQuestToday,
               title: cosmeticsPayload.title || null, // ✨ Inject Title Memory
+              mapTheme: cosmeticsPayload.mapTheme || 'classic', // 🗺️ Inject Theme Memory
               coins: n.karma_coins || 300, // 💰 Inject Fake Coin Balance for now!
               cosmetics: cosmeticsPayload
             };
@@ -1894,6 +1901,26 @@ function App() {
                   ))}
                 </div>
 
+                {/* THEMES TAB WRAPPER (NEW!) */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-blue-200 p-2 rounded tracking-widest text-xs">🗺️ Map Themes</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
+                  {SHOP_THEMES.map(item => (
+                    <button key={item.id} onClick={async () => {
+                         if (myPrimaryNode?.mapTheme === item.id) return;
+                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                         if (n) { n.mapTheme = item.id; n.cosmetics = { ...n.cosmetics, mapTheme: item.id }; setGlobalGraph(prev => ({ ...prev })); }
+                         
+                         await supabase.rpc('equip_cosmetics', { 
+                           p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.title, p_map_theme: item.id
+                         }); 
+                         fetchGlobalGraph();
+                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.mapTheme || 'classic') === item.id ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
+                      <span className="text-[8px] font-bold text-slate-500 mt-1">🟡 {item.price}</span>
+                    </button>
+                  ))}
+                </div>
+
                 {/* SHAPE TAB WRAPPER */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-cyan-200 p-2 rounded tracking-widest text-xs">Map Tokens</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
@@ -1997,8 +2024,34 @@ function App() {
           </div>
         </nav>
 
-        <main className="flex-grow relative w-full overflow-hidden flex flex-col bg-[#fdfbf7]">
+        <main className={`flex-grow relative w-full overflow-hidden flex flex-col transition-colors duration-500 ${
+          myPrimaryNode?.mapTheme === 'midnight' ? 'bg-[#0f172a]' :
+          myPrimaryNode?.mapTheme === 'galaxy' ? 'bg-[#09090b]' :
+          myPrimaryNode?.mapTheme === 'sakura' ? 'bg-[#fdf2f8]' :
+          'bg-[#fdfbf7]'
+        }`}>
           
+          {/* 🗺️ MAP THEME BACKGROUND EFFECTS */}
+          {myPrimaryNode?.mapTheme === 'midnight' && (
+            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(#22c55e30 2px, transparent 2px), linear-gradient(90deg, #22c55e30 2px, transparent 2px)', backgroundSize: '40px 40px', opacity: 0.8 }}></div>
+          )}
+          {myPrimaryNode?.mapTheme === 'galaxy' && (
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+               {/* Custom CSS animated stars */}
+               <div className="absolute w-2 h-2 bg-white rounded-full top-[10%] left-[20%] shadow-[0_0_10px_#fff] animate-ping opacity-70"></div>
+               <div className="absolute w-1 h-1 bg-purple-400 rounded-full top-[40%] left-[70%] shadow-[0_0_10px_#c084fc] animate-pulse"></div>
+               <div className="absolute w-3 h-3 bg-pink-400 rounded-full top-[80%] left-[30%] shadow-[0_0_15px_#f472b6] animate-pulse"></div>
+               <div className="absolute w-1.5 h-1.5 bg-blue-300 rounded-full top-[25%] left-[85%] shadow-[0_0_12px_#93c5fd] animate-ping opacity-50"></div>
+               <div className="absolute w-2 h-2 bg-yellow-100 rounded-full top-[65%] left-[15%] shadow-[0_0_12px_#fef08a] animate-pulse opacity-80"></div>
+            </div>
+          )}
+          {myPrimaryNode?.mapTheme === 'sakura' && (
+            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#f9a8d4 3px, transparent 0)', backgroundSize: '40px 40px', opacity: 0.5 }}></div>
+          )}
+          {(!myPrimaryNode?.mapTheme || myPrimaryNode?.mapTheme === 'classic') && (
+             <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#cbd5e1 2px, transparent 0)', backgroundSize: '30px 30px' }}></div>
+          )}
+
           {/* ALWAYS RENDER MAP IN BACKGROUND (Prevents unmounting & scattering when switching pages!) */}
           <div 
             className="absolute inset-0 z-0"

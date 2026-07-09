@@ -5,10 +5,8 @@
 }
 
 body {
-  background-color: #fdfbf7;
+  background-color: #111827; /* Dark backdrop for clean theme transitions */
   color: #111827;
-  background-image: radial-gradient(#cbd5e1 2px, transparent 0);
-  background-size: 30px 30px;
 }
 
 ::selection {
