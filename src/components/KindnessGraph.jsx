@@ -365,12 +365,10 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
               const style = link.arrowStyle || 'classic';
               if (['rainbow', 'dna', 'footprints'].includes(style)) return 'rgba(0,0,0,0)'; 
               
-              // 🛡️ CRITICAL FIX: Aggressively convert ALL light/invisible grey/white strings to Black!
               let baseColor = (link.customColor || '#000000').trim().toLowerCase();
               if (baseColor === '#cbd5e1' || baseColor === '#ffffff' || baseColor === '' || baseColor === '#94a3b8') {
-                  baseColor = '#000000'; 
+                  baseColor = '#000000';
               }
-              
               return style === 'electric' ? '#60a5fa' : baseColor;
           }}
           linkWidth={(link) => {
@@ -393,7 +391,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
               return baseColor;
           }}
           linkCurvature={(link) => link.curvature || 0}
-          linkLineDash={(link) => link.arrowStyle === 'dashed' ? [6, 6] : null} // NATIVELY PUSHES GLOWING/DASHED PARTICLES OVER ARROW PHYSICS SMOOTHLY
+          linkLineDash={(link) => link.arrowStyle === 'dashed' ? [6, 6] : []}
           
           // 🔥 MAGIC CONTINUOUS ANIMATION LOOP WAKER 🔥
           // Forcing 1 tracking particle permanently holds the Canvas drawing 60fps perpetually unlocking perfect uninterrupted Cosmetic Renders!
