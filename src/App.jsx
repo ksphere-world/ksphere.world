@@ -954,7 +954,16 @@ function App() {
   const [userData, setUserData] = useState(null);
   const [session, setSession] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true); 
+  const [showSplash, setShowSplash] = useState(true); // 🎮 SPLASH SCREEN STATE
+  const [isFadingSplash, setIsFadingSplash] = useState(false); // 🎮 SPLASH FADE STATE
   const [showSettings, setShowSettings] = useState(false);
+
+  // Splash Screen Cinematic Timer
+  useEffect(() => {
+    const t1 = setTimeout(() => setIsFadingSplash(true), 2200); // Start fade out
+    const t2 = setTimeout(() => setShowSplash(false), 2700); // Remove from DOM completely
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showNodeManager, setShowNodeManager] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
@@ -1437,6 +1446,51 @@ function App() {
     <Router>
       <div className="min-h-screen font-sans text-slate-900 flex flex-col selection:bg-pink-400 selection:text-white">
         
+        {/* 🎮 CINEMATIC GAMIFIED SPLASH SCREEN 🎮 */}
+        {showSplash && (
+          <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#09090b] transition-all duration-500 ease-in-out ${isFadingSplash ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100 scale-100 pointer-events-auto'}`}>
+            
+            {/* Ambient Background Glows */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-[20%] left-[10%] w-64 h-64 bg-pink-600 rounded-full blur-[100px] opacity-30 animate-pulse"></div>
+              <div className="absolute bottom-[20%] right-[10%] w-64 h-64 bg-cyan-600 rounded-full blur-[100px] opacity-30 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+            </div>
+            
+            <div className="relative z-10 flex flex-col items-center">
+              {/* Bouncing Main Logo */}
+              <div className="text-8xl md:text-9xl mb-6 drop-shadow-[0_0_25px_rgba(244,114,182,0.5)] animate-bounce" style={{ animationDuration: '1.2s' }}>🫶</div>
+              
+              {/* Custom Title Badge */}
+              <div className="bg-white border-4 border-black px-8 py-4 rounded-3xl shadow-[8px_8px_0px_rgba(244,114,182,1)] transform -rotate-2 mb-4">
+                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-black flex flex-col items-center leading-none">
+                  <span>KINDNESS</span>
+                  <span className="text-pink-500">SPHERE</span>
+                </h1>
+              </div>
+              <span className="text-cyan-400 text-lg md:text-xl font-black uppercase tracking-[0.5em] mt-2 mb-14 drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">World</span>
+              
+              {/* Gamified Progress Bar */}
+              <div className="w-64 md:w-80 h-8 bg-slate-800 border-4 border-black rounded-full overflow-hidden shadow-[4px_4px_0px_rgba(0,0,0,1)] relative p-1">
+                <div className="h-full bg-lime-400 rounded-full w-full origin-left animate-[splashLoad_2.2s_ease-out_forwards] border-r-4 border-black shadow-[inset_-2px_0_0_rgba(0,0,0,0.2)]"></div>
+              </div>
+              <p className="mt-5 text-xs font-black uppercase tracking-widest text-slate-300 animate-pulse drop-shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                Initializing Global Map...
+              </p>
+            </div>
+
+            {/* Custom keyframes for the loading bar */}
+            <style dangerouslySetInnerHTML={{__html: `
+              @keyframes splashLoad {
+                0% { transform: scaleX(0); }
+                20% { transform: scaleX(0.3); }
+                40% { transform: scaleX(0.45); }
+                70% { transform: scaleX(0.85); }
+                100% { transform: scaleX(1); }
+              }
+            `}} />
+          </div>
+        )}
+
         {/* MODALS */}
 
         {/* 💎 GAMIFIED ITEM CHECKOUT MODAL 💎 */}
