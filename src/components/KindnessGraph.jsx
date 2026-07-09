@@ -1,5 +1,5 @@
 // frontend/src/components/KindnessGraph.jsx
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 
 const drawShape = (ctx, x, y, r, shape) => {
