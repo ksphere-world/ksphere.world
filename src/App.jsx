@@ -1457,12 +1457,14 @@ function App() {
             </div>
             
             <div className="relative z-10 flex flex-col items-center">
-              {/* 🎮 GAMING STYLE BOUNCING MAIN LOGO */}
+              {/* 💥 HARDCORE ESPORTS BOUNCING LOGO */}
               <div className="relative flex items-center justify-center w-28 h-28 md:w-36 md:h-36 mb-10 animate-bounce" style={{ animationDuration: '1.2s' }}>
-                <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500 to-pink-500 rounded-2xl transform rotate-45 animate-pulse blur-xl opacity-70"></div>
-                <div className="relative bg-[#09090b] border-4 border-cyan-400 rounded-2xl transform rotate-45 w-full h-full flex items-center justify-center shadow-[0_0_30px_#22d3ee]">
-                  <div className="transform -rotate-45 flex items-center justify-center">
-                    <span className="text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-pink-500 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] italic tracking-tighter">K</span>
+                {/* Blood red pulsing aura */}
+                <div className="absolute inset-0 bg-red-600 transform -skew-x-12 animate-pulse blur-xl opacity-60"></div>
+                {/* Aggressive skewed dark block */}
+                <div className="relative bg-[#09090b] border-[6px] border-red-600 transform -skew-x-12 w-full h-full flex items-center justify-center shadow-[10px_10px_0px_#000]">
+                  <div className="transform skew-x-12 flex items-center justify-center mt-2">
+                    <span className="text-7xl md:text-8xl font-black text-white drop-shadow-[0_0_15px_rgba(220,38,38,0.9)] tracking-tighter uppercase">K</span>
                   </div>
                 </div>
               </div>
@@ -1819,16 +1821,15 @@ function App() {
           
           {/* LOGO */}
           <Link to="/" className="text-lg sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 sm:gap-3 hover:scale-105 transition-transform shrink-0">
-            {/* 🎮 GAMING STYLE DIAMOND LOGO */}
-            <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 shrink-0 mt-1 sm:mt-0">
-              <div className="absolute inset-0 bg-cyan-400 rounded-lg transform rotate-45 animate-pulse blur-sm opacity-60"></div>
-              <div className="relative bg-black border-2 border-cyan-400 rounded-lg transform rotate-45 w-full h-full flex items-center justify-center shadow-[0_0_10px_#22d3ee]">
-                <span className="transform -rotate-45 text-cyan-400 font-black text-lg sm:text-xl leading-none tracking-tighter italic">K</span>
+            {/* 💥 HARDCORE ESPORTS HEADER LOGO */}
+            <div className="relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 shrink-0">
+              <div className="relative bg-[#09090b] border-[3px] border-red-600 transform -skew-x-12 w-full h-full flex items-center justify-center shadow-[4px_4px_0px_#000]">
+                <span className="transform skew-x-12 text-white font-black text-2xl sm:text-3xl leading-none tracking-tighter mt-1 drop-shadow-[0_0_5px_rgba(220,38,38,1)]">K</span>
               </div>
             </div>
             <div className="flex flex-col leading-none justify-center">
-              <span className="italic">KINDNESS<span className="text-pink-500">SPHERE</span></span>
-              <span className="text-[7px] sm:text-[10px] md:text-xs text-cyan-500 uppercase tracking-[0.3em] mt-0.5 sm:mt-1 font-bold">world</span>
+              <span className="italic uppercase font-black">KINDNESS<span className="text-red-600">SPHERE</span></span>
+              <span className="text-[7px] sm:text-[10px] md:text-xs text-slate-800 uppercase tracking-[0.3em] mt-0.5 sm:mt-1 font-bold">world</span>
             </div>
           </Link>
           
