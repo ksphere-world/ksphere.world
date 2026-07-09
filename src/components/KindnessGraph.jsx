@@ -109,11 +109,49 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
 
         const threshold = 15 / zoomScale;
         let bestLink = null, bestLinkDist = Infinity;
+        
         processedData.links.forEach(l => {
             if (typeof l.source !== 'object' || typeof l.target !== 'object') return;
-            const d = distToSegment(graphPos, l.source, l.target);
-            if (d <= threshold && d < bestLinkDist) { bestLink = l; bestLinkDist = d; }
+            const dx = l.target.x - l.source.x;
+            const dy = l.target.y - l.source.y;
+            const distance = Math.hypot(dx, dy) || 1;
+            
+            let d = distToSegment(graphPos, l.source, l.target);
+
+            // 1. Calculate precise curve hits if it's curved
+            if (l.curvature) {
+                let minCurveDist = Infinity;
+                const cx = l.source.x + dx/2 - (dy * l.curvature);
+                const cy = l.source.y + dy/2 + (dx * l.curvature);
+                for (let t = 0.1; t <= 0.9; t += 0.1) {
+                    const px = (1-t)*(1-t)*l.source.x + 2*(1-t)*t*cx + t*t*l.target.x;
+                    const py = (1-t)*(1-t)*l.source.y + 2*(1-t)*t*cy + t*t*l.target.y;
+                    const dPoint = Math.hypot(graphPos.x - px, graphPos.y - py);
+                    if (dPoint < minCurveDist) minCurveDist = dPoint;
+                }
+                d = minCurveDist;
+            }
+
+            // 2. Calculate hits directly on the drawn badge/label (Midpoint)
+            let midX = l.source.x + dx / 2;
+            let midY = l.source.y + dy / 2;
+            if (l.curvature) {
+                const curveApex = distance * l.curvature;
+                midX += (-dy / distance) * curveApex;
+                midY += (dx / distance) * curveApex;
+            }
+            const dMid = Math.hypot(graphPos.x - midX, graphPos.y - midY);
+            
+            // Give the badge an extremely generous fat-thumb click radius!
+            const hasReactions = l.reactions && Object.keys(l.reactions).length > 0;
+            const labelHitBox = (l.helpsCount > 1 || hasReactions) ? (30 / zoomScale) : threshold;
+            
+            if ((d <= threshold || dMid <= labelHitBox) && Math.min(d, dMid) < bestLinkDist) {
+                bestLink = l; 
+                bestLinkDist = Math.min(d, dMid);
+            }
         });
+        
         return { bestNode: null, bestLink };
     };
 
@@ -358,14 +396,21 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
               
               if (['rainbow', 'dna', 'footprints'].includes(arrStyle)) {
                   ctx.save();
+                  
+                  // 🔥 ADD UNIVERSAL HOVER GLOW & WIDTH BOOST FOR ALL CUSTOM EDGES
+                  if (isHovered) {
+                      ctx.shadowColor = '#f472b6';
+                      ctx.shadowBlur = 20;
+                  }
+
                   // 🌈 RAINBOW ROAD
                   if (arrStyle === 'rainbow') {
                       const grad = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
                       grad.addColorStop(0, "#ef4444"); grad.addColorStop(0.2, "#f97316"); grad.addColorStop(0.4, "#eab308"); grad.addColorStop(0.6, "#22c55e"); grad.addColorStop(0.8, "#3b82f6"); grad.addColorStop(1, "#a855f7");
                       ctx.strokeStyle = grad;
-                      ctx.lineWidth = 6;
+                      ctx.lineWidth = isHovered ? 11 : 6;
                       ctx.lineCap = 'round';
-                      ctx.shadowColor = '#f472b6'; ctx.shadowBlur = 8;
+                      if (!isHovered) { ctx.shadowColor = '#f472b6'; ctx.shadowBlur = 8; }
                       ctx.beginPath();
                       
                       ctx.moveTo(start.x, start.y); // FIX: The Canvas needs to know where to anchor the brush!
@@ -380,13 +425,13 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
                   } 
                   // 🧬 DNA DOUBLE HELIX (Animated!)
                   else if (arrStyle === 'dna') {
-                      ctx.lineWidth = 2.5;
+                      ctx.lineWidth = isHovered ? 4.5 : 2.5;
                       const timeSpeed = Date.now() / 400;
                       ctx.beginPath();
                       for (let i = 0; i <= distance; i += 8) {
                           const t = i / distance;
                           const px = start.x + dx * t; const py = start.y + dy * t;
-                          const wave = Math.sin(t * Math.PI * 4 + timeSpeed) * 8; // Sine wave amplitude
+                          const wave = Math.sin(t * Math.PI * 4 + timeSpeed) * (isHovered ? 12 : 8); // Amplitude boost on hover
                           const perpX = -dy / distance * wave; const perpY = dx / distance * wave;
                           
                           // Handle curvature offset if exists
@@ -402,7 +447,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
                       for (let i = 0; i <= distance; i += 8) {
                           const t = i / distance;
                           const px = start.x + dx * t; const py = start.y + dy * t;
-                          const wave = Math.cos(t * Math.PI * 4 + timeSpeed) * 8; // Offset cosine wave
+                          const wave = Math.cos(t * Math.PI * 4 + timeSpeed) * (isHovered ? 12 : 8); // Amplitude boost on hover
                           const perpX = -dy / distance * wave; const perpY = dx / distance * wave;
                           
                           let cx = px, cy = py;
@@ -416,7 +461,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
                   // 🐾 ANIMAL FOOTPRINTS
                   else if (arrStyle === 'footprints') {
                       const steps = Math.floor(distance / 20); // Paw print every 20 pixels
-                      ctx.font = '10px Arial';
+                      ctx.font = isHovered ? '16px Arial' : '10px Arial';
                       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                       
                       for (let i = 1; i < steps; i++) {
@@ -424,7 +469,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
                           let px = start.x + dx * t; let py = start.y + dy * t;
                           if (link.curvature) { px += (-dy * link.curvature) * Math.sin(t * Math.PI); py += (dx * link.curvature) * Math.sin(t * Math.PI); }
                           
-                          const offset = (i % 2 === 0) ? 6 : -6; // Left paw / Right paw
+                          const offset = (i % 2 === 0) ? (isHovered ? 10 : 6) : (isHovered ? -10 : -6); // Spread out left/right paw on hover
                           const perpX = -dy / distance; const perpY = dx / distance;
                           
                           ctx.save();
