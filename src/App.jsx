@@ -1359,7 +1359,7 @@ function App() {
     buy: new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'),
     ding: new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3')
   };
-  const playSound = (type) => { SFX[type].currentTime = 0; SFX[type].play().catch(e => console.log('Audio blocked by browser auto-play policy until interact')); };
+  const playSound = (type) => { SFX[type].currentTime = 0; SFX[type].play().catch(err => console.log('Audio blocked by browser auto-play policy until interact', err)); };
 
   // --- MAP INTERACTION LOGIC (HIDES UI ON MOBILE PANNING) ---
   const interactTimeout = useRef(null);
@@ -1942,12 +1942,30 @@ function App() {
                   ))}
                 </div>
 
+                {/* 4.5 SHAPES (Added back to clear unused variable warning!) */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-cyan-200 p-2 rounded tracking-widest text-xs">🟢 Map Tokens (Shapes)</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
+                  {SHOP_SHAPES.map(item => (
+                    <button key={item.id} onClick={async () => {
+                         try { playSound('buy'); } catch(err) { console.warn("Audio skipped", err); }
+                         setGlobalGraph(prev => ({
+                           ...prev, 
+                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, shape: item.id } : n)
+                         }));
+                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: item.id, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame }); 
+                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.shape || 'circle') === item.id ? 'border-cyan-500 bg-cyan-100 ring-2 ring-cyan-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+
                 {/* 5. BEAMS */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-orange-200 p-2 rounded tracking-widest text-xs">🚀 Connecting Beams</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2 mt-3">
                   {SHOP_ARROWS.map(item => (
                     <button key={item.id} onClick={async () => {
-                         try { playSound('buy'); } catch(e) {} // Play sound safely
+                         try { playSound('buy'); } catch(err) { console.warn("Audio skipped", err); } // Play sound safely
                          setGlobalGraph(prev => ({
                            ...prev, 
                            nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, cosmetics: { ...(n.cosmetics || {}), arrow: item.id } } : n)
