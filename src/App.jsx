@@ -941,6 +941,12 @@ function App() {
     { id: 'footprints', label: 'Paws', icon: '🐾', price: 200 }
   ];
 
+  const COIN_PACKS = [
+    { id: 'pack_small', label: 'Handful of Coins', amount: 100, priceStr: 'Free' },
+    { id: 'pack_med', label: 'Bag of Coins', amount: 500, priceStr: 'Free' },
+    { id: 'pack_large', label: 'Chest of Coins', amount: 1000, priceStr: 'Free' }
+  ];
+
   // Helper to render standard Store Item Buttons beautifully
   const renderShopButton = (item, categoryStr, currentEquippedId) => {
     const isOwned = !item.price || item.price === 0 || (myPrimaryNode?.unlockedCosmetics || []).includes(item.id);
@@ -1328,6 +1334,23 @@ function App() {
       }
     }
   };
+
+  // 💰 SIMULATED BANK / COIN ADDER ENGINE
+  const handleBuyCoins = async (amount) => {
+    try { playSound('buy'); } catch (err) { console.warn("Audio skipped", err); }
+    
+    // 1. Optimistic UI update for instant feedback
+    setGlobalGraph(prev => ({
+      ...prev,
+      nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, coins: (n.coins || 0) + amount } : n)
+    }));
+
+    // 2. Transact with Database securely
+    await supabase.rpc('add_karma_coins', { p_node: myPrimaryNode.id, p_amount: amount });
+    
+    // 3. Confirm true DB state
+    fetchGlobalGraph();
+  };
   
 
   // 🔥 STABLE CLICK HANDLERS: Prevents ForceGraph from unbinding touch events mid-tap when UI state changes!
@@ -1559,15 +1582,15 @@ function App() {
                    </div>
                 </div>
 
-                {/* SHOP TABS (Grid format for mobile compatibility) */}
-                <div className="grid grid-cols-4 sm:flex sm:flex-row gap-2 mb-[-15px] relative z-20 px-4">
+              {/* SHOP TABS (Grid format for mobile compatibility) */}
+                <div className="grid grid-cols-4 sm:flex sm:flex-wrap sm:justify-center gap-2 mb-[-15px] relative z-20 px-4">
                   {[
                     { id: 'themes', icon: '🗺️', label: 'Map' }, { id: 'titles', icon: '🏷️', label: 'Titles' },
                     { id: 'frames', icon: '🖼️', label: 'Frames' }, { id: 'auras', icon: '✨', label: 'Auras' },
                     { id: 'shapes', icon: '🟢', label: 'Shapes' }, { id: 'beams', icon: '🚀', label: 'Beams' },
-                    { id: 'verified', icon: '💎', label: 'Verify' }
+                    { id: 'verified', icon: '💎', label: 'Verify' }, { id: 'coins', icon: '💰', label: 'Coins' }
                   ].map(tab => (
-                    <button key={tab.id} onClick={() => setShopTab(tab.id)} style={{ transform: 'skewX(-5deg)' }} className={`flex-1 flex flex-col items-center justify-center py-2 border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform ${shopTab === tab.id ? 'bg-cyan-400 -translate-y-2' : 'bg-slate-200 hover:bg-slate-100'} cursor-pointer`}>
+                    <button key={tab.id} onClick={() => setShopTab(tab.id)} style={{ transform: 'skewX(-5deg)' }} className={`flex-1 sm:flex-none sm:w-20 flex flex-col items-center justify-center py-2 border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform ${shopTab === tab.id ? 'bg-cyan-400 -translate-y-2' : 'bg-slate-200 hover:bg-slate-100'} cursor-pointer`}>
                        <span style={{ transform: 'skewX(5deg)' }} className="text-xl mb-0.5">{tab.icon}</span>
                        <span style={{ transform: 'skewX(5deg)' }} className="text-[9px] font-black uppercase tracking-wider hidden sm:block">{tab.label}</span>
                     </button>
@@ -1578,7 +1601,7 @@ function App() {
                 <div className="bg-white border-4 border-black rounded-3xl p-6 pt-10 shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-10 min-h-[350px]">
                   <button onClick={() => setShowShopModal(false)} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer z-50">✖</button>
                   
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 h-full">
                     {shopTab === 'themes' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_THEMES.map(item => renderShopButton(item, 'mapTheme', myPrimaryNode?.cosmetics?.mapTheme || 'classic'))}</div>}
                     {shopTab === 'titles' && <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{SHOP_TITLES.map(item => renderShopButton(item, 'title', myPrimaryNode?.cosmetics?.title))}</div>}
                     {shopTab === 'frames' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_FRAMES.map(item => renderShopButton(item, 'frame', myPrimaryNode?.cosmetics?.frame || 'none'))}</div>}
@@ -1587,7 +1610,7 @@ function App() {
                     {shopTab === 'beams' && <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{SHOP_ARROWS.map(item => renderShopButton(item, 'arrow', myPrimaryNode?.cosmetics?.arrow || 'classic'))}</div>}
                     
                     {shopTab === 'verified' && (
-                      <div className="flex items-center justify-center h-full pt-8">
+                      <div className="flex items-center justify-center h-full pt-4">
                         <div className="bg-blue-50 border-4 border-black rounded-2xl p-6 shadow-[6px_6px_0px_rgba(0,0,0,1)] w-full max-w-md text-center transform -rotate-1">
                           <svg className="w-16 h-16 text-blue-500 fill-current mx-auto mb-4 drop-shadow-md" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                           <h3 className="font-black text-2xl uppercase mb-2">Verified Badge</h3>
@@ -1606,6 +1629,29 @@ function App() {
                           >
                             {myPrimaryNode?.cosmetics?.verified ? 'Remove Badge ❌' : 'Equip Badge ✅'}
                           </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {shopTab === 'coins' && (
+                      <div className="flex flex-col h-full pt-4">
+                        <h3 className="text-center font-black uppercase text-slate-600 mb-4 bg-slate-100 p-2 rounded-lg border-2 border-slate-300 border-dashed">
+                          Future Payment Test - Claim free coins for now!
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {COIN_PACKS.map(pack => (
+                            <div key={pack.id} className="bg-gradient-to-b from-yellow-50 to-yellow-200 border-4 border-black rounded-2xl p-5 shadow-[6px_6px_0px_rgba(0,0,0,1)] text-center flex flex-col items-center justify-between transform hover:-translate-y-1 transition-transform">
+                              <span className="text-4xl mb-3 drop-shadow-md">💰</span>
+                              <h3 className="font-black uppercase text-sm mb-1 leading-tight">{pack.label}</h3>
+                              <p className="text-2xl font-black text-lime-600 mb-4 bg-white px-3 py-1 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">+{pack.amount}</p>
+                              <button
+                                onClick={() => handleBuyCoins(pack.amount)}
+                                className="w-full bg-lime-400 hover:bg-lime-300 text-black border-4 border-black rounded-xl py-3 font-black uppercase tracking-widest shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer"
+                              >
+                                Claim ({pack.priceStr})
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
