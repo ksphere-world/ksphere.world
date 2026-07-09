@@ -1457,8 +1457,15 @@ function App() {
             </div>
             
             <div className="relative z-10 flex flex-col items-center">
-              {/* Bouncing Main Logo */}
-              <div className="text-8xl md:text-9xl mb-6 drop-shadow-[0_0_25px_rgba(244,114,182,0.5)] animate-bounce" style={{ animationDuration: '1.2s' }}>🫶</div>
+              {/* 🎮 GAMING STYLE BOUNCING MAIN LOGO */}
+              <div className="relative flex items-center justify-center w-28 h-28 md:w-36 md:h-36 mb-10 animate-bounce" style={{ animationDuration: '1.2s' }}>
+                <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500 to-pink-500 rounded-2xl transform rotate-45 animate-pulse blur-xl opacity-70"></div>
+                <div className="relative bg-[#09090b] border-4 border-cyan-400 rounded-2xl transform rotate-45 w-full h-full flex items-center justify-center shadow-[0_0_30px_#22d3ee]">
+                  <div className="transform -rotate-45 flex items-center justify-center">
+                    <span className="text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-pink-500 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] italic tracking-tighter">K</span>
+                  </div>
+                </div>
+              </div>
               
               {/* Custom Title Badge */}
               <div className="bg-white border-4 border-black px-8 py-4 rounded-3xl shadow-[8px_8px_0px_rgba(244,114,182,1)] transform -rotate-2 mb-4">
@@ -1811,11 +1818,17 @@ function App() {
         <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 overflow-x-hidden pointer-events-auto">
           
           {/* LOGO */}
-          <Link to="/" className="text-lg sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-1.5 sm:gap-2 hover:scale-105 transition-transform shrink-0">
-            <span className="text-2xl sm:text-4xl drop-shadow-sm">🫶</span>
+          <Link to="/" className="text-lg sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 sm:gap-3 hover:scale-105 transition-transform shrink-0">
+            {/* 🎮 GAMING STYLE DIAMOND LOGO */}
+            <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 shrink-0 mt-1 sm:mt-0">
+              <div className="absolute inset-0 bg-cyan-400 rounded-lg transform rotate-45 animate-pulse blur-sm opacity-60"></div>
+              <div className="relative bg-black border-2 border-cyan-400 rounded-lg transform rotate-45 w-full h-full flex items-center justify-center shadow-[0_0_10px_#22d3ee]">
+                <span className="transform -rotate-45 text-cyan-400 font-black text-lg sm:text-xl leading-none tracking-tighter italic">K</span>
+              </div>
+            </div>
             <div className="flex flex-col leading-none justify-center">
-              <span>KINDNESS<span className="text-pink-500">SPHERE</span></span>
-              <span className="text-[7px] sm:text-[10px] md:text-xs text-cyan-500 uppercase tracking-[0.3em] mt-0.5 sm:mt-1">world</span>
+              <span className="italic">KINDNESS<span className="text-pink-500">SPHERE</span></span>
+              <span className="text-[7px] sm:text-[10px] md:text-xs text-cyan-500 uppercase tracking-[0.3em] mt-0.5 sm:mt-1 font-bold">world</span>
             </div>
           </Link>
           
