@@ -275,50 +275,55 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
            oldLinkMap.set(`${sId}|${tId}`, l); // Safe pointer reference stored
         });
       }
+// 3. SECURE THE PHYSICS POINTERS! 
+          // Do NOT create new memory objects. We will surgically reuse the exact engine memory and just inject updated values!
+          const nodes = data.nodes.map(n => {
+            const oldNode = oldNodeMap.get(n.id);
+            
+            if (oldNode) {
+              // Keep identical invisible D3 coordinates internally, but rewrite visual properties to the existing object.
+              oldNode.reactions = n.reactions;
+              oldNode.socials = n.socials;
+              oldNode.shape = n.shape;
+              oldNode.type = n.type;
+              oldNode.value = n.value;
+              oldNode.rank = n.rank; 
+              oldNode.followersCount = n.followersCount; 
+              oldNode.isFollowedByMe = n.isFollowedByMe; 
+              oldNode.is_claimed = n.is_claimed;
+              oldNode.impactCount = helpCount[n.id] || 0;
+              
+              // 💎 FIX: Ensure cosmetics and labels dynamically sync into the physics pointer instantly!
+              oldNode.cosmetics = n.cosmetics;
+              oldNode.title = n.title;
+              oldNode.verified = n.verified;
+              oldNode.mapTheme = n.mapTheme;
+              
+              return oldNode; // Returned pure Engine Memory perfectly untouched 
+            }
+            
+            return { ...n, impactCount: helpCount[n.id] || 0 };
+          });
 
-      // 3. SECURE THE PHYSICS POINTERS! 
-      // Do NOT create new memory objects. We will surgically reuse the exact engine memory and just inject updated values!
-      const nodes = data.nodes.map(n => {
-        const oldNode = oldNodeMap.get(n.id);
-        
-        if (oldNode) {
-          // Keep identical invisible D3 coordinates internally, but rewrite visual properties to the existing object.
-          oldNode.reactions = n.reactions;
-          oldNode.socials = n.socials;
-          oldNode.shape = n.shape;
-          oldNode.type = n.type;
-          oldNode.value = n.value;
-          oldNode.rank = n.rank; // Safe Syncs
-          oldNode.followersCount = n.followersCount; // Explicitly locked dynamic Fan variable property!
-          oldNode.isFollowedByMe = n.isFollowedByMe; // Logic control layout constraint active variable retained accurately permanently preventing memory loop failure syncs drops 
-          oldNode.is_claimed = n.is_claimed;
-          oldNode.impactCount = helpCount[n.id] || 0;
-          return oldNode; // Returned pure Engine Memory perfectly untouched 
-        }
-        
-        // The Engine generates physics states only if a strictly brand new one spawned right now 
-        return { ...n, impactCount: helpCount[n.id] || 0 };
-      });
+          const links = data.links.map(l => {
+            const sId = typeof l.source === 'object' ? l.source.id : l.source;
+            const tId = typeof l.target === 'object' ? l.target.id : l.target;
+            const oldLink = oldLinkMap.get(`${sId}|${tId}`);
+            const hasReverse = linkPairs.has(`${tId}|${sId}`);
+            
+            if (oldLink) {
+               oldLink.reactions = l.reactions; 
+               oldLink.comment = l.comment;
+               oldLink.helpsCount = l.helpsCount || 1;
+               oldLink.curvature = hasReverse ? 0.25 : 0; 
+               
+               // 💎 FIX: Sync custom edge cosmetics instantly!
+               oldLink.arrowStyle = l.arrowStyle;
+               return oldLink;
+            }
 
-      const links = data.links.map(l => {
-        const sId = typeof l.source === 'object' ? l.source.id : l.source;
-        const tId = typeof l.target === 'object' ? l.target.id : l.target;
-        const oldLink = oldLinkMap.get(`${sId}|${tId}`);
-        const hasReverse = linkPairs.has(`${tId}|${sId}`);
-        
-        // If engine memory is there safely swap cosmetic fields flawlessly
-        if (oldLink) {
-           oldLink.reactions = l.reactions; 
-           oldLink.comment = l.comment;
-           oldLink.helpsCount = l.helpsCount || 1;
-           oldLink.curvature = hasReverse ? 0.25 : 0; 
-           return oldLink;
-        }
-
-        // Safe Engine Entry Memory Initializer Hook Phase Drop for completely unheard nodes spawning
-        return { ...l, curvature: hasReverse ? 0.25 : 0 };
-      });
-
+            return { ...l, curvature: hasReverse ? 0.25 : 0 };
+          });
       return { nodes, links };
     });
     }, 0); // End of setTimeout

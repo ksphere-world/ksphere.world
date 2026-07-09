@@ -1297,10 +1297,10 @@ function Dashboard({ userData }) {
 // 🔊 SOUND EFFECTS CACHE (Moved outside component to satisfy React Compiler!)
 const SFX = {
   pop: new Audio('https://assets.mixkit.co/active_storage/sfx/2997/2997-preview.mp3'),
-  buy: new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'),
+  buy: new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'), // Short, pleasant UI pop click!
   ding: new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3')
 };
-const playSound = (type) => { SFX[type].currentTime = 0; SFX[type].play().catch(err => console.log('Audio blocked', err)); };
+const playSound = (type) => { SFX[type].currentTime = 0; SFX[type].play().catch(error => console.log('Audio blocked', error)); };
 
 // --- MAIN APP ---
 function App() {
@@ -2003,10 +2003,10 @@ function App() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2 mt-3">
                   {SHOP_ARROWS.map(item => (
                     <button key={item.id} onClick={async () => {
-                         try { playSound('buy'); } catch(err) { console.warn("Audio skipped", err); } // Play sound safely
+                         try { playSound('buy'); } catch(error) { console.warn("Audio skipped", error); }
                          setGlobalGraph(prev => ({
-                           ...prev, 
-                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, cosmetics: { ...(n.cosmetics || {}), arrow: item.id } } : n)
+                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, cosmetics: { ...(n.cosmetics || {}), arrow: item.id } } : n),
+                           links: prev.links.map(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id ? { ...l, arrowStyle: item.id } : l)
                          }));
                          const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
                          await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame, p_arrow: item.id }); 
