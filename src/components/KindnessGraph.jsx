@@ -454,11 +454,31 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
                    ctx.shadowColor = '#ec4899';
                    ctx.shadowBlur = 18;
                } else if (eff === 'holy') {
-                   // Static Golden massive peaceful aura overlay overlapping boundaries extending completely universally! 
                    drawShape(ctx, node.x, node.y, nodeRadius + 5, shape);
                    ctx.fillStyle = "rgba(252, 211, 77, 0.3)";
                    ctx.shadowColor = '#fcd34d';
                    ctx.shadowBlur = 20;
+               } else if (eff === 'orbit') {
+                   // 💫 NEW: Orbiting magical tracking particles math!
+                   const time = Date.now() / 600;
+                   const pX = node.x + (nodeRadius + 8) * Math.cos(time);
+                   const pY = node.y + (nodeRadius + 8) * Math.sin(time);
+                   const pX2 = node.x + (nodeRadius + 8) * Math.cos(time + Math.PI);
+                   const pY2 = node.y + (nodeRadius + 8) * Math.sin(time + Math.PI);
+                   
+                   ctx.beginPath();
+                   ctx.arc(pX, pY, 3, 0, 2*Math.PI);
+                   ctx.arc(pX2, pY2, 3, 0, 2*Math.PI);
+                   ctx.fillStyle = "#38bdf8";
+                   ctx.shadowColor = '#0ea5e9';
+                   ctx.shadowBlur = 10;
+               } else if (eff === 'cloud') {
+                   // ☁️ NEW: Bouncing fluffy base border!
+                   const bounce = Math.abs(Math.sin(Date.now() / 300)) * 2;
+                   drawShape(ctx, node.x, node.y - bounce, nodeRadius + 4, shape);
+                   ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+                   ctx.shadowColor = '#94a3b8';
+                   ctx.shadowBlur = 15;
                }
                ctx.fill();
                // Strip overlapping paint shadow bleeds instantly universally clearing logic bounds tracking globally rendering limits!
@@ -603,6 +623,29 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             ctx.textBaseline = 'middle';
             ctx.fillStyle = isGhost ? '#94a3b8' : '#000000';
             ctx.fillText(label, node.x, badgeY + badgeHeight / 2 + 1); 
+
+            // 👑 DRAW CUSTOM SHOP TITLE / NAMEPLATE 👑
+            if (node.title) {
+               const titleFont = 9;
+               ctx.font = `800 ${titleFont}px "Inter", sans-serif`;
+               const titleWidth = ctx.measureText(node.title).width;
+               const tBadgeW = titleWidth + 10;
+               const tBadgeH = titleFont + 6;
+               const tBadgeY = badgeY + badgeHeight; // Place exactly below main badge
+               
+               // Background pill
+               ctx.fillStyle = '#fef08a'; // Golden yellow pill
+               ctx.beginPath();
+               ctx.roundRect((node.x - tBadgeW / 2), tBadgeY, tBadgeW, tBadgeH, 4);
+               ctx.fill();
+               ctx.lineWidth = 1;
+               ctx.strokeStyle = '#000000';
+               ctx.stroke();
+
+               // Text
+               ctx.fillStyle = '#000000';
+               ctx.fillText(node.title, node.x, tBadgeY + tBadgeH / 2 + 0.5);
+            }
 
             // ✨ RENDER REACTIONS ORBITING THE USER ✨
             if (node.reactions) {

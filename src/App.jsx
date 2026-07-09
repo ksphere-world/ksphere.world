@@ -1313,8 +1313,19 @@ function App() {
 
   // THE K-SHOP COSMETICS CATALOG DATABASE
   const SHOP_EFFECTS = [
-    { id: 'none', label: 'Off', icon: '🛑' }, { id: 'fire', label: 'Hellfire', icon: '🔥' }, 
-    { id: 'neon', label: 'CyberGlow', icon: '⚡' }, { id: 'holy', label: 'Divine Light', icon: '🌟' }
+    { id: 'none', label: 'Off', icon: '🛑', price: 0 }, 
+    { id: 'fire', label: 'Hellfire', icon: '🔥', price: 50 }, 
+    { id: 'neon', label: 'CyberGlow', icon: '⚡', price: 50 }, 
+    { id: 'holy', label: 'Divine', icon: '🌟', price: 75 },
+    { id: 'orbit', label: 'Orbit', icon: '💫', price: 100 }, // ✨ NEW AURA
+    { id: 'cloud', label: 'Cloud', icon: '☁️', price: 100 }  // ✨ NEW AURA
+  ];
+  const SHOP_TITLES = [
+    { id: null, label: 'No Title', icon: '❌', price: 0 },
+    { id: 'The Philanthropist', label: 'Philanthropist', icon: '🎩', price: 150 },
+    { id: 'Karma Farmer', label: 'Karma Farmer', icon: '🌾', price: 200 },
+    { id: 'Vibe Curator', label: 'Vibe Curator', icon: '✨', price: 250 },
+    { id: 'CEO of Kindness', label: 'CEO', icon: '💼', price: 500 }
   ];
   const SHOP_SHAPES = [
     { id: 'circle', label: 'Circle', icon: '🟡' }, { id: 'square', label: 'Square', icon: '🔲' }, 
@@ -1445,6 +1456,8 @@ function App() {
               questsCompleted: n.quests_completed || 0,
               questStreak: n.quest_streak || 0,
               glowingQuestHalo: didQuestToday,
+              title: cosmeticsPayload.title || null, // ✨ Inject Title Memory
+              coins: n.karma_coins || 300, // 💰 Inject Fake Coin Balance for now!
               cosmetics: cosmeticsPayload
             };
           }),
@@ -1825,13 +1838,39 @@ function App() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 pointer-events-auto">
              <div className="bg-white border-4 border-black p-5 sm:p-7 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] transform w-full max-w-xl text-center relative animate-in slide-in-from-bottom max-h-[90vh] overflow-y-auto">
                 <button onClick={() => setShowShopModal(false)} className="absolute -top-3 -right-3 bg-red-500 text-white border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
-                <div className="inline-block bg-yellow-400 px-6 py-2 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2 mb-4">
-                  <h2 className="text-black font-black uppercase text-xl sm:text-2xl tracking-widest leading-none drop-shadow-md">🛒 K-Shop <span className="text-xs absolute top-1 ml-2 text-pink-600 bg-white border border-black px-1 rounded animate-pulse shadow-sm tracking-tight transform rotate-6">Beta Unlocked Free!</span></h2>
+                <div className="inline-block bg-yellow-400 px-6 py-2 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2 mb-4 relative">
+                  <h2 className="text-black font-black uppercase text-xl sm:text-2xl tracking-widest leading-none drop-shadow-md">🛒 K-Shop </h2>
+                  <div className="absolute -top-3 -left-3 bg-white border-2 border-black rounded-full px-3 py-1 text-xs font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] transform rotate-6 flex items-center gap-1">
+                    🟡 {myPrimaryNode?.coins || 0} Coins
+                  </div>
+                </div>
+
+                {/* TITLES TAB WRAPPER (NEW!) */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-green-200 p-2 rounded tracking-widest text-xs flex justify-between">
+                   Equippable Titles
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5 mt-3 flex-wrap">
+                  {SHOP_TITLES.map(item => (
+                    <button key={item.label} onClick={async () => {
+                         if (myPrimaryNode?.title === item.id) return;
+                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                         if (n) { n.title = item.id; n.cosmetics = { ...n.cosmetics, title: item.id }; setGlobalGraph(prev => ({ ...prev })); }
+                         
+                         // Temporarily shoving title into cosmetics payload mapping
+                         await supabase.rpc('equip_cosmetics', { 
+                           p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: item.id
+                         }); 
+                         fetchGlobalGraph();
+                    }} className={`flex flex-col items-center p-2 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.title === item.id ? 'border-green-500 bg-green-100 ring-2 ring-green-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-2xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
+                      <span className="text-[8px] font-bold text-slate-500 mt-1">🟡 {item.price}</span>
+                    </button>
+                  ))}
                 </div>
 
                 {/* EFFECTS TAB WRAPPER */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-violet-200 p-2 rounded tracking-widest text-xs flex justify-between">
-                   Aura Effects <span>0 Coins (Unlocked)</span>
+                   Aura Effects
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
                   {SHOP_EFFECTS.map(item => (
