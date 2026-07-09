@@ -356,19 +356,30 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           
           linkColor={(link) => {
               if (link === hoverLink) return '#f472b6';
-              // 🪄 Hide the base line completely if it's a fully custom canvas beam!
               if (['rainbow', 'dna', 'footprints'].includes(link.arrowStyle)) return 'rgba(0,0,0,0)'; 
-              return link.arrowStyle === 'electric' ? '#60a5fa' : (link.customColor || '#000000');
+              
+              // FIX: Automatically convert old, invisible light-grey lines to Bold Black!
+              let baseColor = link.customColor || '#000000';
+              if (baseColor.toLowerCase() === '#cbd5e1') baseColor = '#000000'; 
+              
+              return link.arrowStyle === 'electric' ? '#60a5fa' : baseColor;
           }}
-          // Hooking Width properties and Dashing physics natively allowing beautiful styling mapping without blowing up renderer 
           linkWidth={(link) => {
               if (link === hoverLink) return 6;
-              if (['rainbow', 'dna', 'footprints'].includes(link.arrowStyle)) return 0; // Hide line thickness
-              return link.arrowStyle === 'electric' ? 5 : 3;
+              if (['rainbow', 'dna', 'footprints'].includes(link.arrowStyle)) return 0; 
+              return link.arrowStyle === 'electric' ? 5 : 3.5; // Made default lines slightly thicker for visibility
           }} 
           linkDirectionalArrowLength={(link) => link === hoverLink ? 16 : 12}
-          linkDirectionalArrowRelPos={0.75} /* Shifted arrow head towards target so it doesn't overlap the middle label! */
-          linkDirectionalArrowColor={(link) => link === hoverLink ? '#f472b6' : (link.arrowStyle === 'electric' ? '#2563eb' : (link.customColor || '#000000'))}
+          linkDirectionalArrowRelPos={0.75} 
+          linkDirectionalArrowColor={(link) => {
+              if (link === hoverLink) return '#f472b6';
+              if (link.arrowStyle === 'electric') return '#2563eb';
+              
+              // FIX: Apply the same invisible grey -> black conversion to the arrowheads
+              let baseColor = link.customColor || '#000000';
+              if (baseColor.toLowerCase() === '#cbd5e1') baseColor = '#000000';
+              return baseColor;
+          }}
           linkCurvature={(link) => link.curvature || 0}
           linkLineDash={(link) => link.arrowStyle === 'dashed' ? [6, 6] : null} // NATIVELY PUSHES GLOWING/DASHED PARTICLES OVER ARROW PHYSICS SMOOTHLY
           

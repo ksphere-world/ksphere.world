@@ -569,8 +569,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
         });
         if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
         
-        // Link them
-        await supabase.rpc('log_kindness_link', { p_source: sourceId, p_target: destinationId, p_color: '#cbd5e1', p_comment: deedComment, p_is_quest: completedQuest });
+        // Link them (Now defaults to #000000 Black)
+        await supabase.rpc('log_kindness_link', { p_source: sourceId, p_target: destinationId, p_color: '#000000', p_comment: deedComment, p_is_quest: completedQuest });
         
         // Show them the claim link so they can give it to the person!
         if (!isAnonymousTarget) {
@@ -580,8 +580,8 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
           navigate('/dashboard');
         }
       } else {
-        // Target already exists, just link!
-        await supabase.rpc('log_kindness_link', { p_source: sourceId, p_target: destinationId, p_color: '#cbd5e1', p_comment: deedComment, p_is_quest: completedQuest });
+        // Target already exists, just link! (Defaults to #000000 Black)
+        await supabase.rpc('log_kindness_link', { p_source: sourceId, p_target: destinationId, p_color: '#000000', p_comment: deedComment, p_is_quest: completedQuest });
         onComplete({ myId: finalMyId, helperId: finalTargetId, isOriginator: mode === 'i_helped' });
         navigate('/dashboard');
       }
@@ -709,7 +709,7 @@ function QuickQRModal({ myPrimaryNode, onClose, onRefreshGraph }) {
       const { error } = await supabase.rpc('log_kindness_link', {
         p_source: source,
         p_target: target,
-        p_color: '#cbd5e1', // Default arrow color for quick connects
+        p_color: '#000000', // Default arrow color for quick connects
         p_comment: comment
       });
 
@@ -824,8 +824,8 @@ function Dashboard({ userData }) {
       ? [ { id: myId, shape: userData?.customShape, type: userData?.customType, value: userData?.customValue }, { id: 'Next Person...', ghost: true } ]
       : [ { id: helperId, shape: 'circle', type: 'color', value: '#94a3b8' }, { id: myId, shape: userData?.customShape, type: userData?.customType, value: userData?.customValue }, { id: 'Next Person...', ghost: true } ],
     links: isOriginator
-      ? [ { source: myId, target: 'Next Person...', customColor: userData?.customLinkColor } ]
-      : [ { source: helperId, target: myId, customColor: '#cbd5e1' }, { source: myId, target: 'Next Person...', customColor: userData?.customLinkColor } ]
+      ? [ { source: myId, target: 'Next Person...', customColor: '#000000' } ]
+      : [ { source: helperId, target: myId, customColor: '#000000' }, { source: myId, target: 'Next Person...', customColor: '#000000' } ]
   };
 
   return (
