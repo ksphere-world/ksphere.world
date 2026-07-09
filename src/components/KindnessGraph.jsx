@@ -74,96 +74,135 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // 🛡️ BRAVE FIX: react-force-graph normally detects clicks by reading pixel 
-  // colors off a hidden canvas. Brave's Shields ("Block fingerprinting") 
-  // intentionally corrupts canvas getImageData results to stop tracking — 
-  // which also breaks this library's hit-testing. We bypass that entirely by 
-  // doing our own geometry-based hit test in graph coordinates!
-  const handleManualClick = useCallback((clientX, clientY) => {
-    if (!fgRef.current || !processedData) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const graphPos = fgRef.current.screen2GraphCoords(clientX - rect.left, clientY - rect.top);
-    const zoomScale = fgRef.current.zoom() || 1;
-
-    // 1. Check nodes first (match the same radius used for drawing/hitboxes)
-    let bestNode = null, bestNodeDist = Infinity;
-    processedData.nodes.forEach(n => {
-      if (typeof n.x !== 'number') return;
-      const baseRadius = n.ghost ? 6 : 14 + ((n.impactCount || 0) * 3);
-      const r = baseRadius + (15 / zoomScale); // 15px screen thumb padding converted to graph space
-      const d = Math.hypot(n.x - graphPos.x, n.y - graphPos.y);
-      if (d <= r && d < bestNodeDist) { bestNode = n; bestNodeDist = d; }
-    });
-    
-    if (bestNode) {
-      onNodeClick && onNodeClick(bestNode, { clientX, clientY });
-      return;
-    }
-
-    // 2. Check links (15 screen-px tolerance, converted into graph-space)
-    const threshold = 15 / zoomScale;
-    let bestLink = null, bestLinkDist = Infinity;
-    processedData.links.forEach(l => {
-      if (typeof l.source !== 'object' || typeof l.target !== 'object') return;
-      const d = distToSegment(graphPos, l.source, l.target);
-      if (d <= threshold && d < bestLinkDist) { bestLink = l; bestLinkDist = d; }
-    });
-    
-    if (bestLink) {
-      onLinkClick && onLinkClick(bestLink, { clientX, clientY });
-      return;
-    }
-
-    // 3. Nothing hit → background click
-    onBackgroundClick && onBackgroundClick({ clientX, clientY });
-  }, [processedData, onNodeClick, onLinkClick, onBackgroundClick]);
-
+  // 🛡️ THE ULTIMATE BRAVE BROWSER FIX (PURE GEOMETRY OVERRIDE) 🛡️
+  // We completely strip away the library's buggy pixel-reading hit detector and 
+  // inject a pure mathematical coordinate-tracking system that handles Hover, Drag, and Click natively!
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !processedData || !fgRef.current) return;
 
-    let startPos = null, startTime = 0, cancelled = false;
-    let ignoreNextClick = false;
-    const TAP_MAX_DISTANCE = 14;
-    const TAP_MAX_DURATION = 500;
+    let isDragging = false;
+    let dragNode = null;
+    let pointerDownPos = null;
+    let hasDragged = false;
 
-    const handleMouseClick = (e) => {
-      if (ignoreNextClick) return;
-      handleManualClick(e.clientX, e.clientY);
+    // Mathematics to calculate exact positions natively
+    const getGraphPos = (clientX, clientY) => {
+        const rect = container.getBoundingClientRect();
+        return fgRef.current.screen2GraphCoords(clientX - rect.left, clientY - rect.top);
     };
 
-    const handleTouchStart = (e) => {
-      if (e.touches.length !== 1) { cancelled = true; startPos = null; return; }
-      cancelled = false;
-      startPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      startTime = Date.now();
-    };
-    const handleTouchMove = (e) => { if (e.touches.length > 1) cancelled = true; };
-    const handleTouchEnd = (e) => {
-      if (!startPos || cancelled) { startPos = null; cancelled = false; return; }
-      const t = e.changedTouches[0];
-      const dist = Math.hypot(t.clientX - startPos.x, t.clientY - startPos.y);
-      const duration = Date.now() - startTime;
-      startPos = null;
-      if (dist < TAP_MAX_DISTANCE && duration < TAP_MAX_DURATION) {
-        handleManualClick(t.clientX, t.clientY);
-        ignoreNextClick = true;
-        setTimeout(() => { ignoreNextClick = false; }, 500); // swallow any trailing ghost click
-      }
+    const hitTest = (clientX, clientY) => {
+        const graphPos = getGraphPos(clientX, clientY);
+        if (!graphPos) return { bestNode: null, bestLink: null };
+        const zoomScale = fgRef.current.zoom() || 1;
+
+        let bestNode = null, bestNodeDist = Infinity;
+        processedData.nodes.forEach(n => {
+            if (typeof n.x !== 'number') return;
+            const baseRadius = n.ghost ? 6 : 14 + ((n.impactCount || 0) * 3);
+            const r = baseRadius + (20 / zoomScale); // Massive Fat-thumb tolerance
+            const d = Math.hypot(n.x - graphPos.x, n.y - graphPos.y);
+            if (d <= r && d < bestNodeDist) { bestNode = n; bestNodeDist = d; }
+        });
+        if (bestNode) return { bestNode, bestLink: null }; // Prioritize nodes
+
+        const threshold = 15 / zoomScale;
+        let bestLink = null, bestLinkDist = Infinity;
+        processedData.links.forEach(l => {
+            if (typeof l.source !== 'object' || typeof l.target !== 'object') return;
+            const d = distToSegment(graphPos, l.source, l.target);
+            if (d <= threshold && d < bestLinkDist) { bestLink = l; bestLinkDist = d; }
+        });
+        return { bestNode: null, bestLink };
     };
 
-    container.addEventListener('click', handleMouseClick);
-    container.addEventListener('touchstart', handleTouchStart, { passive: true });
-    container.addEventListener('touchmove', handleTouchMove, { passive: true });
-    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+    const handlePointerDown = (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        pointerDownPos = { x: clientX, y: clientY };
+        hasDragged = false;
+
+        const { bestNode } = hitTest(clientX, clientY);
+        if (bestNode) {
+            e.stopPropagation(); // 🛑 STOP the background from trying to pan!
+            isDragging = true;
+            dragNode = bestNode;
+            fgRef.current.d3ReheatSimulation(); // Wake physics up instantly
+        }
+    };
+
+    const handlePointerMove = (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        // 1. Custom Drag Logic
+        if (isDragging && dragNode) {
+            e.stopPropagation(); 
+            if (e.cancelable) e.preventDefault(); // Stop mobile webpage from scrolling down
+            hasDragged = true;
+            
+            const graphPos = getGraphPos(clientX, clientY);
+            if (graphPos) {
+                dragNode.fx = graphPos.x; // Lock physics X
+                dragNode.fy = graphPos.y; // Lock physics Y
+                fgRef.current.d3ReheatSimulation();
+            }
+        } 
+        // 2. Custom Hover Logic (Skip if mobile touching to save battery)
+        else if (!e.touches) {
+            const { bestNode, bestLink } = hitTest(clientX, clientY);
+            setHoverNode(prev => prev !== bestNode ? bestNode : prev);
+            setHoverLink(prev => prev !== bestLink ? bestLink : prev);
+        }
+    };
+
+    const handlePointerUp = (e) => {
+        const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+        const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+        if (isDragging && dragNode) {
+            e.stopPropagation();
+            dragNode.fx = undefined; // Drop node back into wild physics
+            dragNode.fy = undefined; 
+            isDragging = false;
+            dragNode = null;
+            fgRef.current.d3ReheatSimulation();
+        }
+
+        // 3. Custom Click Logic (Trigger if they tapped/clicked without dragging)
+        if (pointerDownPos) {
+            const dist = Math.hypot(clientX - pointerDownPos.x, clientY - pointerDownPos.y);
+            if (dist < 10 && !hasDragged) {
+                e.stopPropagation();
+                const { bestNode, bestLink } = hitTest(clientX, clientY);
+                if (bestNode && onNodeClick) onNodeClick(bestNode, { clientX, clientY });
+                else if (bestLink && onLinkClick) onLinkClick(bestLink, { clientX, clientY });
+                else if (onBackgroundClick) onBackgroundClick({ clientX, clientY });
+            }
+        }
+        pointerDownPos = null;
+        hasDragged = false;
+    };
+
+    // We must use 'capture: true' to intercept the clicks BEFORE the library's internal code processes them!
+    const opts = { capture: true, passive: false };
+    container.addEventListener('mousedown', handlePointerDown, opts);
+    container.addEventListener('mousemove', handlePointerMove, opts);
+    container.addEventListener('mouseup', handlePointerUp, opts);
+    container.addEventListener('touchstart', handlePointerDown, opts);
+    container.addEventListener('touchmove', handlePointerMove, opts);
+    container.addEventListener('touchend', handlePointerUp, opts);
 
     return () => {
-      container.removeEventListener('click', handleMouseClick);
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('touchend', handleTouchEnd);
+        container.removeEventListener('mousedown', handlePointerDown, opts);
+        container.removeEventListener('mousemove', handlePointerMove, opts);
+        container.removeEventListener('mouseup', handlePointerUp, opts);
+        container.removeEventListener('touchstart', handlePointerDown, opts);
+        container.removeEventListener('touchmove', handlePointerMove, opts);
+        container.removeEventListener('touchend', handlePointerUp, opts);
     };
-  }, [handleManualClick]);
+  }, [processedData, onNodeClick, onLinkClick, onBackgroundClick]);
 
   useEffect(() => {
     if (!data) return;
@@ -271,9 +310,6 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           // dagMode has been REMOVED here to allow multiple independent networks to float freely!
           backgroundColor="transparent"
           
-          linkHoverPrecision={8} // 🔧 REDUCED: Prevents thick invisible link hitboxes from swallowing nearby node clicks!
-          onNodeHover={setHoverNode}
-          onLinkHover={setHoverLink}
           
           linkColor={(link) => {
               if (link === hoverLink) return '#f472b6';
@@ -481,37 +517,9 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
           warmupTicks={100}
           cooldownTicks={50}
           enableZoom={true}
-          enableNodeDrag={true}
+          enableNodeDrag={false} /* 🛡️ DISABLED: We handle custom smooth dragging manually now via geometry! */
           
-          // 🔥 FAT-FINGER HITBOXES: We draw an invisible circle over the node, AND an invisible massive rectangle over the text label!
-          nodePointerAreaPaint={(node, color, ctx) => {
-            const isGhost = node.ghost;
-            const nodeRadius = isGhost ? 6 : 14 + ((node.impactCount || 0) * 3); 
-            
-            // CRITICAL: We MUST use the engine's generated 'color' variable here, this acts as the secret invisible hit-detection layer!
-            ctx.fillStyle = color; 
-
-            // 1. Hitbox for the Main Icon/Avatar
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeRadius + 10, 0, 2 * Math.PI, false); 
-            ctx.fill();
-
-            // 2. Hitbox for the Text Label (This is what you were missing!)
-            if (!isGhost) {
-              const label = node.id;
-              const fontSize = 12;
-              ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
-              const textWidth = ctx.measureText(label).width;
-              const badgeWidth = textWidth + 16;
-              const badgeHeight = fontSize + 10;
-              const badgeY = node.y + nodeRadius + 8;
-
-              ctx.beginPath();
-              // Giant rectangle covering the label with an extra 10px padding for sloppy thumbs
-              ctx.rect((node.x - badgeWidth / 2) - 10, badgeY - 5, badgeWidth + 20, badgeHeight + 20);
-              ctx.fill();
-            }
-          }}
+          /* 🛡️ DELETED nodePointerAreaPaint completely! It is no longer needed which saves huge memory! */
           
           nodeCanvasObject={(node, ctx) => {
             const isGhost = node.ghost;
