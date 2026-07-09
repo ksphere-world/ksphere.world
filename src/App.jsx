@@ -517,21 +517,18 @@ function RequestsModal({ session, onClose, onRefreshGraph }) {
 
 function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // Gamified Wizard Steps!
-  const [helperId, setHelperId] = useState('');
-  const [isAnonymousHelper, setIsAnonymousHelper] = useState(false);
+  const [mode, setMode] = useState('helped_me'); // 'helped_me' or 'i_helped'
+  
+  const [targetId, setTargetId] = useState('');
+  const [isAnonymousTarget, setIsAnonymousTarget] = useState(false);
+  const [targetPin, setTargetPin] = useState(''); 
+  const [deedComment, setDeedComment] = useState('');
+  const [completedQuest, setCompletedQuest] = useState(false);
+  
   const [myId, setMyId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [claimModalUrl, setClaimModalUrl] = useState('');
-  const [helperPin, setHelperPin] = useState(''); 
-  const [deedComment, setDeedComment] = useState('');
-  const [completedQuest, setCompletedQuest] = useState(false);
-  
-  const [nodeShape, setNodeShape] = useState('circle');
-  const [nodeType, setNodeType] = useState('image'); 
-  const [nodeValue, setNodeValue] = useState(session?.user?.user_metadata?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kindness'); 
-  const [linkColor, setLinkColor] = useState('#cbd5e1'); 
   const [existingTags, setExistingTags] = useState([]);
 
   useEffect(() => {
@@ -546,158 +543,141 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
     fetchTags();
   }, [session]);
 
-  const isNewHelper = isAnonymousHelper || (helperId.trim() !== '' && !existingTags.some(n => n.id === helperId.trim().toUpperCase()));
+  const isNewTarget = isAnonymousTarget || (targetId.trim() !== '' && !existingTags.some(n => n.id === targetId.trim().toUpperCase()));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isAnonymousHelper && !helperId.trim()) { setErrorMsg("Enter Helper K-Tag or choose Anonymous!"); return; }
+    if (!isAnonymousTarget && !targetId.trim()) { setErrorMsg("Enter their K-Tag or choose Anonymous!"); return; }
     setIsLoading(true); setErrorMsg('');
+    
     const finalMyId = myId.toUpperCase().trim();
-    let finalHelperId = isAnonymousHelper ? `ANON-${Math.floor(10000 + Math.random() * 90000)}` : helperId.toUpperCase().trim();
-    let submittingNewHelper = isAnonymousHelper || (finalHelperId !== '' && !existingTags.some(n => n.id === finalHelperId));
+    const finalTargetId = isAnonymousTarget ? `ANON-${Math.floor(10000 + Math.random() * 90000)}` : targetId.toUpperCase().trim();
+    const submittingNewTarget = isAnonymousTarget || (finalTargetId !== '' && !existingTags.some(n => n.id === finalTargetId));
 
     try {
-      const { error: nodeError } = await supabase.from('nodes').upsert({ id: finalMyId, user_id: session.user.id, shape: nodeShape, type: nodeType, value: nodeValue, socials: session?.user?.user_metadata?.socials || {}, is_claimed: true }, { onConflict: 'id' });
-      if (nodeError) throw nodeError;
+      // Determine Link Direction
+      const sourceId = mode === 'helped_me' ? finalTargetId : finalMyId;
+      const destinationId = mode === 'helped_me' ? finalMyId : finalTargetId;
 
-      if (finalHelperId) {
-        if (submittingNewHelper) {
-          const secretPin = helperPin.trim() ? helperPin.toUpperCase().trim() : 'PIN-' + Math.floor(100000 + Math.random() * 900000);
-          const { error: unclaimedErr } = await supabase.from('nodes').insert({ id: finalHelperId, user_id: session.user.id, shape: 'circle', type: 'emoji', value: isAnonymousHelper ? '🕵️‍♂️' : '🌱', is_claimed: false, claim_pin: secretPin, created_by: session.user.id });
-          if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
-          
-          await supabase.rpc('log_kindness_link', { p_source: finalHelperId, p_target: finalMyId, p_color: linkColor, p_comment: deedComment, p_is_quest: completedQuest });
-          setClaimModalUrl(`Tag: ${finalHelperId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalHelperId}`);
+      if (submittingNewTarget) {
+        const secretPin = targetPin.trim() ? targetPin.toUpperCase().trim() : 'PIN-' + Math.floor(100000 + Math.random() * 900000);
+        
+        // Create the unclaimed node for the other person
+        const { error: unclaimedErr } = await supabase.from('nodes').insert({ 
+          id: finalTargetId, user_id: session.user.id, shape: 'circle', type: 'emoji', 
+          value: isAnonymousTarget ? '🕵️‍♂️' : '🌱', is_claimed: false, claim_pin: secretPin, created_by: session.user.id 
+        });
+        if (unclaimedErr && unclaimedErr.code !== '23505') throw unclaimedErr;
+        
+        // Link them
+        await supabase.rpc('log_kindness_link', { p_source: sourceId, p_target: destinationId, p_color: '#cbd5e1', p_comment: deedComment, p_is_quest: completedQuest });
+        
+        // Show them the claim link so they can give it to the person!
+        if (!isAnonymousTarget) {
+          setClaimModalUrl(`Tag: ${finalTargetId} | PIN: ${secretPin} | Link: ${window.location.origin}?claimTag=${finalTargetId}`);
         } else {
-          await supabase.rpc('log_kindness_link', { p_source: finalHelperId, p_target: finalMyId, p_color: linkColor, p_comment: deedComment, p_is_quest: completedQuest });
+          onComplete({ myId: finalMyId, helperId: finalTargetId, isOriginator: mode === 'i_helped' });
+          navigate('/dashboard');
         }
+      } else {
+        // Target already exists, just link!
+        await supabase.rpc('log_kindness_link', { p_source: sourceId, p_target: destinationId, p_color: '#cbd5e1', p_comment: deedComment, p_is_quest: completedQuest });
+        onComplete({ myId: finalMyId, helperId: finalTargetId, isOriginator: mode === 'i_helped' });
+        navigate('/dashboard');
       }
-      onComplete({ myId: finalMyId, helperId: finalHelperId || null, isOriginator: !finalHelperId, customShape: nodeShape, customType: nodeType, customValue: nodeValue, customLinkColor: linkColor });
-      if (!isNewHelper) navigate('/dashboard');
     } catch (error) { setErrorMsg(error.message); } finally { setIsLoading(false); }
   };
 
-  if (isAuthLoading || !session) return null; // Let App handle redirect UI
+  if (isAuthLoading || !session) return null;
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4">
-      {/* SUCCESS MODAL */}
+    <div className="w-full max-w-2xl mx-auto px-4 mt-4">
+      {/* SUCCESS MODAL FOR UNCLAIMED NODES */}
       {claimModalUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-yellow-400 border-4 border-black rounded-3xl p-8 shadow-[12px_12px_0px_rgba(0,0,0,1)] text-center transform -rotate-1 max-w-md">
+          <div className="bg-yellow-400 border-4 border-black rounded-3xl p-8 shadow-[12px_12px_0px_rgba(0,0,0,1)] text-center transform -rotate-1 max-w-md animate-in zoom-in duration-200">
             <h2 className="text-3xl font-black uppercase mb-2">🎉 Loot Dropped!</h2>
             <p className="text-sm font-bold text-slate-800 mb-6 bg-white border-4 border-black p-4 rounded-xl shadow-[inset_4px_4px_0px_rgba(0,0,0,0.1)]">
-              We created a 🌱 Seed Node for <b>{helperId}</b>. Share this link so they can claim their spot!
+              We created an Unclaimed Node for <b>{targetId}</b>. Share this claim code with them so they can officially join your chain!
             </p>
             <input type="text" readOnly value={claimModalUrl} className="w-full border-4 border-black rounded-xl p-3 font-black text-xs bg-white mb-4 text-center select-all" />
             <div className="flex gap-4">
               <button onClick={() => { navigator.clipboard.writeText(claimModalUrl); alert('Copied!'); }} className="flex-1 bg-white border-4 border-black rounded-xl py-3 font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer">Copy</button>
-              <button onClick={() => { setClaimModalUrl(''); navigate('/dashboard'); }} className="flex-1 bg-black text-white border-4 border-black rounded-xl py-3 font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer">Done 🚀</button>
+              <button onClick={() => { setClaimModalUrl(''); onComplete({ myId, helperId: targetId, isOriginator: mode === 'i_helped' }); navigate('/dashboard'); }} className="flex-1 bg-black text-white border-4 border-black rounded-xl py-3 font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer">Done 🚀</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* GAMIFIED WIZARD HEADER */}
-      <div className="flex justify-center mb-8 relative z-10">
-        <div className="bg-white border-4 border-black rounded-2xl flex p-1 shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1">
-          <button onClick={() => setStep(1)} className={`px-6 py-2 font-black uppercase text-sm rounded-xl transition-colors ${step === 1 ? 'bg-cyan-400 border-4 border-black' : 'text-slate-400'}`}>1. The Deed</button>
-          <button onClick={() => setStep(2)} className={`px-6 py-2 font-black uppercase text-sm rounded-xl transition-colors ${step === 2 ? 'bg-pink-400 border-4 border-black' : 'text-slate-400'}`}>2. Customize</button>
-        </div>
+      {/* TABS */}
+      <div className="flex gap-2 mb-[-10px] relative z-10 pl-4 justify-center">
+        <button onClick={() => setMode('helped_me')} style={{ transform: 'skewX(-10deg)' }} className={`px-6 py-3 border-4 border-black font-black uppercase text-xs sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all ${mode === 'helped_me' ? 'bg-cyan-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+          <span style={{ transform: 'skewX(10deg)' }} className="inline-block">🥺 I Was Helped</span>
+        </button>
+        <button onClick={() => setMode('i_helped')} style={{ transform: 'skewX(-10deg)' }} className={`px-6 py-3 border-4 border-black font-black uppercase text-xs sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all ${mode === 'i_helped' ? 'bg-pink-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+          <span style={{ transform: 'skewX(10deg)' }} className="inline-block">🦸‍♂️ I Helped Someone</span>
+        </button>
       </div>
 
-      {errorMsg && <div className="bg-red-500 text-white p-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] mb-6 font-black text-center transform -rotate-1">⚠️ {errorMsg}</div>}
-
-      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[12px_12px_0px_rgba(0,0,0,1)] relative">
-        <button onClick={() => navigate('/')} className="absolute -top-5 -right-5 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer">✖</button>
+      {/* MAIN GAMIFIED CARD */}
+      <div className="bg-white border-4 border-black rounded-3xl p-6 sm:p-8 shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-20">
+        <button onClick={() => navigate('/')} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform cursor-pointer">✖</button>
         
-        <form onSubmit={handleSubmit}>
+        {errorMsg && <div className="mb-4 text-sm font-black text-white bg-red-500 p-3 border-4 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-1 text-center">⚠️ {errorMsg}</div>}
+        
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5 animate-in slide-in-from-bottom-4 duration-300">
           
-          {/* STEP 1: THE DEED */}
-          {step === 1 && (
-            <div className="flex flex-col gap-6 animate-in slide-in-from-left">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="bg-blue-50 border-4 border-black p-5 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                  <label className="block text-sm font-black uppercase mb-2">Who Helped You?</label>
-                  <input type="text" placeholder="Helper's K-Tag..." value={isAnonymousHelper ? 'ANONYMOUS 🕵️‍♂️' : helperId} onChange={e => setHelperId(e.target.value.toUpperCase())} disabled={isAnonymousHelper} className="w-full border-4 border-black rounded-xl p-3 uppercase font-black bg-white shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)]" />
-                  <div className="mt-3 flex items-center gap-2">
-                    <input type="checkbox" id="anon" checked={isAnonymousHelper} onChange={e => { setIsAnonymousHelper(e.target.checked); setHelperId(''); }} className="w-5 h-5 accent-pink-500 border-2 border-black rounded cursor-pointer" />
-                    <label htmlFor="anon" className="text-[10px] font-black uppercase cursor-pointer">Make Anonymous</label>
-                  </div>
-                  {isNewHelper && !isAnonymousHelper && helperId && (
-                    <input type="text" placeholder="Set a PIN (Optional)" value={helperPin} onChange={e => setHelperPin(e.target.value)} className="w-full border-2 border-black rounded-lg p-2 mt-3 uppercase font-black text-xs bg-yellow-100" />
-                  )}
-                </div>
-                <div className="bg-slate-100 border-4 border-black p-5 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)] opacity-80">
-                  <label className="block text-sm font-black uppercase mb-2">Your Identity</label>
-                  <input type="text" value={myId} readOnly className="w-full border-4 border-black rounded-xl p-3 uppercase font-black bg-slate-300 text-slate-500 cursor-not-allowed" />
-                  <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Locked to your account</p>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-yellow-300 to-amber-400 p-5 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] flex items-center gap-4 transform rotate-1">
-                <input type="checkbox" checked={completedQuest} onChange={e => setCompletedQuest(e.target.checked)} className="w-8 h-8 accent-black border-4 border-black rounded cursor-pointer shrink-0" />
-                <div>
-                  <span className="font-black uppercase text-lg block leading-tight">⚔️ Completed Daily Mission?</span>
-                  <span className="font-bold text-xs bg-white/50 px-2 py-0.5 rounded border border-black mt-1 inline-block">"{TODAYS_QUEST}"</span>
-                </div>
-              </div>
-
-              <textarea placeholder="Tell the story (Optional)" value={deedComment} onChange={e => setDeedComment(e.target.value)} rows="3" className="w-full border-4 border-black rounded-2xl p-4 font-bold bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)] focus:bg-pink-50 resize-none"></textarea>
-
-              <button type="button" onClick={() => setStep(2)} className="bg-cyan-400 text-black text-2xl font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all uppercase tracking-widest mt-2 cursor-pointer">
-                Next Step ➔
-              </button>
+          <div className={`border-4 border-black p-5 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)] ${mode === 'helped_me' ? 'bg-cyan-50' : 'bg-pink-50'}`}>
+            <label className="block text-sm font-black uppercase mb-2">
+              {mode === 'helped_me' ? "Who Helped You?" : "Who Did You Help?"}
+            </label>
+            <input 
+              type="text" 
+              placeholder="Search or Type their K-Tag..." 
+              value={isAnonymousTarget ? 'ANONYMOUS 🕵️‍♂️' : targetId} 
+              onChange={e => setTargetId(e.target.value.toUpperCase())} 
+              disabled={isAnonymousTarget} 
+              className="w-full border-4 border-black rounded-xl p-3 uppercase font-black bg-white shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)] focus:outline-none" 
+            />
+            
+            <div className="mt-3 flex items-center gap-2">
+              <input type="checkbox" id="anon" checked={isAnonymousTarget} onChange={e => { setIsAnonymousTarget(e.target.checked); setTargetId(''); }} className="w-5 h-5 accent-pink-500 border-2 border-black rounded cursor-pointer" />
+              <label htmlFor="anon" className="text-[10px] font-black uppercase cursor-pointer">Don't know their Tag? (Make Anonymous)</label>
             </div>
-          )}
 
-          {/* STEP 2: CUSTOMIZE */}
-          {step === 2 && (
-            <div className="flex flex-col gap-6 animate-in slide-in-from-right">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[{l:'Shape', v:nodeShape, s:setNodeShape, o:[{val:'circle',txt:'Circle 🟡'},{val:'square',txt:'Square 🟦'},{val:'hexagon',txt:'Hexagon ⬢'}]},
-                  {l:'Type', v:nodeType, s:(v) => { setNodeType(v); setNodeValue(v==='color'?'#10b981':v==='emoji'?'💖':session?.user?.user_metadata?.avatar_url); }, o:[{val:'color',txt:'Color 🎨'},{val:'emoji',txt:'Emoji 😎'},{val:'image',txt:'Avatar 🖼️'}]}].map(dd => (
-                  <div key={dd.l} className="bg-pink-50 border-4 border-black p-4 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                    <label className="block text-[10px] font-black uppercase mb-2">{dd.l}</label>
-                    <select value={dd.v} onChange={e => dd.s(e.target.value)} className="w-full border-2 border-black rounded-lg p-2 font-bold text-xs cursor-pointer">
-                      {dd.o.map(opt => <option key={opt.val} value={opt.val}>{opt.txt}</option>)}
-                    </select>
-                  </div>
-                ))}
-                
-                <div className="bg-pink-50 border-4 border-black p-4 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                  <label className="block text-[10px] font-black uppercase mb-2">Value</label>
-                  {nodeType === 'color' ? <input type="color" value={nodeValue} onChange={e => setNodeValue(e.target.value)} className="w-full h-8 border-2 border-black rounded cursor-pointer" /> :
-                   nodeType === 'emoji' ? <input type="text" maxLength="2" value={nodeValue} onChange={e => setNodeValue(e.target.value)} className="w-full border-2 border-black rounded-lg p-1 text-center text-xl" /> :
-                   <input type="url" value={nodeValue} onChange={e => setNodeValue(e.target.value)} className="w-full border-2 border-black rounded-lg p-2 font-bold text-xs" />}
-                </div>
+            {isNewTarget && !isAnonymousTarget && targetId && (
+              <div className="mt-4 bg-yellow-100 border-2 border-black border-dashed p-3 rounded-xl">
+                <label className="text-[10px] font-black uppercase text-slate-800">Set a Secret PIN for them to claim this node later (Optional)</label>
+                <input type="text" placeholder="e.g. 1234 or leave blank" value={targetPin} onChange={e => setTargetPin(e.target.value)} className="w-full border-2 border-black rounded-lg p-2 mt-1 uppercase font-black text-xs bg-white" />
               </div>
+            )}
+          </div>
 
-              <div className="bg-slate-100 border-4 border-black p-4 rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                <label className="block text-[10px] font-black uppercase mb-3 text-center">Beam Color</label>
-                <div className="flex justify-center gap-3">
-                  {['#cbd5e1', '#000000', '#f43f5e', '#a855f7', '#3b82f6', '#facc15', '#22c55e'].map(color => (
-                    <button type="button" key={color} onClick={() => setLinkColor(color)} className={`w-10 h-10 rounded-full border-4 border-black transition-transform cursor-pointer ${linkColor === color ? 'scale-125 shadow-[4px_4px_0px_rgba(0,0,0,1)]' : 'hover:scale-110 opacity-70'}`} style={{ backgroundColor: color }} />
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-4 mt-2">
-                <button type="button" onClick={() => setStep(1)} className="w-1/3 bg-white text-black text-xl font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all uppercase cursor-pointer">
-                  Back
-                </button>
-                <button type="submit" disabled={isLoading} className="w-2/3 bg-lime-400 text-black text-2xl font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all uppercase tracking-widest cursor-pointer">
-                  {isLoading ? 'Saving...' : 'Log It! ⚡'}
-                </button>
-              </div>
+          <div className="bg-gradient-to-r from-yellow-300 to-amber-400 p-5 rounded-2xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center gap-4 transform rotate-1">
+            <input type="checkbox" checked={completedQuest} onChange={e => setCompletedQuest(e.target.checked)} className="w-8 h-8 accent-black border-4 border-black rounded cursor-pointer shrink-0" />
+            <div>
+              <span className="font-black uppercase text-base sm:text-lg block leading-tight text-black">⚔️ Completed Daily Mission?</span>
+              <span className="font-bold text-xs bg-white/60 px-2 py-0.5 rounded border border-black mt-1 inline-block text-slate-900">"{TODAYS_QUEST}"</span>
             </div>
-          )}
+          </div>
+
+          <textarea 
+            placeholder="Tell the story... What happened? (Optional)" 
+            value={deedComment} 
+            onChange={e => setDeedComment(e.target.value)} 
+            rows="3" 
+            className="w-full border-4 border-black rounded-2xl p-4 font-bold bg-slate-50 shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)] focus:bg-white resize-none outline-none text-sm"
+          ></textarea>
+
+          <button type="submit" disabled={isLoading} className="bg-lime-400 hover:bg-lime-300 text-black text-2xl font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all uppercase tracking-widest mt-2 cursor-pointer transform -rotate-1">
+            {isLoading ? 'Linking...' : 'Log It! ⚡'}
+          </button>
+
         </form>
       </div>
     </div>
   );
 }
-
 // --- QUICK QR CONNECT MODAL (UPI STYLE) ---
 function QuickQRModal({ myPrimaryNode, onClose, onRefreshGraph }) {
   const [mode, setMode] = useState('select'); // 'select', 'show', 'scan', 'form'
