@@ -332,12 +332,13 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
                       ctx.shadowColor = '#f472b6'; ctx.shadowBlur = 8;
                       ctx.beginPath();
                       
+                      ctx.moveTo(start.x, start.y); // FIX: The Canvas needs to know where to anchor the brush!
                       if (link.curvature) {
                           const cx = start.x + dx/2 - (dy * link.curvature);
                           const cy = start.y + dy/2 + (dx * link.curvature);
                           ctx.quadraticCurveTo(cx, cy, end.x, end.y);
                       } else {
-                          ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y);
+                          ctx.lineTo(end.x, end.y);
                       }
                       ctx.stroke();
                   } 
