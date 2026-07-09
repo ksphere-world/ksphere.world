@@ -1860,151 +1860,106 @@ function App() {
              </div>
           </div>
         )}
-        {/* GAMIFIED COSMETIC K-SHOP UI LAYER MENU HOOK SYSTEM POP OVERLAYS COMPLETELY STANDARDIZED! */}
+        {/* 🛒 GAMIFIED K-SHOP (100% FREE & INSTANT EQUIP MODE) */}
         {showShopModal && session && myPrimaryNode && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 pointer-events-auto">
              <div className="bg-white border-4 border-black p-5 sm:p-7 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] transform w-full max-w-xl text-center relative animate-in slide-in-from-bottom max-h-[90vh] overflow-y-auto">
                 <button onClick={() => setShowShopModal(false)} className="absolute -top-3 -right-3 bg-red-500 text-white border-4 border-black rounded-full w-10 h-10 flex items-center justify-center font-black text-xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform z-10 cursor-pointer">✖</button>
+                
                 <div className="inline-block bg-yellow-400 px-6 py-2 rounded-xl border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transform -rotate-2 mb-4 relative">
                   <h2 className="text-black font-black uppercase text-xl sm:text-2xl tracking-widest leading-none drop-shadow-md">🛒 K-Shop </h2>
-                  <div className="absolute -top-3 -left-3 bg-white border-2 border-black rounded-full px-3 py-1 text-xs font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] transform rotate-6 flex items-center gap-1">
-                    🟡 {myPrimaryNode?.coins || 0} Coins
+                  <div className="absolute -top-3 -left-3 bg-white border-2 border-black rounded-full px-3 py-1 text-xs font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] transform rotate-6">
+                    <span className="animate-pulse text-pink-600">FREE MODE</span>
                   </div>
                 </div>
 
-                {/* TITLES TAB WRAPPER (NEW!) */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-green-200 p-2 rounded tracking-widest text-xs flex justify-between">
-                   Equippable Titles
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5 mt-3 flex-wrap">
-                  {SHOP_TITLES.map(item => (
-                    <button key={item.label} onClick={async () => {
-                         if (myPrimaryNode?.title === item.id) return;
-                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         if (n) { n.title = item.id; n.cosmetics = { ...n.cosmetics, title: item.id }; setGlobalGraph(prev => ({ ...prev })); }
-                         
-                         // Temporarily shoving title into cosmetics payload mapping
-                         await supabase.rpc('equip_cosmetics', { 
-                           p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: item.id
-                         }); 
-                         fetchGlobalGraph();
-                    }} className={`flex flex-col items-center p-2 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.title === item.id ? 'border-green-500 bg-green-100 ring-2 ring-green-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-2xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
-                      <span className="text-[8px] font-bold text-slate-500 mt-1">🟡 {item.price}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* EFFECTS TAB WRAPPER */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-violet-200 p-2 rounded tracking-widest text-xs flex justify-between">
-                   Aura Effects
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_EFFECTS.map(item => (
-                    <button key={item.id} onClick={async () => {
-                         const currentEffect = myPrimaryNode?.cosmetics?.effect || 'none';
-                         if (currentEffect === item.id) return;
-                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         if (n) { n.cosmetics = { ...n.cosmetics, effect: item.id }; setGlobalGraph(prev => ({ ...prev })); }
-                         
-                         // SAFELY converts undefined fields into explicit NULL parameters locking database tracking
-                         await supabase.rpc('equip_cosmetics', { 
-                           p_node: myPrimaryNode.id, 
-                           p_shape: n?.shape || null, 
-                           p_effect: item.id, 
-                           p_arrow: n?.cosmetics?.arrow || null 
-                         }); 
-                         fetchGlobalGraph();
-                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.effect === item.id ? 'border-pink-500 bg-pink-100 ring-2 ring-pink-500 transform -translate-y-1 scale-105' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[10px] uppercase font-black">{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* THEMES TAB WRAPPER (NEW!) */}
+                {/* 1. MAP THEMES */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-blue-200 p-2 rounded tracking-widest text-xs">🗺️ Map Themes</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
                   {SHOP_THEMES.map(item => (
                     <button key={item.id} onClick={async () => {
-                         if (myPrimaryNode?.mapTheme === item.id) return;
+                         // Bulletproof React State Update
+                         setGlobalGraph(prev => ({
+                           ...prev, 
+                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, mapTheme: item.id, cosmetics: { ...(n.cosmetics || {}), mapTheme: item.id } } : n)
+                         }));
                          const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         if (n) { n.mapTheme = item.id; n.cosmetics = { ...n.cosmetics, mapTheme: item.id }; setGlobalGraph(prev => ({ ...prev })); }
-                         
-                         await supabase.rpc('equip_cosmetics', { 
-                           p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.title, p_map_theme: item.id
-                         }); 
-                         fetchGlobalGraph();
-                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.mapTheme || 'classic') === item.id ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.title, p_frame: n?.cosmetics?.frame, p_map_theme: item.id }); 
+                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.cosmetics?.mapTheme || 'classic') === item.id ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
                       <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
-                      <span className="text-[8px] font-bold text-slate-500 mt-1">🟡 {item.price}</span>
                     </button>
                   ))}
                 </div>
 
-                {/* FRAMES TAB WRAPPER (NEW!) */}
+                {/* 2. TITLES */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-green-200 p-2 rounded tracking-widest text-xs">🏷️ Equippable Titles</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5 mt-3 flex-wrap">
+                  {SHOP_TITLES.map(item => (
+                    <button key={item.label} onClick={async () => {
+                         setGlobalGraph(prev => ({
+                           ...prev, 
+                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, title: item.id, cosmetics: { ...(n.cosmetics || {}), title: item.id } } : n)
+                         }));
+                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame, p_title: item.id }); 
+                    }} className={`flex flex-col items-center p-2 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.title === item.id || (!myPrimaryNode?.cosmetics?.title && !item.id) ? 'border-green-500 bg-green-100 ring-2 ring-green-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-2xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* 3. FRAMES */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-emerald-200 p-2 rounded tracking-widest text-xs">🖼️ Node Frames</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
                   {SHOP_FRAMES.map(item => (
                     <button key={item.id} onClick={async () => {
-                         if (myPrimaryNode?.frame === item.id) return;
+                         setGlobalGraph(prev => ({
+                           ...prev, 
+                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, cosmetics: { ...(n.cosmetics || {}), frame: item.id } } : n)
+                         }));
                          const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         if (n) { n.frame = item.id; n.cosmetics = { ...n.cosmetics, frame: item.id }; setGlobalGraph(prev => ({ ...prev })); }
-                         
-                         await supabase.rpc('equip_cosmetics', { 
-                           p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.title, p_map_theme: n?.mapTheme, p_frame: item.id
-                         }); 
-                         fetchGlobalGraph();
-                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.frame || 'none') === item.id ? 'border-emerald-500 bg-emerald-100 ring-2 ring-emerald-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: item.id }); 
+                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.cosmetics?.frame || 'none') === item.id ? 'border-emerald-500 bg-emerald-100 ring-2 ring-emerald-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
                       <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
-                      <span className="text-[8px] font-bold text-slate-500 mt-1">🟡 {item.price}</span>
                     </button>
                   ))}
                 </div>
 
-                {/* SHAPE TAB WRAPPER */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-cyan-200 p-2 rounded tracking-widest text-xs">Map Tokens</div>
+                {/* 4. AURAS */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-violet-200 p-2 rounded tracking-widest text-xs">✨ Aura Effects</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
-                  {SHOP_SHAPES.map(item => (
+                  {SHOP_EFFECTS.map(item => (
                     <button key={item.id} onClick={async () => {
-                         if (myPrimaryNode.shape === item.id) return;
+                         setGlobalGraph(prev => ({
+                           ...prev, 
+                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, cosmetics: { ...(n.cosmetics || {}), effect: item.id } } : n)
+                         }));
                          const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         if (n) { n.shape = item.id; setGlobalGraph(prev => ({ ...prev })); }
-
-                         // Safely locks out memory drops ensuring the DB always detects API 
-                         await supabase.rpc('equip_cosmetics', { 
-                           p_node: myPrimaryNode.id, 
-                           p_shape: item.id, 
-                           p_effect: n?.cosmetics?.effect || null, 
-                           p_arrow: n?.cosmetics?.arrow || null 
-                         }); 
-                         fetchGlobalGraph();
-                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode.shape || 'circle') === item.id ? 'border-lime-500 bg-lime-100 transform -translate-y-1 scale-105' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[10px] uppercase font-black">{item.label}</span>
+                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_arrow: n?.cosmetics?.arrow, p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame, p_effect: item.id }); 
+                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.cosmetics?.effect || 'none') === item.id ? 'border-pink-500 bg-pink-100 ring-2 ring-pink-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
                     </button>
                   ))}
                 </div>
 
-                {/* ARROWS / BEAMS */}
+                {/* 5. BEAMS */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-orange-200 p-2 rounded tracking-widest text-xs">🚀 Connecting Beams</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2 mt-3">
                   {SHOP_ARROWS.map(item => (
                     <button key={item.id} onClick={async () => {
-                         if (myPrimaryNode?.cosmetics?.arrow === item.id) return;
-                         playSound('buy'); // 🔊 Play Cha-Ching sound when buying!
-                         
+                         try { playSound('buy'); } catch(e) {} // Play sound safely
+                         setGlobalGraph(prev => ({
+                           ...prev, 
+                           nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, cosmetics: { ...(n.cosmetics || {}), arrow: item.id } } : n)
+                         }));
                          const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
-                         if (n) { n.cosmetics = { ...n.cosmetics, arrow: item.id }; setGlobalGraph(prev => ({ ...prev })); }
-
-                         await supabase.rpc('equip_cosmetics', { 
-                           p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: item.id, p_title: n?.title, p_map_theme: n?.mapTheme, p_frame: n?.frame 
-                         }); 
-                         fetchGlobalGraph();
-                    }} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.arrow === item.id ? 'border-orange-500 bg-orange-100 ring-2 ring-orange-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                         await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame, p_arrow: item.id }); 
+                    }} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.cosmetics?.arrow || 'classic') === item.id ? 'border-orange-500 bg-orange-100 ring-2 ring-orange-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
                       <span className="text-2xl">{item.icon}</span><span className="text-[9px] mt-1 uppercase font-black">{item.label}</span>
-                      <span className="text-[8px] font-bold text-slate-500 mt-1">🟡 {item.price}</span>
                     </button>
                   ))}
                 </div>
+
              </div>
           </div>
         )}
