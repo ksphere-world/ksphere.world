@@ -361,6 +361,7 @@ function NodeDetailsModal({ node, onClose }) {
 function NodeManagerModal({ session, onClose, onRefreshGraph }) {
   const [activeTab, setActiveTab] = useState('owned'); 
   const [myNodes, setMyNodes] = useState([]);
+  const [myLinks, setMyLinks] = useState([]);
   const [claimTag, setClaimTag] = useState('');
   const [claimPin, setClaimPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -369,7 +370,17 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
   const fetchMyNodes = useCallback(async () => {
     if (!session?.user?.id) return;
     const { data } = await supabase.from('nodes').select('*').or(`user_id.eq.${session.user.id},created_by.eq.${session.user.id}`).order('is_claimed', { ascending: false });
-    if (data) setMyNodes(data);
+    if (data) {
+      setMyNodes(data);
+      const nodeIds = data.map(n => n.id);
+      if (nodeIds.length > 0) {
+        // Fetch all chains where the user is either the helper or the one being helped
+        const { data: linksSource } = await supabase.from('links').select('*').in('source', nodeIds);
+        const { data: linksTarget } = await supabase.from('links').select('*').in('target', nodeIds);
+        const allLinks = [...(linksSource || []), ...(linksTarget || [])].filter((v,i,a) => a.findIndex(v2 => (v2.source === v.source && v2.target === v.target)) === i);
+        setMyLinks(allLinks);
+      }
+    }
   }, [session]);
 
   useEffect(() => {
@@ -377,6 +388,18 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
     queueMicrotask(() => { if (isMounted) fetchMyNodes(); });
     return () => { isMounted = false; };
   }, [fetchMyNodes]);
+
+  const handleBreakChain = async (source, target) => {
+    if (!window.confirm(`⚠️ Are you sure you want to break the chain between ${source} and ${target}?\n\nThis will permanently remove the edge from the global map.`)) return;
+    setIsLoading(true); setMsg('');
+    try {
+      const { error } = await supabase.from('links').delete().match({ source, target });
+      if (error) throw error;
+      setMsg(`💔 Chain successfully broken.`);
+      fetchMyNodes();
+      if (onRefreshGraph) onRefreshGraph();
+    } catch (err) { setMsg(`⚠️ ${err.message}`); } finally { setIsLoading(false); }
+  };
 
   const handleMerge = async (e) => {
     e.preventDefault(); if (!claimTag.trim()) return;
@@ -401,11 +424,14 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-lg relative animate-in zoom-in duration-200">
         
-        <div className="flex gap-2 mb-[-10px] relative z-10 pl-4">
-          <button onClick={() => setActiveTab('owned')} style={{ transform: 'skewX(-10deg)' }} className={`px-6 py-3 border-4 border-black font-black uppercase text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all ${activeTab === 'owned' ? 'bg-purple-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+        <div className="flex gap-2 mb-[-10px] relative z-10 pl-2 sm:pl-4 overflow-x-auto pb-2">
+          <button onClick={() => setActiveTab('owned')} style={{ transform: 'skewX(-10deg)' }} className={`px-4 sm:px-6 py-3 border-4 border-black font-black uppercase text-xs sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all shrink-0 ${activeTab === 'owned' ? 'bg-purple-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
             <span style={{ transform: 'skewX(10deg)' }} className="inline-block">My Nodes</span>
           </button>
-          <button onClick={() => setActiveTab('merge')} style={{ transform: 'skewX(-10deg)' }} className={`px-6 py-3 border-4 border-black font-black uppercase text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all ${activeTab === 'merge' ? 'bg-yellow-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+          <button onClick={() => setActiveTab('chains')} style={{ transform: 'skewX(-10deg)' }} className={`px-4 sm:px-6 py-3 border-4 border-black font-black uppercase text-xs sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all shrink-0 ${activeTab === 'chains' ? 'bg-pink-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+            <span style={{ transform: 'skewX(10deg)' }} className="inline-block">Active Chains</span>
+          </button>
+          <button onClick={() => setActiveTab('merge')} style={{ transform: 'skewX(-10deg)' }} className={`px-4 sm:px-6 py-3 border-4 border-black font-black uppercase text-xs sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all shrink-0 ${activeTab === 'merge' ? 'bg-yellow-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
             <span style={{ transform: 'skewX(10deg)' }} className="inline-block">Merge Loot</span>
           </button>
         </div>
@@ -414,7 +440,29 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
           <button onClick={onClose} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer">✖</button>
           {msg && <div className="mb-4 text-xs font-black bg-yellow-300 p-3 border-4 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">{msg}</div>}
 
-          {activeTab === 'owned' ? (
+          {activeTab === 'chains' ? (
+            <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto pr-2">
+              <h3 className="font-black text-sm uppercase text-slate-500 mb-2">Manage Your Connections</h3>
+              {myLinks.length > 0 ? myLinks.map((link, idx) => {
+                const isHelper = myNodes.some(n => n.id === link.source);
+                return (
+                  <div key={`${link.source}-${link.target}-${idx}`} className="border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] bg-pink-50 flex flex-col gap-3">
+                    <div className="flex justify-between items-center bg-white border-2 border-black rounded-xl p-2 font-black text-xs sm:text-sm uppercase shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)]">
+                      <span className="text-cyan-600 truncate max-w-[40%]">{link.source}</span>
+                      <span>➔</span>
+                      <span className="text-pink-600 truncate max-w-[40%]">{link.target}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-[10px] font-black uppercase bg-slate-200 text-slate-800 px-2 py-1 rounded-lg border-2 border-black shadow-[1px_1px_0px_rgba(0,0,0,1)]">{isHelper ? 'You Helped' : 'Helped You'}</span>
+                      <button onClick={() => handleBreakChain(link.source, link.target)} disabled={isLoading} className="bg-red-500 hover:bg-red-400 text-white px-3 py-1.5 rounded-lg border-2 border-black font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer transition-transform">
+                        Break Chain 💔
+                      </button>
+                    </div>
+                  </div>
+                );
+              }) : <p className="text-center font-black text-slate-400 py-4 uppercase text-sm">No active chains found.</p>}
+            </div>
+          ) : activeTab === 'owned' ? (
             <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto pr-2">
               {myNodes.length > 0 ? myNodes.map(n => {
                 const isUnclaimed = !n.is_claimed || !!n.claim_pin;
