@@ -366,6 +366,7 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
   const [claimPin, setClaimPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [confirmBreak, setConfirmBreak] = useState(null); // 💥 GAMIFIED POPUP STATE
 
   const fetchMyNodes = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -389,16 +390,19 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
     return () => { isMounted = false; };
   }, [fetchMyNodes]);
 
-  const handleBreakChain = async (source, target) => {
-    if (!window.confirm(`⚠️ Are you sure you want to break the chain between ${source} and ${target}?\n\nThis will permanently remove the edge from the global map.`)) return;
+  const executeBreakChain = async () => {
+    if (!confirmBreak) return;
     setIsLoading(true); setMsg('');
     try {
-      const { error } = await supabase.from('links').delete().match({ source, target });
+      const { error } = await supabase.from('links').delete().match({ source: confirmBreak.source, target: confirmBreak.target });
       if (error) throw error;
       setMsg(`💔 Chain successfully broken.`);
       fetchMyNodes();
       if (onRefreshGraph) onRefreshGraph();
-    } catch (err) { setMsg(`⚠️ ${err.message}`); } finally { setIsLoading(false); }
+    } catch (err) { setMsg(`⚠️ ${err.message}`); } finally { 
+      setIsLoading(false); 
+      setConfirmBreak(null); 
+    }
   };
 
   const handleMerge = async (e) => {
@@ -422,6 +426,36 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      
+      {/* 💥 GAMIFIED BREAK CHAIN CONFIRMATION MODAL */}
+      {confirmBreak && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 pointer-events-auto">
+           <div className="bg-white border-4 border-black p-6 rounded-3xl shadow-[12px_12px_0px_rgba(0,0,0,1)] transform rotate-1 w-full max-w-sm text-center relative animate-in zoom-in duration-200">
+              <button onClick={() => setConfirmBreak(null)} disabled={isLoading} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer z-10 disabled:opacity-50">✖</button>
+              
+              <h3 className="text-2xl font-black uppercase mb-4 tracking-widest text-black">Break Chain?</h3>
+              <div className="bg-red-50 border-4 border-black rounded-2xl p-6 mb-6 shadow-[inset_4px_4px_0px_rgba(0,0,0,0.1)] flex flex-col items-center">
+                 <div className="text-6xl mb-3 drop-shadow-md">💔</div>
+                 <div className="font-black uppercase text-lg text-black text-center leading-tight">
+                   Are you sure you want to sever this connection?
+                 </div>
+                 <div className="mt-4 flex items-center gap-2 bg-white border-2 border-black rounded-lg px-3 py-1 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                   <span className="text-cyan-600">{confirmBreak.source}</span>
+                   <span>➔</span>
+                   <span className="text-pink-600">{confirmBreak.target}</span>
+                 </div>
+              </div>
+
+              <div className="flex gap-4">
+                 <button onClick={() => setConfirmBreak(null)} disabled={isLoading} className="flex-1 py-4 font-black uppercase text-lg rounded-xl border-4 border-black bg-slate-200 text-slate-700 hover:bg-slate-300 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all cursor-pointer disabled:opacity-50">Cancel</button>
+                 <button onClick={executeBreakChain} disabled={isLoading} className="flex-1 py-4 font-black uppercase text-lg rounded-xl border-4 border-black bg-red-500 text-white hover:bg-red-400 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all cursor-pointer disabled:opacity-50">
+                   {isLoading ? 'Wait...' : 'Break It 💥'}
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+
       <div className="w-full max-w-lg relative animate-in zoom-in duration-200">
         
         <div className="flex gap-2 mb-[-10px] relative z-10 pl-2 sm:pl-4 overflow-x-auto pb-2">
@@ -454,7 +488,7 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
                     </div>
                     <div className="flex justify-between items-center mt-1">
                       <span className="text-[10px] font-black uppercase bg-slate-200 text-slate-800 px-2 py-1 rounded-lg border-2 border-black shadow-[1px_1px_0px_rgba(0,0,0,1)]">{isHelper ? 'You Helped' : 'Helped You'}</span>
-                      <button onClick={() => handleBreakChain(link.source, link.target)} disabled={isLoading} className="bg-red-500 hover:bg-red-400 text-white px-3 py-1.5 rounded-lg border-2 border-black font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer transition-transform">
+                      <button onClick={() => setConfirmBreak({ source: link.source, target: link.target })} disabled={isLoading} className="bg-red-500 hover:bg-red-400 text-white px-3 py-1.5 rounded-lg border-2 border-black font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer transition-transform">
                         Break Chain 💔
                       </button>
                     </div>
