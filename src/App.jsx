@@ -1333,14 +1333,33 @@ function App() {
     { id: 'galaxy', label: 'Deep Space', icon: '🌌', price: 150 },
     { id: 'sakura', label: 'Sakura Pink', icon: '🌸', price: 150 }
   ];
+  const SHOP_FRAMES = [
+    { id: 'none', label: 'No Frame', icon: '🛑', price: 0 },
+    { id: 'vines', label: 'Nature Vines', icon: '🌿', price: 100 },
+    { id: 'cyber', label: 'Cyber Glitch', icon: '🤖', price: 150 },
+    { id: 'donut', label: 'The Donut', icon: '🍩', price: 200 },
+    { id: 'diamond', label: 'Diamond', icon: '💎', price: 250 }
+  ];
   const SHOP_SHAPES = [
     { id: 'circle', label: 'Circle', icon: '🟡' }, { id: 'square', label: 'Square', icon: '🔲' }, 
     { id: 'hexagon', label: 'Tech Hex', icon: '⬢' }, { id: 'star', label: 'Star', icon: '⭐' }
   ];
   const SHOP_ARROWS = [
-    { id: 'classic', label: 'Standard Line', icon: '➡️' }, { id: 'dashed', label: 'Pixel Dashed', icon: '➖' }, 
-    { id: 'electric', label: 'Thick Zap', icon: '🌩️' }
+    { id: 'classic', label: 'Standard', icon: '➡️', price: 0 }, 
+    { id: 'dashed', label: 'Pixel Dash', icon: '➖', price: 50 }, 
+    { id: 'electric', label: 'Lightning', icon: '🌩️', price: 100 },
+    { id: 'rainbow', label: 'Rainbow', icon: '🌈', price: 150 },
+    { id: 'dna', label: 'DNA Helix', icon: '🧬', price: 200 },
+    { id: 'footprints', label: 'Paws', icon: '🐾', price: 200 }
   ];
+
+  // 🔊 SOUND EFFECTS CACHE (Preloaded for instant playback!)
+  const SFX = {
+    pop: new Audio('https://assets.mixkit.co/active_storage/sfx/2997/2997-preview.mp3'),
+    buy: new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'),
+    ding: new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3')
+  };
+  const playSound = (type) => { SFX[type].currentTime = 0; SFX[type].play().catch(e => console.log('Audio blocked by browser auto-play policy until interact')); };
 
   // --- MAP INTERACTION LOGIC (HIDES UI ON MOBILE PANNING) ---
   const interactTimeout = useRef(null);
@@ -1464,6 +1483,7 @@ function App() {
               glowingQuestHalo: didQuestToday,
               title: cosmeticsPayload.title || null, // ✨ Inject Title Memory
               mapTheme: cosmeticsPayload.mapTheme || 'classic', // 🗺️ Inject Theme Memory
+              frame: cosmeticsPayload.frame || 'none', // 🖼️ Inject Frame Memory
               coins: n.karma_coins || 300, // 💰 Inject Fake Coin Balance for now!
               cosmetics: cosmeticsPayload
             };
@@ -1921,6 +1941,26 @@ function App() {
                   ))}
                 </div>
 
+                {/* FRAMES TAB WRAPPER (NEW!) */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-emerald-200 p-2 rounded tracking-widest text-xs">🖼️ Node Frames</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
+                  {SHOP_FRAMES.map(item => (
+                    <button key={item.id} onClick={async () => {
+                         if (myPrimaryNode?.frame === item.id) return;
+                         const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                         if (n) { n.frame = item.id; n.cosmetics = { ...n.cosmetics, frame: item.id }; setGlobalGraph(prev => ({ ...prev })); }
+                         
+                         await supabase.rpc('equip_cosmetics', { 
+                           p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, p_title: n?.title, p_map_theme: n?.mapTheme, p_frame: item.id
+                         }); 
+                         fetchGlobalGraph();
+                    }} className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${(myPrimaryNode?.frame || 'none') === item.id ? 'border-emerald-500 bg-emerald-100 ring-2 ring-emerald-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-3xl mb-1">{item.icon}</span><span className="text-[9px] uppercase font-black">{item.label}</span>
+                      <span className="text-[8px] font-bold text-slate-500 mt-1">🟡 {item.price}</span>
+                    </button>
+                  ))}
+                </div>
+
                 {/* SHAPE TAB WRAPPER */}
                 <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-cyan-200 p-2 rounded tracking-widest text-xs">Map Tokens</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 mt-3">
@@ -1945,24 +1985,23 @@ function App() {
                 </div>
 
                 {/* ARROWS / BEAMS */}
-                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-orange-200 p-2 rounded tracking-widest text-xs">Connecting Beams</div>
-                <div className="grid grid-cols-3 gap-3 mb-2 mt-3">
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed pb-1 bg-gradient-to-r from-orange-200 p-2 rounded tracking-widest text-xs">🚀 Connecting Beams</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2 mt-3">
                   {SHOP_ARROWS.map(item => (
                     <button key={item.id} onClick={async () => {
                          if (myPrimaryNode?.cosmetics?.arrow === item.id) return;
+                         playSound('buy'); // 🔊 Play Cha-Ching sound when buying!
+                         
                          const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
                          if (n) { n.cosmetics = { ...n.cosmetics, arrow: item.id }; setGlobalGraph(prev => ({ ...prev })); }
 
-                         // Explicit assignments universally matching DB parameter needs accurately. 
                          await supabase.rpc('equip_cosmetics', { 
-                           p_node: myPrimaryNode.id, 
-                           p_shape: n?.shape || null, 
-                           p_effect: n?.cosmetics?.effect || null, 
-                           p_arrow: item.id 
+                           p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: item.id, p_title: n?.title, p_map_theme: n?.mapTheme, p_frame: n?.frame 
                          }); 
                          fetchGlobalGraph();
-                    }} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.arrow === item.id ? 'border-blue-500 bg-blue-100 transform -translate-y-1 scale-105' : 'border-black bg-white hover:bg-slate-100'}`}>
-                      <span className="text-2xl">{item.icon}</span><span className="text-[10px] mt-1 uppercase font-black">{item.label}</span>
+                    }} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${myPrimaryNode?.cosmetics?.arrow === item.id ? 'border-orange-500 bg-orange-100 ring-2 ring-orange-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+                      <span className="text-2xl">{item.icon}</span><span className="text-[9px] mt-1 uppercase font-black">{item.label}</span>
+                      <span className="text-[8px] font-bold text-slate-500 mt-1">🟡 {item.price}</span>
                     </button>
                   ))}
                 </div>
