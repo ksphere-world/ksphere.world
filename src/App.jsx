@@ -1484,6 +1484,7 @@ function App() {
               title: cosmeticsPayload.title || null, // ✨ Inject Title Memory
               mapTheme: cosmeticsPayload.mapTheme || 'classic', // 🗺️ Inject Theme Memory
               frame: cosmeticsPayload.frame || 'none', // 🖼️ Inject Frame Memory
+              verified: cosmeticsPayload.verified || false, // 💎 Inject Verification Memory
               coins: n.karma_coins || 300, // 💰 Inject Fake Coin Balance for now!
               cosmetics: cosmeticsPayload
             };
@@ -1685,7 +1686,12 @@ function App() {
           <div style={{ top: nodeMenu.y, left: nodeMenu.x }} className="fixed z-50 transform -translate-x-1/2 -translate-y-[120%] pointer-events-auto animate-in fade-in zoom-in duration-200">
             <div className="bg-white border-4 border-black rounded-xl p-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex flex-col gap-2 min-w-[160px] relative">
                <button onClick={() => setNodeMenu(null)} className="absolute -top-3 -right-3 bg-red-400 text-black border-2 border-black rounded-full w-7 h-7 flex items-center justify-center font-black text-xs hover:scale-110 shadow-[2px_2px_0px_rgba(0,0,0,1)] z-10 cursor-pointer">✖</button>
-               <div className="text-center font-black uppercase text-sm border-b-2 border-black pb-1 mb-1">{nodeMenu.node.id}</div>
+               <div className="text-center font-black uppercase text-sm border-b-2 border-black pb-1 mb-1 flex items-center justify-center gap-1">
+                 {nodeMenu.node.id}
+                 {nodeMenu.node.verified && (
+                   <svg className="w-4 h-4 text-blue-500 fill-current drop-shadow-sm" viewBox="0 0 24 24" title="Verified Member"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                 )}
+               </div>
                {/* Advanced Dynamic Metric Badge Scaling */}
                <div className="flex gap-2 w-full">
                  <div className="bg-yellow-300 flex-1 border-2 border-black rounded-lg px-1.5 py-1 text-[10px] font-black uppercase text-center shadow-[1px_1px_0px_rgba(0,0,0,1)] flex flex-col justify-center whitespace-nowrap">
@@ -1871,6 +1877,38 @@ function App() {
                   <div className="absolute -top-3 -left-3 bg-white border-2 border-black rounded-full px-3 py-1 text-xs font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] transform rotate-6">
                     <span className="animate-pulse text-pink-600">FREE MODE</span>
                   </div>
+                </div>
+
+                {/* 0. VERIFICATION BADGE */}
+                <div className="text-left font-black uppercase mb-1 border-b-4 border-black border-dashed mt-2 pb-1 bg-gradient-to-r from-blue-300 p-2 rounded tracking-widest text-xs">💎 Official Verification</div>
+                <div className="flex flex-col gap-2 mt-3 mb-5">
+                   <div className="bg-white hover:bg-blue-50 transition-colors border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center justify-between">
+                      <div className="text-left flex items-center gap-2">
+                         <svg className="w-8 h-8 text-blue-500 fill-current drop-shadow-sm" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                         <div>
+                           <p className="font-black uppercase text-sm text-black">Verified Badge</p>
+                           <p className="text-[10px] font-bold text-slate-500 uppercase">Show the world you're legit!</p>
+                         </div>
+                      </div>
+                      <button 
+                         onClick={async () => {
+                             const isVerif = !(myPrimaryNode?.cosmetics?.verified);
+                             try { playSound('buy'); } catch(err) {}
+                             setGlobalGraph(prev => ({
+                                 ...prev, 
+                                 nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, verified: isVerif, cosmetics: { ...(n.cosmetics || {}), verified: isVerif } } : n)
+                             }));
+                             const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                             await supabase.rpc('equip_cosmetics', { 
+                                 p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, 
+                                 p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame, p_verified: isVerif 
+                             }); 
+                         }}
+                         className={`px-4 py-2 font-black uppercase text-xs rounded-xl border-2 border-black transition-transform active:scale-95 shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer ${myPrimaryNode?.cosmetics?.verified ? 'bg-blue-500 text-white hover:bg-blue-400' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+                      >
+                         {myPrimaryNode?.cosmetics?.verified ? 'Turn Off' : 'Equip Free'}
+                      </button>
+                   </div>
                 </div>
 
                 {/* 1. MAP THEMES */}

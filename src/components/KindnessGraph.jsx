@@ -797,7 +797,11 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             const fontSize = isGhost ? 10 : 12;
             ctx.font = `900 ${fontSize}px "Inter", sans-serif`;
             const textWidth = ctx.measureText(label).width;
-            const badgeWidth = textWidth + 16;
+            
+            // 💎 VERIFICATION BADGE CALCULATION 💎
+            const isVerified = node.cosmetics?.verified || node.verified;
+            const badgeWidthOffset = isVerified ? 16 : 0; 
+            const badgeWidth = textWidth + 16 + badgeWidthOffset;
             const badgeHeight = fontSize + 10;
             const badgeY = node.y + nodeRadius + 8;
             
@@ -820,7 +824,32 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = isGhost ? '#94a3b8' : '#000000';
-            ctx.fillText(label, node.x, badgeY + badgeHeight / 2 + 1); 
+            
+            const textDrawX = isVerified ? node.x - 7 : node.x;
+            ctx.fillText(label, textDrawX, badgeY + badgeHeight / 2 + 1); 
+
+            // 💎 DRAW ACTUAL BLUE CHECKMARK ON CANVAS 💎
+            if (isVerified) {
+                const checkX = textDrawX + (textWidth / 2) + 9;
+                const checkY = badgeY + badgeHeight / 2 + 0.5;
+                
+                // Blue background circle
+                ctx.fillStyle = '#3b82f6'; 
+                ctx.beginPath();
+                ctx.arc(checkX, checkY, 5.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // White checkmark tick
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.moveTo(checkX - 2.5, checkY);
+                ctx.lineTo(checkX - 0.5, checkY + 2);
+                ctx.lineTo(checkX + 2.5, checkY - 2.5);
+                ctx.stroke();
+            } 
 
             // 👑 DRAW CUSTOM SHOP TITLE / NAMEPLATE 👑
             if (node.title) {
