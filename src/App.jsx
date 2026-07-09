@@ -1294,6 +1294,14 @@ function Dashboard({ userData }) {
   );
 }
 
+// 🔊 SOUND EFFECTS CACHE (Moved outside component to satisfy React Compiler!)
+const SFX = {
+  pop: new Audio('https://assets.mixkit.co/active_storage/sfx/2997/2997-preview.mp3'),
+  buy: new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'),
+  ding: new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3')
+};
+const playSound = (type) => { SFX[type].currentTime = 0; SFX[type].play().catch(err => console.log('Audio blocked', err)); };
+
 // --- MAIN APP ---
 function App() {
   const [userData, setUserData] = useState(null);
@@ -1352,14 +1360,6 @@ function App() {
     { id: 'dna', label: 'DNA Helix', icon: '🧬', price: 200 },
     { id: 'footprints', label: 'Paws', icon: '🐾', price: 200 }
   ];
-
-  // 🔊 SOUND EFFECTS CACHE (Preloaded for instant playback!)
-  const SFX = {
-    pop: new Audio('https://assets.mixkit.co/active_storage/sfx/2997/2997-preview.mp3'),
-    buy: new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'),
-    ding: new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3')
-  };
-  const playSound = (type) => { SFX[type].currentTime = 0; SFX[type].play().catch(err => console.log('Audio blocked by browser auto-play policy until interact', err)); };
 
   // --- MAP INTERACTION LOGIC (HIDES UI ON MOBILE PANNING) ---
   const interactTimeout = useRef(null);
@@ -1893,7 +1893,7 @@ function App() {
                       <button 
                          onClick={async () => {
                              const isVerif = !(myPrimaryNode?.cosmetics?.verified);
-                             try { playSound('buy'); } catch(err) {}
+                             try { playSound('buy'); } catch(error) { console.warn("Audio skipped", error); }
                              setGlobalGraph(prev => ({
                                  ...prev, 
                                  nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, verified: isVerif, cosmetics: { ...(n.cosmetics || {}), verified: isVerif } } : n)
