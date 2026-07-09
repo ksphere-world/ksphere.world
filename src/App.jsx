@@ -1693,12 +1693,20 @@ function App() {
           : prev.links
       }));
 
-      const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+      const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
+      const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
+
       await supabase.rpc('equip_cosmetics', { 
-        p_node: myPrimaryNode.id, p_shape: categoryStr === 'shape' ? item.id : n?.shape, p_effect: categoryStr === 'effect' ? item.id : n?.cosmetics?.effect, 
-        p_arrow: categoryStr === 'arrow' ? item.id : n?.cosmetics?.arrow, p_title: categoryStr === 'title' ? item.id : n?.cosmetics?.title, 
-        p_map_theme: categoryStr === 'mapTheme' ? item.id : n?.cosmetics?.mapTheme, p_frame: categoryStr === 'frame' ? item.id : n?.cosmetics?.frame, p_verified: n?.cosmetics?.verified 
+        p_node: myPrimaryNode.id, 
+        p_shape: categoryStr === 'shape' ? item.id : freshData?.shape, 
+        p_effect: categoryStr === 'effect' ? item.id : freshCosm?.effect, 
+        p_arrow: categoryStr === 'arrow' ? item.id : freshCosm?.arrow, 
+        p_title: categoryStr === 'title' ? item.id : freshCosm?.title, 
+        p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm?.mapTheme, 
+        p_frame: categoryStr === 'frame' ? item.id : freshCosm?.frame, 
+        p_verified: freshCosm?.verified 
       });
+      fetchGlobalGraph();
     } else {
       // Buy Mode
       if ((myPrimaryNode?.coins || 0) < item.price) {
@@ -1723,15 +1731,24 @@ function App() {
       // Server Transaction
       const { data: success } = await supabase.rpc('buy_cosmetic', { p_node: myPrimaryNode.id, p_item_id: item.id, p_price: item.price });
       if (success) {
-        const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+        const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
+        const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
+
         await supabase.rpc('equip_cosmetics', { 
-          p_node: myPrimaryNode.id, p_shape: categoryStr === 'shape' ? item.id : n?.shape, p_effect: categoryStr === 'effect' ? item.id : n?.cosmetics?.effect, 
-          p_arrow: categoryStr === 'arrow' ? item.id : n?.cosmetics?.arrow, p_title: categoryStr === 'title' ? item.id : n?.cosmetics?.title, 
-          p_map_theme: categoryStr === 'mapTheme' ? item.id : n?.cosmetics?.mapTheme, p_frame: categoryStr === 'frame' ? item.id : n?.cosmetics?.frame, p_verified: n?.cosmetics?.verified 
+          p_node: myPrimaryNode.id, 
+          p_shape: categoryStr === 'shape' ? item.id : freshData?.shape, 
+          p_effect: categoryStr === 'effect' ? item.id : freshCosm?.effect, 
+          p_arrow: categoryStr === 'arrow' ? item.id : freshCosm?.arrow, 
+          p_title: categoryStr === 'title' ? item.id : freshCosm?.title, 
+          p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm?.mapTheme, 
+          p_frame: categoryStr === 'frame' ? item.id : freshCosm?.frame, 
+          p_verified: freshCosm?.verified 
         });
+        fetchGlobalGraph();
       }
     }
   };
+  
 
   // 🔥 STABLE CLICK HANDLERS: Prevents ForceGraph from unbinding touch events mid-tap when UI state changes!
   const handleNodeClick = useCallback((node, event) => {
@@ -1979,11 +1996,21 @@ function App() {
                                  ...prev, 
                                  nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, verified: isVerif, cosmetics: { ...(n.cosmetics || {}), verified: isVerif } } : n)
                              }));
-                             const n = globalGraph.nodes.find(nd => nd.id === myPrimaryNode.id);
+                             
+                             const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
+                             const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
+
                              await supabase.rpc('equip_cosmetics', { 
-                                 p_node: myPrimaryNode.id, p_shape: n?.shape, p_effect: n?.cosmetics?.effect, p_arrow: n?.cosmetics?.arrow, 
-                                 p_title: n?.cosmetics?.title, p_map_theme: n?.cosmetics?.mapTheme, p_frame: n?.cosmetics?.frame, p_verified: isVerif 
+                                 p_node: myPrimaryNode.id, 
+                                 p_shape: freshData?.shape, 
+                                 p_effect: freshCosm?.effect, 
+                                 p_arrow: freshCosm?.arrow, 
+                                 p_title: freshCosm?.title, 
+                                 p_map_theme: freshCosm?.mapTheme, 
+                                 p_frame: freshCosm?.frame, 
+                                 p_verified: isVerif 
                              }); 
+                             fetchGlobalGraph();
                          }}
                          className={`px-4 py-2 font-black uppercase text-xs rounded-xl border-2 border-black transition-transform active:scale-95 shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer ${myPrimaryNode?.cosmetics?.verified ? 'bg-blue-500 text-white hover:bg-blue-400' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
                       >
