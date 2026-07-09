@@ -483,7 +483,7 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
                   ctx.restore();
               }
 
-              // Calculate straight midpoint base tracking geometry logic standard layout scaling UI elements onto DOM overlay
+              // Calculate sraight midpoint base tracking geometry logic standard layout scaling UI elements onto DOM overlay
               let textPos = {
                 x: start.x + dx / 2,
                 y: start.y + dy / 2
