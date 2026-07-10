@@ -458,19 +458,19 @@ function NodeManagerModal({ session, onClose, onRefreshGraph }) {
 
       <div className="w-full max-w-lg relative animate-in zoom-in duration-200">
         
-        <div className="flex gap-2 mb-[-10px] relative z-10 pl-2 sm:pl-4 overflow-x-auto pb-2">
-          <button onClick={() => setActiveTab('owned')} style={{ transform: 'skewX(-10deg)' }} className={`px-4 sm:px-6 py-3 border-4 border-black font-black uppercase text-xs sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all shrink-0 ${activeTab === 'owned' ? 'bg-purple-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+        <div className="flex gap-1.5 sm:gap-2 mb-[-10px] relative z-10 pl-2 sm:pl-4 overflow-x-auto pb-4 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <button onClick={() => setActiveTab('owned')} style={{ transform: 'skewX(-10deg)' }} className={`px-3 sm:px-6 py-2.5 sm:py-3 border-4 border-black font-black uppercase text-[10px] sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all shrink-0 snap-start ${activeTab === 'owned' ? 'bg-purple-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
             <span style={{ transform: 'skewX(10deg)' }} className="inline-block">My Nodes</span>
           </button>
-          <button onClick={() => setActiveTab('chains')} style={{ transform: 'skewX(-10deg)' }} className={`px-4 sm:px-6 py-3 border-4 border-black font-black uppercase text-xs sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all shrink-0 ${activeTab === 'chains' ? 'bg-pink-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+          <button onClick={() => setActiveTab('chains')} style={{ transform: 'skewX(-10deg)' }} className={`px-3 sm:px-6 py-2.5 sm:py-3 border-4 border-black font-black uppercase text-[10px] sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all shrink-0 snap-start ${activeTab === 'chains' ? 'bg-pink-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
             <span style={{ transform: 'skewX(10deg)' }} className="inline-block">Active Chains</span>
           </button>
-          <button onClick={() => setActiveTab('merge')} style={{ transform: 'skewX(-10deg)' }} className={`px-4 sm:px-6 py-3 border-4 border-black font-black uppercase text-xs sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all shrink-0 ${activeTab === 'merge' ? 'bg-yellow-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
+          <button onClick={() => setActiveTab('merge')} style={{ transform: 'skewX(-10deg)' }} className={`px-3 sm:px-6 py-2.5 sm:py-3 border-4 border-black font-black uppercase text-[10px] sm:text-sm cursor-pointer shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all shrink-0 snap-start ${activeTab === 'merge' ? 'bg-yellow-400 text-black -translate-y-2' : 'bg-slate-300 text-slate-600 hover:bg-slate-200'}`}>
             <span style={{ transform: 'skewX(10deg)' }} className="inline-block">Merge Loot</span>
           </button>
         </div>
 
-        <div className="bg-white border-4 border-black rounded-3xl p-6 shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-20">
+        <div className="bg-white border-4 border-black rounded-3xl p-4 sm:p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-20 max-h-[75vh] overflow-y-auto">
           <button onClick={onClose} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer">✖</button>
           {msg && <div className="mb-4 text-xs font-black bg-yellow-300 p-3 border-4 border-black rounded-xl shadow-[4px_4px_0px_rgba(0,0,0,1)]">{msg}</div>}
 
@@ -1707,39 +1707,40 @@ function App() {
         )}
 {/* 🛒 GAMIFIED TABBED K-SHOP */}
         {showShopModal && session && myPrimaryNode && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 pointer-events-auto">
-             <div className="w-full max-w-3xl relative animate-in zoom-in duration-200">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-2 sm:p-4 pointer-events-auto">
+             <div className="w-full max-w-3xl relative animate-in zoom-in duration-200 max-h-[95vh] flex flex-col">
                 
                 {/* FLOATING HEADER & COINS */}
-                <div className="flex justify-between items-end mb-4 relative z-10 px-2">
-                   <div className="bg-yellow-400 border-4 border-black rounded-2xl px-6 py-2 shadow-[8px_8px_0px_rgba(0,0,0,1)] transform -rotate-2">
-                     <h2 className="text-black font-black uppercase text-2xl tracking-widest drop-shadow-sm">🛒 K-Shop</h2>
+                <div className="flex justify-between items-end mb-4 relative z-10 px-1 sm:px-2 shrink-0">
+                   <div className="bg-yellow-400 border-4 border-black rounded-2xl px-4 sm:px-6 py-2 shadow-[6px_6px_0px_rgba(0,0,0,1)] transform -rotate-2">
+                     <h2 className="text-black font-black uppercase text-xl sm:text-2xl tracking-widest drop-shadow-sm">🛒 K-Shop</h2>
                    </div>
-                   <div className="bg-white border-4 border-black rounded-2xl px-6 py-2 shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-2 flex items-center gap-2">
-                     🪙 <span className="text-lime-600 font-black text-xl">{myPrimaryNode?.coins || 0}</span>
+                   <div className="bg-white border-4 border-black rounded-2xl px-4 sm:px-6 py-2 shadow-[6px_6px_0px_rgba(0,0,0,1)] transform rotate-2 flex items-center gap-1.5 sm:gap-2">
+                     🪙 <span className="text-lime-600 font-black text-lg sm:text-xl">{myPrimaryNode?.coins || 0}</span>
                    </div>
                 </div>
 
-              {/* SHOP TABS (Grid format for mobile compatibility) */}
-                <div className="grid grid-cols-4 sm:flex sm:flex-wrap sm:justify-center gap-2 mb-[-15px] relative z-20 px-4">
+              {/* SHOP TABS (Horizontal Swipe bar replacing broken stacked grid) */}
+                <div className="flex overflow-x-auto snap-x gap-2 mb-[-15px] relative z-20 px-2 sm:px-4 pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] shrink-0">
                   {[
                     { id: 'themes', icon: '🗺️', label: 'Map' }, { id: 'titles', icon: '🏷️', label: 'Titles' },
                     { id: 'frames', icon: '🖼️', label: 'Frames' }, { id: 'auras', icon: '✨', label: 'Auras' },
                     { id: 'shapes', icon: '🟢', label: 'Shapes' }, { id: 'beams', icon: '🚀', label: 'Beams' },
                     { id: 'verified', icon: '💎', label: 'Verify' }, { id: 'coins', icon: '💰', label: 'Coins' }
                   ].map(tab => (
-                    <button key={tab.id} onClick={() => setShopTab(tab.id)} style={{ transform: 'skewX(-5deg)' }} className={`flex-1 sm:flex-none sm:w-20 flex flex-col items-center justify-center py-2 border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform ${shopTab === tab.id ? 'bg-cyan-400 -translate-y-2' : 'bg-slate-200 hover:bg-slate-100'} cursor-pointer`}>
-                       <span style={{ transform: 'skewX(5deg)' }} className="text-xl mb-0.5">{tab.icon}</span>
-                       <span style={{ transform: 'skewX(5deg)' }} className="text-[9px] font-black uppercase tracking-wider hidden sm:block">{tab.label}</span>
+                    <button key={tab.id} onClick={() => setShopTab(tab.id)} style={{ transform: 'skewX(-5deg)' }} className={`w-16 sm:w-20 shrink-0 flex flex-col items-center justify-center py-2 border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-transform snap-start ${shopTab === tab.id ? 'bg-cyan-400 -translate-y-2' : 'bg-slate-200 hover:bg-slate-100'} cursor-pointer`}>
+                       <span style={{ transform: 'skewX(5deg)' }} className="text-xl sm:text-2xl mb-0.5">{tab.icon}</span>
+                       <span style={{ transform: 'skewX(5deg)' }} className="text-[9px] font-black uppercase tracking-wider">{tab.label}</span>
                     </button>
                   ))}
                 </div>
 
-                {/* MAIN SHOP CONTENT AREA (Fixed Height to prevent scrolling) */}
-                <div className="bg-white border-4 border-black rounded-3xl p-6 pt-10 shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-10 min-h-[350px]">
-                  <button onClick={() => setShowShopModal(false)} className="absolute -top-4 -right-4 bg-red-500 text-white border-4 border-black rounded-full w-12 h-12 flex items-center justify-center font-black text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer z-50">✖</button>
+                {/* MAIN SHOP CONTENT AREA (Scrollable Height Fix) */}
+                <div className="bg-white border-4 border-black rounded-3xl p-4 sm:p-6 pt-8 sm:pt-10 shadow-[8px_8px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-10 flex-1 overflow-y-auto min-h-[50vh] max-h-[60vh]">
+                  {/* CLOSE BUTTON - Fixed to be inside on mobile so it's never overlapped by tabs! */}
+                  <button onClick={() => setShowShopModal(false)} className="absolute top-2 right-2 sm:-top-4 sm:-right-4 bg-red-500 text-white border-4 border-black rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-black text-xl sm:text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer z-50">✖</button>
                   
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 h-full">
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 h-full mt-2 sm:mt-0">
                     {shopTab === 'themes' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_THEMES.map(item => renderShopButton(item, 'mapTheme', myPrimaryNode?.cosmetics?.mapTheme || 'classic'))}</div>}
                     {shopTab === 'titles' && <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{SHOP_TITLES.map(item => renderShopButton(item, 'title', myPrimaryNode?.cosmetics?.title))}</div>}
                     {shopTab === 'frames' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_FRAMES.map(item => renderShopButton(item, 'frame', myPrimaryNode?.cosmetics?.frame || 'none'))}</div>}
