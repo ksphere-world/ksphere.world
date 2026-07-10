@@ -1452,14 +1452,10 @@ function App() {
             
             <div className="relative z-10 flex flex-col items-center w-full px-4 text-center">
               
-              {/* Flickering Text Logo (Tubelight/Engine Ignition) */}
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white flex flex-col items-center leading-none animate-[tubelight_0.8s_ease-in_forwards]">
-                <span className="uppercase">K<span className="text-slate-300">SPHERE</span></span>
-              </h1>
-              
-              <span className="text-slate-500 text-sm md:text-lg font-black uppercase tracking-[0.5em] mt-3 mb-16 animate-[tubelight_1.2s_ease-in_forwards]">
-                WORLD
-              </span>
+              {/* Flickering Custom PNG Logo (Tubelight/Engine Ignition) */}
+              <div className="animate-[tubelight_0.8s_ease-in_forwards] mb-16 flex justify-center">
+                <img src="/logo.png" alt="KSPHERE WORLD" className="h-16 md:h-24 w-auto object-contain" />
+              </div>
               
               {/* Super Fast Minimal Loading Line */}
               <div className="w-64 md:w-96 h-1 bg-slate-800 rounded-full overflow-hidden relative">
@@ -1481,14 +1477,14 @@ function App() {
               }
               @keyframes tubelight {
                 0% { opacity: 0; }
-                5% { opacity: 1; text-shadow: 0 0 20px rgba(255,255,255,0.8); }
+                5% { opacity: 1; filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
                 10% { opacity: 0; }
-                15% { opacity: 1; text-shadow: 0 0 20px rgba(255,255,255,0.8); }
-                20% { opacity: 0.2; text-shadow: none; }
-                25% { opacity: 1; text-shadow: 0 0 30px rgba(255,255,255,1); }
+                15% { opacity: 1; filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
+                20% { opacity: 0.2; filter: none; }
+                25% { opacity: 1; filter: drop-shadow(0 0 30px rgba(255,255,255,1)); }
                 30% { opacity: 0; }
-                35% { opacity: 1; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
-                100% { opacity: 1; text-shadow: 0 0 15px rgba(255,255,255,0.3); }
+                35% { opacity: 1; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5)); }
+                100% { opacity: 1; filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)); }
               }
             `}} />
           </div>
@@ -1814,11 +1810,8 @@ function App() {
         <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 overflow-x-hidden pointer-events-auto">
           
           {/* LOGO */}
-          <Link to="/" className="text-lg sm:text-xl md:text-2xl font-black tracking-tighter text-black flex items-center hover:opacity-70 transition-opacity shrink-0">
-            <div className="flex flex-col leading-none justify-center mt-1">
-              <span className="uppercase">K<span className="text-slate-500">SPHERE</span></span>
-              <span className="text-[7px] sm:text-[8px] md:text-[10px] text-slate-400 uppercase tracking-[0.4em] mt-0.5 font-bold">WORLD</span>
-            </div>
+          <Link to="/" className="flex items-center hover:opacity-70 transition-opacity shrink-0">
+            <img src="/logo.png" alt="KSPHERE WORLD" className="h-8 sm:h-10 md:h-12 w-auto object-contain mt-1" />
           </Link>
           
           {/* BRAWL BUTTONS CONTAINER */}
