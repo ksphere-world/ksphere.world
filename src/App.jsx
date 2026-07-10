@@ -964,6 +964,20 @@ function App() {
     const t2 = setTimeout(() => setShowSplash(false), 1400); // Remove from DOM quickly
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
+
+  // 🔊 GLOBAL BUTTON CLICK SOUND SYSTEM 🔊
+  // Captures all clicks on ANY button, link, or clickable element in the entire game instantly!
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      // If the element clicked is a button, link, checkbox, or has the tailwind 'cursor-pointer' class
+      if (e.target.closest('button, a, [role="button"], .cursor-pointer, input[type="checkbox"]')) {
+        playSound('pop');
+      }
+    };
+    // Use capture phase to ensure it plays instantly, even if the button logic delays!
+    document.addEventListener('click', handleGlobalClick, { capture: true });
+    return () => document.removeEventListener('click', handleGlobalClick, { capture: true });
+  }, []);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showNodeManager, setShowNodeManager] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
@@ -1426,12 +1440,14 @@ function App() {
 
   // 🔥 STABLE CLICK HANDLERS: Prevents ForceGraph from unbinding touch events mid-tap when UI state changes!
   const handleNodeClick = useCallback((node, event) => {
+    playSound('pop'); // 🔊 Map Node Tap Sound
     const p = getTapPos(event);
     setNodeMenu({ node, x: p.x, y: p.y });
     setLinkPopup(null);
   }, []);
 
   const handleLinkClick = useCallback((link, event) => {
+    playSound('pop'); // 🔊 Map Edge/Chain Tap Sound
     const p = getTapPos(event);
     setLinkPopup({ link, x: p.x, y: p.y });
     setNodeMenu(null);
