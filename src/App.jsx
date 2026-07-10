@@ -1465,28 +1465,28 @@ function App() {
             <div className="relative z-10 flex flex-col items-center w-full px-4 text-center">
               
               {/* Flickering Custom PNG Logo (Tubelight/Engine Ignition) */}
-              <div className="animate-[tubelight_0.8s_ease-in_forwards] mb-16 flex justify-center">
+              <div className="animate-[tubelight_0.8s_ease-in_forwards] flex justify-center">
                 <img src="/logo.png" alt="KSPHERE WORLD" className="h-16 md:h-24 w-auto object-contain" />
               </div>
+            </div>
+
+            {/* Brawl Stars Style Slanted Loading Bar & Percentage - Pinned to Bottom, No Blinking */}
+            <div className="absolute bottom-12 md:bottom-16 w-full flex flex-col items-center px-4 z-20">
+              {/* Extra Bold Percentage Text for Mobile */}
+              <div 
+                className="text-[44px] md:text-6xl font-[900] text-white mb-2 tracking-wide leading-none" 
+                style={{ 
+                  WebkitTextStroke: '2.5px black', 
+                  textShadow: '0px 4px 0px black, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000' 
+                }}
+              >
+                {splashProgress}%
+              </div>
               
-              {/* Brawl Stars Style Slanted Loading Bar & Percentage */}
-              <div className="flex flex-col items-center mt-6 animate-[tubelight_1.2s_ease-in_forwards]">
-                {/* Bouncing Percentage Text */}
-                <div 
-                  className="text-4xl md:text-5xl font-black text-white mb-2 tracking-wide" 
-                  style={{ 
-                    WebkitTextStroke: '2px black', 
-                    textShadow: '0px 4px 0px black, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' 
-                  }}
-                >
-                  {splashProgress}%
-                </div>
-                
-                {/* Slanted (Skewed) Bar Container */}
-                <div className="w-64 md:w-80 h-7 md:h-9 bg-[#4a0024] border-[3px] border-black shadow-[3px_3px_0px_rgba(0,0,0,1)] relative overflow-hidden" style={{ transform: 'skewX(-15deg)' }}>
-                  {/* Animated Fill (Orange base with Yellow/White leading edge tip) */}
-                  <div className="h-full bg-gradient-to-r from-[#ea580c] to-[#f97316] w-full origin-left animate-[engineLoad_2s_linear_forwards] border-r-[6px] border-white shadow-[inset_-8px_0_0_#fde047]"></div>
-                </div>
+              {/* Slanted (Skewed) Bar Container */}
+              <div className="w-64 md:w-80 h-7 md:h-9 bg-[#4a0024] border-[3px] border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] relative overflow-hidden" style={{ transform: 'skewX(-15deg)' }}>
+                {/* Animated Fill (Orange base with Yellow/White leading edge tip) */}
+                <div className="h-full bg-gradient-to-r from-[#ea580c] to-[#f97316] w-full origin-left animate-[engineLoad_2s_linear_forwards] border-r-[6px] border-white shadow-[inset_-8px_0_0_#fde047]"></div>
               </div>
             </div>
 
