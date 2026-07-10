@@ -990,6 +990,7 @@ function App() {
   const [shopTab, setShopTab] = useState('themes'); // 🛒 K-Shop Gamified Navigation Tab
   const [confirmPurchase, setConfirmPurchase] = useState(null); // 💎 Custom Checkout Modal State
   const [globalGraph, setGlobalGraph] = useState({ nodes: [], links: [] });
+  const [shopMsg, setShopMsg] = useState(''); // 🛒 Shop error message state
 
   // THE K-SHOP COSMETICS CATALOG DATABASE
   const SHOP_EFFECTS = [
@@ -1435,21 +1436,44 @@ function App() {
     }
   };
 
- // 💰 REAL CHECKOUT ENGINE (LEMON SQUEEZY)
-  const handleBuyCoins = (pack) => {
-    playSound('buy'); 
-    
-    // The base URL for your Lemon Squeezy store checkouts
-    const storeUrl = 'https://ksphere.lemonsqueezy.com/checkout/buy'; 
-    
-    // 🔥 THE MAGIC TRICK: We attach their K-Tag as "custom data" to the URL.
-    // Lemon Squeezy will send this exact K-Tag back to our server when the payment succeeds!
-    const checkoutUrl = `${storeUrl}/${pack.variantId}?checkout[custom][node_id]=${myPrimaryNode.id}`;
-    
-    // Open the secure checkout in a new tab!
-    window.open(checkoutUrl, '_blank');
+const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // 💰 AUTOMATED MULTI-GATEWAY CHECKOUT ENGINE (LEMON SQUEEZY & RAZORPAY)
+  const handleBuyCoins = async (pack, gateway) => {
+    playSound('buy');
+    setIsRedirecting(true);
+    setShopMsg('');
+
+    try {
+      if (gateway === 'global') {
+        // --- GLOBAL CHECKOUT (LEMON SQUEEZY) ---
+        const storeUrl = 'https://ksphere.lemonsqueezy.com/checkout/buy';
+        const checkoutUrl = `${storeUrl}/${pack.variantId}?checkout[custom][node_id]=${myPrimaryNode.id}`;
+        window.open(checkoutUrl, '_blank');
+        setIsRedirecting(false);
+      } else if (gateway === 'india') {
+        // --- INDIA CHECKOUT (RAZORPAY UPI) ---
+        const { data, error } = await supabase.functions.invoke('razorpay-checkout', {
+          body: {
+            nodeId: myPrimaryNode.id,
+            amount: pack.id === 'pack_small' ? 199 : pack.id === 'pack_med' ? 799 : 1499, // INR Amount
+            packLabel: pack.label,
+            coins: pack.amount
+          }
+        });
+
+        if (error || !data?.checkoutUrl) {
+          throw new Error(error?.message || data?.error || "Failed to generate UPI link");
+        }
+
+        // Using assign() instead of direct reassignment to bypass React 19 global mutation lint rules
+        window.location.assign(data.checkoutUrl);
+      }
+    } catch (err) {
+      setShopMsg(`⚠️ Payment Error: ${err.message}`);
+      setIsRedirecting(false);
+    }
   };
-  
 
   // 🔥 STABLE CLICK HANDLERS: Prevents ForceGraph from unbinding touch events mid-tap when UI state changes!
   const handleNodeClick = useCallback((node, event) => {
@@ -1787,23 +1811,49 @@ function App() {
                       </div>
                     )}
 
-                    {shopTab === 'coins' && (
+                     {shopTab === 'coins' && (
                       <div className="flex flex-col h-full pt-4">
-                        <h3 className="text-center font-black uppercase text-slate-600 mb-4 bg-slate-100 p-2 rounded-lg border-2 border-slate-300 border-dashed">
-                          Future Payment Test - Claim free coins for now!
-                        </h3>
+                        
+                        {/* Error message block */}
+                        {shopMsg && (
+                          <div className="mb-4 text-xs font-black bg-red-100 text-red-700 p-3 border-4 border-black rounded-2xl shadow-[4px_4px_0px_rgba(0,0,0,1)] text-center animate-bounce">
+                            {shopMsg}
+                          </div>
+                        )}
+
+                        {isRedirecting && (
+                          <div className="mb-4 text-center font-black uppercase text-xs bg-yellow-300 p-2 border-4 border-black rounded-xl animate-pulse">
+                            Connecting Secure Portal... 🚀
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           {COIN_PACKS.map(pack => (
                             <div key={pack.id} className="bg-gradient-to-b from-yellow-50 to-yellow-200 border-4 border-black rounded-2xl p-5 shadow-[6px_6px_0px_rgba(0,0,0,1)] text-center flex flex-col items-center justify-between transform hover:-translate-y-1 transition-transform">
                               <span className="text-4xl mb-3 drop-shadow-md">💰</span>
                               <h3 className="font-black uppercase text-sm mb-1 leading-tight">{pack.label}</h3>
                               <p className="text-2xl font-black text-lime-600 mb-4 bg-white px-3 py-1 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">+{pack.amount}</p>
-                              <button
-                                onClick={() => handleBuyCoins(pack)}
-                                className="w-full bg-lime-400 hover:bg-lime-300 text-black border-4 border-black rounded-xl py-3 font-black uppercase tracking-widest shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer"
-                              >
-                                Buy ({pack.priceStr})
-                              </button>
+                              
+                              <div className="flex flex-col gap-2 w-full mt-2">
+                                {/* Button 1: India UPI */}
+                                <button
+                                  onClick={() => handleBuyCoins(pack, 'india')}
+                                  disabled={isRedirecting}
+                                  className="w-full bg-orange-400 hover:bg-orange-300 disabled:opacity-50 text-black border-2 border-black rounded-xl py-2 font-black uppercase text-[10px] tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-[1px] transition-transform cursor-pointer"
+                                >
+                                  UPI / GPay / PhonePe ({pack.priceStr})
+                                </button>
+
+                                {/* Button 2: International */}
+                                <button
+                                  onClick={() => handleBuyCoins(pack, 'global')}
+                                  disabled={isRedirecting}
+                                  className="w-full bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 text-black border-2 border-black rounded-xl py-2 font-black uppercase text-[10px] tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-[1px] transition-transform cursor-pointer"
+                                >
+                                  Global PayPal / Card ({pack.priceStr})
+                                </button>
+                              </div>
+
                             </div>
                           ))}
                         </div>
