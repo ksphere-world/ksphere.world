@@ -1450,51 +1450,46 @@ function App() {
         {showSplash && (
           <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#09090b] transition-all duration-500 ease-in-out ${isFadingSplash ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100 scale-100 pointer-events-auto'}`}>
             
-            {/* Ambient Background Glows */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-[20%] left-[10%] w-64 h-64 bg-pink-600 rounded-full blur-[100px] opacity-30 animate-pulse"></div>
-              <div className="absolute bottom-[20%] right-[10%] w-64 h-64 bg-cyan-600 rounded-full blur-[100px] opacity-30 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-            </div>
-            
-            <div className="relative z-10 flex flex-col items-center">
-              {/* 💥 HARDCORE ESPORTS BOUNCING LOGO */}
-              <div className="relative flex items-center justify-center w-28 h-28 md:w-36 md:h-36 mb-10 animate-bounce" style={{ animationDuration: '1.2s' }}>
-                {/* Blood red pulsing aura */}
-                <div className="absolute inset-0 bg-red-600 transform -skew-x-12 animate-pulse blur-xl opacity-60"></div>
-                {/* Aggressive skewed dark block */}
-                <div className="relative bg-[#09090b] border-[6px] border-red-600 transform -skew-x-12 w-full h-full flex items-center justify-center shadow-[10px_10px_0px_#000]">
-                  <div className="transform skew-x-12 flex items-center justify-center mt-2">
-                    <span className="text-7xl md:text-8xl font-black text-white drop-shadow-[0_0_15px_rgba(220,38,38,0.9)] tracking-tighter uppercase">K</span>
-                  </div>
-                </div>
-              </div>
+            <div className="relative z-10 flex flex-col items-center w-full px-4 text-center">
               
-              {/* Custom Title Badge */}
-              <div className="bg-white border-4 border-black px-8 py-4 rounded-3xl shadow-[8px_8px_0px_rgba(244,114,182,1)] transform -rotate-2 mb-4">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-black flex flex-col items-center leading-none">
-                  <span>KINDNESS</span>
-                  <span className="text-pink-500">SPHERE</span>
-                </h1>
-              </div>
-              <span className="text-cyan-400 text-lg md:text-xl font-black uppercase tracking-[0.5em] mt-2 mb-14 drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">World</span>
+              {/* Flickering Text Logo (Tubelight/Engine Ignition) */}
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white flex flex-col items-center leading-none animate-[tubelight_0.8s_ease-in_forwards]">
+                <span className="uppercase">KINDNESS</span>
+                <span className="uppercase text-slate-300">SPHERE</span>
+              </h1>
               
-              {/* Gamified Progress Bar */}
-              <div className="w-64 md:w-80 h-8 bg-slate-800 border-4 border-black rounded-full overflow-hidden shadow-[4px_4px_0px_rgba(0,0,0,1)] relative p-1">
-                <div className="h-full bg-lime-400 rounded-full w-full origin-left animate-[splashLoad_2.2s_ease-out_forwards] border-r-4 border-black shadow-[inset_-2px_0_0_rgba(0,0,0,0.2)]"></div>
+              <span className="text-slate-500 text-sm md:text-lg font-black uppercase tracking-[0.5em] mt-3 mb-16 animate-[tubelight_1.2s_ease-in_forwards]">
+                World
+              </span>
+              
+              {/* Super Fast Minimal Loading Line */}
+              <div className="w-64 md:w-96 h-1 bg-slate-800 rounded-full overflow-hidden relative">
+                <div className="h-full bg-white rounded-full w-full origin-left animate-[engineLoad_2s_cubic-bezier(0.1,0.8,0.2,1)_forwards] shadow-[0_0_15px_#fff]"></div>
               </div>
-              <p className="mt-5 text-xs font-black uppercase tracking-widest text-slate-300 animate-pulse drop-shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-                Initializing Global Map...
+              <p className="mt-4 text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-400 animate-[tubelight_1.5s_ease-in_forwards]">
+                Igniting Engine...
               </p>
             </div>
 
-            {/* Custom keyframes for the loading bar */}
+            {/* Custom keyframes for rapid tubelight flicker and snappy load */}
             <style dangerouslySetInnerHTML={{__html: `
-              @keyframes splashLoad {
+              @keyframes engineLoad {
                 0% { transform: scaleX(0); }
-                20% { transform: scaleX(0.3); }
-                40% { transform: scaleX(0.45); }
-                70% { transform: scaleX(0.85); }
+                10% { transform: scaleX(0.4); }
+                30% { transform: scaleX(0.45); }
+                60% { transform: scaleX(0.9); }
                 100% { transform: scaleX(1); }
+              }
+              @keyframes tubelight {
+                0% { opacity: 0; }
+                5% { opacity: 1; text-shadow: 0 0 20px rgba(255,255,255,0.8); }
+                10% { opacity: 0; }
+                15% { opacity: 1; text-shadow: 0 0 20px rgba(255,255,255,0.8); }
+                20% { opacity: 0.2; text-shadow: none; }
+                25% { opacity: 1; text-shadow: 0 0 30px rgba(255,255,255,1); }
+                30% { opacity: 0; }
+                35% { opacity: 1; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+                100% { opacity: 1; text-shadow: 0 0 15px rgba(255,255,255,0.3); }
               }
             `}} />
           </div>
@@ -1820,16 +1815,10 @@ function App() {
         <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 overflow-x-hidden pointer-events-auto">
           
           {/* LOGO */}
-          <Link to="/" className="text-lg sm:text-2xl md:text-3xl font-black tracking-tighter text-black flex items-center gap-2 sm:gap-3 hover:scale-105 transition-transform shrink-0">
-            {/* 💥 HARDCORE ESPORTS HEADER LOGO */}
-            <div className="relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 shrink-0">
-              <div className="relative bg-[#09090b] border-[3px] border-red-600 transform -skew-x-12 w-full h-full flex items-center justify-center shadow-[4px_4px_0px_#000]">
-                <span className="transform skew-x-12 text-white font-black text-2xl sm:text-3xl leading-none tracking-tighter mt-1 drop-shadow-[0_0_5px_rgba(220,38,38,1)]">K</span>
-              </div>
-            </div>
+          <Link to="/" className="text-xl sm:text-3xl md:text-4xl font-black tracking-tighter text-black flex items-center hover:opacity-70 transition-opacity shrink-0">
             <div className="flex flex-col leading-none justify-center">
-              <span className="italic uppercase font-black">KINDNESS<span className="text-red-600">SPHERE</span></span>
-              <span className="text-[7px] sm:text-[10px] md:text-xs text-slate-800 uppercase tracking-[0.3em] mt-0.5 sm:mt-1 font-bold">world</span>
+              <span className="uppercase">KINDNESS<span className="text-slate-500">SPHERE</span></span>
+              <span className="text-[8px] sm:text-[10px] md:text-xs text-slate-400 uppercase tracking-[0.4em] mt-1 font-bold">world</span>
             </div>
           </Link>
           
