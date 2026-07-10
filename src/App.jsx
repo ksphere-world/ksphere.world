@@ -956,13 +956,25 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true); 
   const [showSplash, setShowSplash] = useState(true); // 🎮 SPLASH SCREEN STATE
   const [isFadingSplash, setIsFadingSplash] = useState(false); // 🎮 SPLASH FADE STATE
+  const [splashProgress, setSplashProgress] = useState(0); // 🎮 SPLASH PROGRESS
   const [showSettings, setShowSettings] = useState(false);
 
-  // Splash Screen Cinematic Timer
+  // Splash Screen Cinematic Timer & Progress Sync
   useEffect(() => {
-    const t1 = setTimeout(() => setIsFadingSplash(true), 2200); // Start fade out
-    const t2 = setTimeout(() => setShowSplash(false), 2700); // Remove from DOM completely
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t1 = setTimeout(() => setIsFadingSplash(true), 2200);
+    const t2 = setTimeout(() => setShowSplash(false), 2700);
+    
+    // Smoothly animate the percentage counter to 100% over 2 seconds
+    const start = Date.now();
+    const duration = 2000;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const p = Math.min(100, Math.floor((elapsed / duration) * 100));
+      setSplashProgress(p);
+      if (p === 100) clearInterval(interval);
+    }, 30);
+
+    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(interval); };
   }, []);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showNodeManager, setShowNodeManager] = useState(false);
@@ -1457,9 +1469,24 @@ function App() {
                 <img src="/logo.png" alt="KSPHERE WORLD" className="h-16 md:h-24 w-auto object-contain" />
               </div>
               
-              {/* Cartoonish Tilted Loading Bar */}
-              <div className="w-64 md:w-80 h-8 bg-white border-4 border-black rounded-2xl overflow-hidden shadow-[6px_6px_0px_rgba(255,255,255,0.9)] relative p-1 transform -rotate-3 mt-4 animate-[tubelight_1.2s_ease-in_forwards]">
-                <div className="h-full bg-lime-400 rounded-lg w-full origin-left animate-[engineLoad_2s_cubic-bezier(0.1,0.8,0.2,1)_forwards] border-r-4 border-black shadow-[inset_0_-3px_0_rgba(0,0,0,0.2)]"></div>
+              {/* Brawl Stars Style Slanted Loading Bar & Percentage */}
+              <div className="flex flex-col items-center mt-6 animate-[tubelight_1.2s_ease-in_forwards]">
+                {/* Bouncing Percentage Text */}
+                <div 
+                  className="text-4xl md:text-5xl font-black text-white mb-2 tracking-wide" 
+                  style={{ 
+                    WebkitTextStroke: '2px black', 
+                    textShadow: '0px 4px 0px black, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' 
+                  }}
+                >
+                  {splashProgress}%
+                </div>
+                
+                {/* Slanted (Skewed) Bar Container */}
+                <div className="w-64 md:w-80 h-7 md:h-9 bg-[#4a0024] border-[3px] border-black shadow-[3px_3px_0px_rgba(0,0,0,1)] relative overflow-hidden" style={{ transform: 'skewX(-15deg)' }}>
+                  {/* Animated Fill (Orange base with Yellow/White leading edge tip) */}
+                  <div className="h-full bg-gradient-to-r from-[#ea580c] to-[#f97316] w-full origin-left animate-[engineLoad_2s_linear_forwards] border-r-[6px] border-white shadow-[inset_-8px_0_0_#fde047]"></div>
+                </div>
               </div>
             </div>
 
@@ -1467,9 +1494,6 @@ function App() {
             <style dangerouslySetInnerHTML={{__html: `
               @keyframes engineLoad {
                 0% { transform: scaleX(0); }
-                10% { transform: scaleX(0.4); }
-                30% { transform: scaleX(0.45); }
-                60% { transform: scaleX(0.9); }
                 100% { transform: scaleX(1); }
               }
               @keyframes tubelight {
