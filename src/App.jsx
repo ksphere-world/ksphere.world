@@ -1033,10 +1033,12 @@ function App() {
     { id: 'footprints', label: 'Paws', icon: '🐾', price: 200 }
   ];
 
+  // TODO: Replace 'variant_id' with your actual variant IDs from the Lemon Squeezy dashboard
+  // TODO: Replace 'YOUR_STORE' with your actual Lemon Squeezy store name
   const COIN_PACKS = [
-    { id: 'pack_small', label: 'Handful of Coins', amount: 100, priceStr: 'Free' },
-    { id: 'pack_med', label: 'Bag of Coins', amount: 500, priceStr: 'Free' },
-    { id: 'pack_large', label: 'Chest of Coins', amount: 1000, priceStr: 'Free' }
+    { id: 'pack_small', label: 'Handful of Coins', amount: 100, priceStr: '₹199', variantId: '1892266' },
+    { id: 'pack_med', label: 'Bag of Coins', amount: 500, priceStr: '₹299', variantId: '1892314' },
+    { id: 'pack_large', label: 'Chest of Coins', amount: 1000, priceStr: '₹899', variantId: '1892321' }
   ];
 
   // Helper to render standard Store Item Buttons beautifully
@@ -1433,21 +1435,19 @@ function App() {
     }
   };
 
-  // 💰 SIMULATED BANK / COIN ADDER ENGINE
-  const handleBuyCoins = async (amount) => {
-    playSound('buy'); // The updated playSound helper already handles errors silently now!
+ // 💰 REAL CHECKOUT ENGINE (LEMON SQUEEZY)
+  const handleBuyCoins = (pack) => {
+    playSound('buy'); 
     
-    // 1. Optimistic UI update for instant feedback
-    setGlobalGraph(prev => ({
-      ...prev,
-      nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, coins: (n.coins || 0) + amount } : n)
-    }));
-
-    // 2. Transact with Database securely
-    await supabase.rpc('add_karma_coins', { p_node: myPrimaryNode.id, p_amount: amount });
+    // The base URL for your Lemon Squeezy store checkouts
+    const storeUrl = 'https://ksphere.lemonsqueezy.com/checkout/buy'; 
     
-    // 3. Confirm true DB state
-    fetchGlobalGraph();
+    // 🔥 THE MAGIC TRICK: We attach their K-Tag as "custom data" to the URL.
+    // Lemon Squeezy will send this exact K-Tag back to our server when the payment succeeds!
+    const checkoutUrl = `${storeUrl}/${pack.variantId}?checkout[custom][node_id]=${myPrimaryNode.id}`;
+    
+    // Open the secure checkout in a new tab!
+    window.open(checkoutUrl, '_blank');
   };
   
 
@@ -1799,10 +1799,10 @@ function App() {
                               <h3 className="font-black uppercase text-sm mb-1 leading-tight">{pack.label}</h3>
                               <p className="text-2xl font-black text-lime-600 mb-4 bg-white px-3 py-1 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">+{pack.amount}</p>
                               <button
-                                onClick={() => handleBuyCoins(pack.amount)}
+                                onClick={() => handleBuyCoins(pack)}
                                 className="w-full bg-lime-400 hover:bg-lime-300 text-black border-4 border-black rounded-xl py-3 font-black uppercase tracking-widest shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 cursor-pointer"
                               >
-                                Claim ({pack.priceStr})
+                                Buy ({pack.priceStr})
                               </button>
                             </div>
                           ))}
