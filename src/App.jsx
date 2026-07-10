@@ -956,25 +956,13 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true); 
   const [showSplash, setShowSplash] = useState(true); // 🎮 SPLASH SCREEN STATE
   const [isFadingSplash, setIsFadingSplash] = useState(false); // 🎮 SPLASH FADE STATE
-  const [splashProgress, setSplashProgress] = useState(0); // 🎮 SPLASH PROGRESS
   const [showSettings, setShowSettings] = useState(false);
 
-  // Splash Screen Cinematic Timer & Progress Sync
+  // Short Decorative Splash Screen Timer
   useEffect(() => {
-    const t1 = setTimeout(() => setIsFadingSplash(true), 2200);
-    const t2 = setTimeout(() => setShowSplash(false), 2700);
-    
-    // Smoothly animate the percentage counter to 100% over 2 seconds
-    const start = Date.now();
-    const duration = 2000;
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const p = Math.min(100, Math.floor((elapsed / duration) * 100));
-      setSplashProgress(p);
-      if (p === 100) clearInterval(interval);
-    }, 30);
-
-    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(interval); };
+    const t1 = setTimeout(() => setIsFadingSplash(true), 1000); // Super fast 1s wait
+    const t2 = setTimeout(() => setShowSplash(false), 1400); // Remove from DOM quickly
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showNodeManager, setShowNodeManager] = useState(false);
@@ -1462,50 +1450,16 @@ function App() {
         {showSplash && (
           <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#09090b] transition-all duration-500 ease-in-out ${isFadingSplash ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100 scale-100 pointer-events-auto'}`}>
             
-            <div className="relative z-10 flex flex-col items-center w-full px-4 text-center">
-              
-              {/* Flickering Custom PNG Logo (Tubelight/Engine Ignition) */}
-              <div className="animate-[tubelight_0.8s_ease-in_forwards] flex justify-center">
-                <img src="/logo.png" alt="KSPHERE WORLD" className="h-16 md:h-24 w-auto object-contain" />
-              </div>
+            {/* Blinking Logo Pinned to the Bottom */}
+            <div className="absolute bottom-12 md:bottom-16 w-full flex justify-center px-4 z-20">
+              <img src="/logo.png" alt="KSPHERE WORLD" className="h-16 md:h-20 w-auto object-contain animate-[fastBlink_0.6s_ease-in-out_infinite]" />
             </div>
 
-            {/* Brawl Stars Style Slanted Loading Bar & Percentage - Pinned to Bottom, No Blinking */}
-            <div className="absolute bottom-12 md:bottom-16 w-full flex flex-col items-center px-4 z-20">
-              {/* Extra Bold Percentage Text for Mobile */}
-              <div 
-                className="text-[44px] md:text-6xl font-[900] text-white mb-2 tracking-wide leading-none" 
-                style={{ 
-                  WebkitTextStroke: '2.5px black', 
-                  textShadow: '0px 4px 0px black, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000' 
-                }}
-              >
-                {splashProgress}%
-              </div>
-              
-              {/* Slanted (Skewed) Bar Container */}
-              <div className="w-64 md:w-80 h-7 md:h-9 bg-[#4a0024] border-[3px] border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] relative overflow-hidden" style={{ transform: 'skewX(-15deg)' }}>
-                {/* Animated Fill (Orange base with Yellow/White leading edge tip) */}
-                <div className="h-full bg-gradient-to-r from-[#ea580c] to-[#f97316] w-full origin-left animate-[engineLoad_2s_linear_forwards] border-r-[6px] border-white shadow-[inset_-8px_0_0_#fde047]"></div>
-              </div>
-            </div>
-
-            {/* Custom keyframes for rapid tubelight flicker and snappy load */}
+            {/* Custom keyframes for fast blinking */}
             <style dangerouslySetInnerHTML={{__html: `
-              @keyframes engineLoad {
-                0% { transform: scaleX(0); }
-                100% { transform: scaleX(1); }
-              }
-              @keyframes tubelight {
-                0% { opacity: 0; }
-                5% { opacity: 1; filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
-                10% { opacity: 0; }
-                15% { opacity: 1; filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
-                20% { opacity: 0.2; filter: none; }
-                25% { opacity: 1; filter: drop-shadow(0 0 30px rgba(255,255,255,1)); }
-                30% { opacity: 0; }
-                35% { opacity: 1; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5)); }
-                100% { opacity: 1; filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)); }
+              @keyframes fastBlink {
+                0%, 100% { opacity: 1; filter: drop-shadow(0 0 10px rgba(255,255,255,0.8)); }
+                50% { opacity: 0.2; filter: none; }
               }
             `}} />
           </div>
