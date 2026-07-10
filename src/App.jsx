@@ -1457,13 +1457,10 @@ function App() {
                 <img src="/logo.png" alt="KSPHERE WORLD" className="h-16 md:h-24 w-auto object-contain" />
               </div>
               
-              {/* Super Fast Minimal Loading Line */}
-              <div className="w-64 md:w-96 h-1 bg-slate-800 rounded-full overflow-hidden relative">
-                <div className="h-full bg-white rounded-full w-full origin-left animate-[engineLoad_2s_cubic-bezier(0.1,0.8,0.2,1)_forwards] shadow-[0_0_15px_#fff]"></div>
+              {/* Cartoonish Tilted Loading Bar */}
+              <div className="w-64 md:w-80 h-8 bg-white border-4 border-black rounded-2xl overflow-hidden shadow-[6px_6px_0px_rgba(255,255,255,0.9)] relative p-1 transform -rotate-3 mt-4 animate-[tubelight_1.2s_ease-in_forwards]">
+                <div className="h-full bg-lime-400 rounded-lg w-full origin-left animate-[engineLoad_2s_cubic-bezier(0.1,0.8,0.2,1)_forwards] border-r-4 border-black shadow-[inset_0_-3px_0_rgba(0,0,0,0.2)]"></div>
               </div>
-              <p className="mt-4 text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-400 animate-[tubelight_1.5s_ease-in_forwards]">
-                Igniting Engine...
-              </p>
             </div>
 
             {/* Custom keyframes for rapid tubelight flicker and snappy load */}
