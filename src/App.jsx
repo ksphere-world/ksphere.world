@@ -1359,10 +1359,15 @@ function App() {
     if (isOwned) {
       if (currentEquipped === item.id) return; // Already equipped
 
-      // 1. Equip: Update local visual state instantly!
+      // 1. Equip: Update local visual state instantly (INCLUDING Top-Level shortcut properties!)
       setGlobalGraph(prev => ({
         nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { 
-          ...n, shape: categoryStr === 'shape' ? item.id : n.shape, cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id } 
+          ...n, 
+          shape: categoryStr === 'shape' ? item.id : n.shape, 
+          title: categoryStr === 'title' ? item.id : n.title,
+          mapTheme: categoryStr === 'mapTheme' ? item.id : n.mapTheme,
+          frame: categoryStr === 'frame' ? item.id : n.frame,
+          cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id } 
         } : n),
         links: categoryStr === 'arrow' 
           ? prev.links.map(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id ? { ...l, arrowStyle: item.id } : l) 
@@ -1381,7 +1386,8 @@ function App() {
         p_frame: categoryStr === 'frame' ? item.id : freshCosm.frame, 
         p_verified: freshCosm.verified 
       });
-      // Removed fetchGlobalGraph() here! The realtime DB subscription handles updates safely in the background.
+      // Await the fetch AFTER RPC completes so background matches DB completely!
+      fetchGlobalGraph();
     } else {
       // Trigger Gamified Confirmation Modal instead of browser alerts!
       setConfirmPurchase({ item, categoryStr });
@@ -1398,7 +1404,11 @@ function App() {
     setGlobalGraph(prev => ({
       nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { 
         ...n, coins: Math.max(0, n.coins - item.price), unlockedCosmetics: [...(n.unlockedCosmetics || []), item.id],
-        shape: categoryStr === 'shape' ? item.id : n.shape, cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id }
+        shape: categoryStr === 'shape' ? item.id : n.shape, 
+        title: categoryStr === 'title' ? item.id : n.title,
+        mapTheme: categoryStr === 'mapTheme' ? item.id : n.mapTheme,
+        frame: categoryStr === 'frame' ? item.id : n.frame,
+        cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id }
       } : n),
       links: categoryStr === 'arrow' 
         ? prev.links.map(l => (typeof l.source === 'object' ? l.source.id : l.source) === myPrimaryNode.id ? { ...l, arrowStyle: item.id } : l) 
@@ -1419,6 +1429,7 @@ function App() {
         p_frame: categoryStr === 'frame' ? item.id : freshCosm.frame, 
         p_verified: freshCosm.verified 
       });
+      fetchGlobalGraph();
     }
   };
 
@@ -1735,12 +1746,14 @@ function App() {
                   ))}
                 </div>
 
-                {/* MAIN SHOP CONTENT AREA (Scrollable Height Fix) */}
-                <div className="bg-white border-4 border-black rounded-3xl p-4 sm:p-6 pt-8 sm:pt-10 shadow-[8px_8px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-10 flex-1 overflow-y-auto min-h-[50vh] max-h-[60vh]">
-                  {/* CLOSE BUTTON - Fixed to be inside on mobile so it's never overlapped by tabs! */}
+                {/* MAIN SHOP CONTENT AREA (Scrollable Height Fix with Un-Clipped Close Button) */}
+                <div className="bg-white border-4 border-black rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_rgba(0,0,0,1)] relative z-10 flex-1 flex flex-col min-h-[50vh] max-h-[60vh]">
+                  {/* CLOSE BUTTON - Moved OUTSIDE the overflow-y-auto div so it NEVER gets clipped on Windows/Desktop! */}
                   <button onClick={() => setShowShopModal(false)} className="absolute top-2 right-2 sm:-top-4 sm:-right-4 bg-red-500 text-white border-4 border-black rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-black text-xl sm:text-2xl hover:scale-110 shadow-[4px_4px_0px_rgba(0,0,0,1)] cursor-pointer z-50">✖</button>
                   
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 h-full mt-2 sm:mt-0">
+                  {/* The actual scrolling content wrapper */}
+                  <div className="p-4 sm:p-6 pt-12 sm:pt-10 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] rounded-3xl">
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 h-full mt-2 sm:mt-0">
                     {shopTab === 'themes' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_THEMES.map(item => renderShopButton(item, 'mapTheme', myPrimaryNode?.cosmetics?.mapTheme || 'classic'))}</div>}
                     {shopTab === 'titles' && <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{SHOP_TITLES.map(item => renderShopButton(item, 'title', myPrimaryNode?.cosmetics?.title))}</div>}
                     {shopTab === 'frames' && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">{SHOP_FRAMES.map(item => renderShopButton(item, 'frame', myPrimaryNode?.cosmetics?.frame || 'none'))}</div>}
@@ -1798,20 +1811,21 @@ function App() {
                     )}
                   </div>
                 </div>
-             </div>
+              </div>
+            </div>
           </div>
         )}
         
-        {/* NAVBAR */}
-        <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 overflow-x-hidden pointer-events-auto">
+        {/* NAVBAR (Super Slimmed Down) */}
+        <nav className="flex flex-wrap justify-end items-center py-2 pr-2 pl-20 sm:py-3 sm:pr-4 sm:pl-32 md:pr-6 md:pl-40 lg:px-8 lg:pl-48 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 pointer-events-auto relative">
           
-          {/* LOGO */}
-          <Link to="/" className="flex items-center hover:opacity-70 transition-opacity shrink-0">
-            <img src="/logo.png" alt="KSPHERE WORLD" className="h-8 sm:h-10 md:h-12 w-auto object-contain mt-1" />
+          {/* OVERHANGING LOGO (50% In / 50% Out) */}
+          <Link to="/" className="absolute left-2 sm:left-6 md:left-8 -bottom-5 sm:-bottom-8 md:-bottom-10 hover:scale-105 transition-transform shrink-0 z-50 pointer-events-auto">
+            <img src="/logo.png" alt="KSPHERE WORLD" className="h-14 sm:h-20 md:h-24 w-auto object-contain drop-shadow-[2px_3px_0px_rgba(0,0,0,1)] sm:drop-shadow-[3px_5px_0px_rgba(0,0,0,1)]" />
           </Link>
           
           {/* BRAWL BUTTONS CONTAINER */}
-          <div className="flex flex-wrap items-center justify-end gap-x-2 sm:gap-x-4 gap-y-3 sm:gap-y-5 ml-auto pt-2 sm:pt-0 pb-2 sm:pb-0">
+          <div className="flex flex-wrap items-center justify-end gap-x-2 sm:gap-x-4 gap-y-2 sm:gap-y-2 ml-auto">
             
             {isAuthLoading ? (
                <div className="w-5 h-5 border-[3px] border-black border-t-transparent rounded-full animate-spin"></div>
