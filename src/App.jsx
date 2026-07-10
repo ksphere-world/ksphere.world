@@ -1816,16 +1816,16 @@ function App() {
           </div>
         )}
         
-        {/* NAVBAR (Super Slimmed Down) */}
-        <nav className="flex flex-wrap justify-end items-center py-2 pr-2 pl-20 sm:py-3 sm:pr-4 sm:pl-32 md:pr-6 md:pl-40 lg:px-8 lg:pl-48 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 pointer-events-auto relative">
+        {/* NAVBAR (Standardized Layout) */}
+        <nav className="flex flex-wrap justify-between items-center py-2 px-3 sm:py-3 sm:px-6 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 pointer-events-auto w-full">
           
-          {/* OVERHANGING LOGO (50% In / 50% Out) */}
-          <Link to="/" className="absolute left-2 sm:left-6 md:left-8 -bottom-5 sm:-bottom-8 md:-bottom-10 hover:scale-105 transition-transform shrink-0 z-50 pointer-events-auto">
-            <img src="/logo.png" alt="KSPHERE WORLD" className="h-14 sm:h-20 md:h-24 w-auto object-contain drop-shadow-[2px_3px_0px_rgba(0,0,0,1)] sm:drop-shadow-[3px_5px_0px_rgba(0,0,0,1)]" />
+          {/* INLINE LOGO */}
+          <Link to="/" className="hover:scale-105 transition-transform shrink-0 z-50 pointer-events-auto flex items-center">
+            <img src="/logo.png" alt="KSPHERE WORLD" className="h-8 sm:h-12 md:h-14 lg:h-16 w-auto object-contain drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]" />
           </Link>
           
           {/* BRAWL BUTTONS CONTAINER */}
-          <div className="flex flex-wrap items-center justify-end gap-x-2 sm:gap-x-4 gap-y-2 sm:gap-y-2 ml-auto">
+          <div className="flex flex-wrap items-center justify-end gap-x-1.5 sm:gap-x-3 gap-y-1.5 sm:gap-y-2 ml-auto">
             
             {isAuthLoading ? (
                <div className="w-5 h-5 border-[3px] border-black border-t-transparent rounded-full animate-spin"></div>
