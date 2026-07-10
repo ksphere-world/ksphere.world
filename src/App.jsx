@@ -1045,8 +1045,8 @@ function App() {
     const isEquipped = currentEquippedId === item.id || (!currentEquippedId && !item.id);
     
     return (
-      <button key={item.id || item.label} onClick={() => handleShopItemClick(item, categoryStr, currentEquippedId)} 
-        className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer ${isEquipped ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
+      <button key={item.id || item.label} onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleShopItemClick(item, categoryStr, currentEquippedId); }} 
+        className={`flex flex-col items-center p-3 rounded-2xl border-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] active:scale-95 transition-all cursor-pointer select-none ${isEquipped ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-500 transform -translate-y-1' : 'border-black bg-white hover:bg-slate-100'}`}>
         <span className="text-3xl mb-1">{item.icon}</span>
         <span className="text-[9px] uppercase font-black mb-2 text-center leading-tight h-6 flex items-center">{item.label}</span>
         
@@ -1358,9 +1358,8 @@ function App() {
 
     if (isOwned) {
       if (currentEquipped === item.id) return; // Already equipped
-      playSound('pop');
 
-      // Equip: Update local visual state instantly!
+      // 1. Equip: Update local visual state instantly!
       setGlobalGraph(prev => ({
         nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { 
           ...n, shape: categoryStr === 'shape' ? item.id : n.shape, cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id } 
@@ -1370,16 +1369,19 @@ function App() {
           : prev.links
       }));
 
-      const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
-      const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
-
+      // 2. Fast DB Sync using current memory (Fixes Mobile Race Conditions!)
+      const freshCosm = myPrimaryNode.cosmetics || {};
       await supabase.rpc('equip_cosmetics', { 
-        p_node: myPrimaryNode.id, p_shape: categoryStr === 'shape' ? item.id : freshData?.shape, 
-        p_effect: categoryStr === 'effect' ? item.id : freshCosm?.effect, p_arrow: categoryStr === 'arrow' ? item.id : freshCosm?.arrow, 
-        p_title: categoryStr === 'title' ? item.id : freshCosm?.title, p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm?.mapTheme, 
-        p_frame: categoryStr === 'frame' ? item.id : freshCosm?.frame, p_verified: freshCosm?.verified 
+        p_node: myPrimaryNode.id, 
+        p_shape: categoryStr === 'shape' ? item.id : myPrimaryNode.shape, 
+        p_effect: categoryStr === 'effect' ? item.id : freshCosm.effect, 
+        p_arrow: categoryStr === 'arrow' ? item.id : freshCosm.arrow, 
+        p_title: categoryStr === 'title' ? item.id : freshCosm.title, 
+        p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm.mapTheme, 
+        p_frame: categoryStr === 'frame' ? item.id : freshCosm.frame, 
+        p_verified: freshCosm.verified 
       });
-      fetchGlobalGraph();
+      // Removed fetchGlobalGraph() here! The realtime DB subscription handles updates safely in the background.
     } else {
       // Trigger Gamified Confirmation Modal instead of browser alerts!
       setConfirmPurchase({ item, categoryStr });
@@ -1391,12 +1393,11 @@ function App() {
     if (!confirmPurchase) return;
     const { item, categoryStr } = confirmPurchase;
     setConfirmPurchase(null); // Close the checkout modal instantly
-    playSound('buy');
 
     // Purchase: Deduct coins, add to inventory, AND auto-equip instantly locally!
     setGlobalGraph(prev => ({
       nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { 
-        ...n, coins: n.coins - item.price, unlockedCosmetics: [...(n.unlockedCosmetics || []), item.id],
+        ...n, coins: Math.max(0, n.coins - item.price), unlockedCosmetics: [...(n.unlockedCosmetics || []), item.id],
         shape: categoryStr === 'shape' ? item.id : n.shape, cosmetics: { ...(n.cosmetics || {}), [categoryStr]: item.id }
       } : n),
       links: categoryStr === 'arrow' 
@@ -1407,16 +1408,17 @@ function App() {
     // Server Transaction
     const { data: success } = await supabase.rpc('buy_cosmetic', { p_node: myPrimaryNode.id, p_item_id: item.id, p_price: item.price });
     if (success) {
-      const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
-      const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
-
+      const freshCosm = myPrimaryNode.cosmetics || {};
       await supabase.rpc('equip_cosmetics', { 
-        p_node: myPrimaryNode.id, p_shape: categoryStr === 'shape' ? item.id : freshData?.shape, 
-        p_effect: categoryStr === 'effect' ? item.id : freshCosm?.effect, p_arrow: categoryStr === 'arrow' ? item.id : freshCosm?.arrow, 
-        p_title: categoryStr === 'title' ? item.id : freshCosm?.title, p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm?.mapTheme, 
-        p_frame: categoryStr === 'frame' ? item.id : freshCosm?.frame, p_verified: freshCosm?.verified 
+        p_node: myPrimaryNode.id, 
+        p_shape: categoryStr === 'shape' ? item.id : myPrimaryNode.shape, 
+        p_effect: categoryStr === 'effect' ? item.id : freshCosm.effect, 
+        p_arrow: categoryStr === 'arrow' ? item.id : freshCosm.arrow, 
+        p_title: categoryStr === 'title' ? item.id : freshCosm.title, 
+        p_map_theme: categoryStr === 'mapTheme' ? item.id : freshCosm.mapTheme, 
+        p_frame: categoryStr === 'frame' ? item.id : freshCosm.frame, 
+        p_verified: freshCosm.verified 
       });
-      fetchGlobalGraph();
     }
   };
 
@@ -1752,16 +1754,18 @@ function App() {
                           <h3 className="font-black text-2xl uppercase mb-2">Verified Badge</h3>
                           <p className="text-xs font-bold text-slate-500 uppercase mb-6">Equip this free badge to stand out on the map!</p>
                           <button 
-                            onClick={async () => {
+                            onClick={async (e) => {
+                                e.preventDefault(); e.stopPropagation();
                                 const isVerif = !(myPrimaryNode?.cosmetics?.verified);
-                                try { playSound('pop'); } catch (err) { console.warn("Audio skipped", err); }
                                 setGlobalGraph(prev => ({ ...prev, nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, verified: isVerif, cosmetics: { ...(n.cosmetics || {}), verified: isVerif } } : n) }));
-                                const { data: freshData } = await supabase.from('nodes').select('shape, cosmetics').eq('id', myPrimaryNode.id).single();
-                                const freshCosm = typeof freshData?.cosmetics === 'object' ? freshData.cosmetics : (JSON.parse(freshData?.cosmetics || '{}'));
-                                await supabase.rpc('equip_cosmetics', { p_node: myPrimaryNode.id, p_shape: freshData?.shape, p_effect: freshCosm?.effect, p_arrow: freshCosm?.arrow, p_title: freshCosm?.title, p_map_theme: freshCosm?.mapTheme, p_frame: freshCosm?.frame, p_verified: isVerif }); 
-                                fetchGlobalGraph();
+                                
+                                const freshCosm = myPrimaryNode.cosmetics || {};
+                                await supabase.rpc('equip_cosmetics', { 
+                                  p_node: myPrimaryNode.id, p_shape: myPrimaryNode.shape, p_effect: freshCosm.effect, p_arrow: freshCosm.arrow, 
+                                  p_title: freshCosm.title, p_map_theme: freshCosm.mapTheme, p_frame: freshCosm.frame, p_verified: isVerif 
+                                }); 
                             }}
-                            className={`w-full py-4 font-black uppercase text-xl rounded-xl border-4 border-black transition-transform active:scale-95 shadow-[6px_6px_0px_rgba(0,0,0,1)] cursor-pointer ${myPrimaryNode?.cosmetics?.verified ? 'bg-red-400 text-white' : 'bg-lime-400 text-black'}`}
+                            className={`w-full py-4 font-black uppercase text-xl rounded-xl border-4 border-black transition-transform active:scale-95 shadow-[6px_6px_0px_rgba(0,0,0,1)] cursor-pointer select-none ${myPrimaryNode?.cosmetics?.verified ? 'bg-red-400 text-white' : 'bg-lime-400 text-black'}`}
                           >
                             {myPrimaryNode?.cosmetics?.verified ? 'Remove Badge ❌' : 'Equip Badge ✅'}
                           </button>
