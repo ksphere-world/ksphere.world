@@ -1454,12 +1454,11 @@ function App() {
               
               {/* Flickering Text Logo (Tubelight/Engine Ignition) */}
               <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white flex flex-col items-center leading-none animate-[tubelight_0.8s_ease-in_forwards]">
-                <span className="uppercase">KINDNESS</span>
-                <span className="uppercase text-slate-300">SPHERE</span>
+                <span className="uppercase">K<span className="text-slate-300">SPHERE</span></span>
               </h1>
               
               <span className="text-slate-500 text-sm md:text-lg font-black uppercase tracking-[0.5em] mt-3 mb-16 animate-[tubelight_1.2s_ease-in_forwards]">
-                World
+                WORLD
               </span>
               
               {/* Super Fast Minimal Loading Line */}
@@ -1815,10 +1814,10 @@ function App() {
         <nav className="flex flex-wrap justify-between items-center p-3 sm:p-4 md:px-6 lg:px-8 bg-[#fdfbf7]/90 backdrop-blur-md border-b-2 sm:border-b-4 border-black sticky top-0 z-40 gap-2 sm:gap-4 overflow-x-hidden pointer-events-auto">
           
           {/* LOGO */}
-          <Link to="/" className="text-xl sm:text-3xl md:text-4xl font-black tracking-tighter text-black flex items-center hover:opacity-70 transition-opacity shrink-0">
-            <div className="flex flex-col leading-none justify-center">
-              <span className="uppercase">KINDNESS<span className="text-slate-500">SPHERE</span></span>
-              <span className="text-[8px] sm:text-[10px] md:text-xs text-slate-400 uppercase tracking-[0.4em] mt-1 font-bold">world</span>
+          <Link to="/" className="text-lg sm:text-xl md:text-2xl font-black tracking-tighter text-black flex items-center hover:opacity-70 transition-opacity shrink-0">
+            <div className="flex flex-col leading-none justify-center mt-1">
+              <span className="uppercase">K<span className="text-slate-500">SPHERE</span></span>
+              <span className="text-[7px] sm:text-[8px] md:text-[10px] text-slate-400 uppercase tracking-[0.4em] mt-0.5 font-bold">WORLD</span>
             </div>
           </Link>
           
