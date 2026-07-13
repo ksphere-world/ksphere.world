@@ -1143,31 +1143,36 @@ function App() {
   // 1. Fetch Global Graph wrapped in useCallback so it's globally available
   const fetchGlobalGraph = useCallback(async () => {
     const [ 
-      { data: dbNodes, error: nodesError }, 
-      { data: dbLinks, error: linksError },
-      { data: dbNodeReacts },
-      { data: dbLinkReacts },
-      { data: dbFollows } // NEW: Followers Tracker Response payload
-    ] = await Promise.all([
-      supabase.from('nodes').select('*'),
-      supabase.from('links').select('*'),
-      supabase.from('node_reactions').select('node_id, emoji'),
-      supabase.from('link_reactions').select('source_id, target_id, emoji'),
-      supabase.from('node_follows').select('following_node_id, follower_id') // NEW: Background DB call seamlessly stacked
-    ]);
+        { data: dbNodes, error: nodesError }, 
+        { data: dbLinks, error: linksError },
+        { data: dbNodeReacts },
+        { data: dbLinkReacts },
+        { data: dbFollows } 
+      ] = await Promise.all([
+        supabase.from('nodes').select('*'),
+        supabase.from('links').select('*'),
+        supabase.from('node_reactions').select('*'), // 🛡️ FIX: Select all to prevent column-name crashes
+        supabase.from('link_reactions').select('*'), // 🛡️ FIX: Select all to prevent column-name crashes
+        supabase.from('node_follows').select('*') 
+      ]);
 
     if (!nodesError && !linksError && dbNodes.length > 0) {
         
         // --- ASSEMBLE ALL REACTIONS LOCALLY FAST! ---
         const aggregatedNodeReacts = {};
         if (dbNodeReacts) dbNodeReacts.forEach(r => {
-          if (!aggregatedNodeReacts[r.node_id]) aggregatedNodeReacts[r.node_id] = {};
-          aggregatedNodeReacts[r.node_id][r.emoji] = (aggregatedNodeReacts[r.node_id][r.emoji] || 0) + 1;
+          const nId = r.node_id || r.node || r.id; // 🛡️ FIX: Safely grab Node ID
+          if (!nId) return;
+          if (!aggregatedNodeReacts[nId]) aggregatedNodeReacts[nId] = {};
+          aggregatedNodeReacts[nId][r.emoji] = (aggregatedNodeReacts[nId][r.emoji] || 0) + 1;
         });
 
         const aggregatedLinkReacts = {};
         if (dbLinkReacts) dbLinkReacts.forEach(r => {
-          const key = `${r.source_id}|${r.target_id}`;
+          const sId = r.source_id || r.source; // 🛡️ FIX: Safely grab Source ID
+          const tId = r.target_id || r.target; // 🛡️ FIX: Safely grab Target ID
+          if (!sId || !tId) return;
+          const key = `${sId}|${tId}`;
           if (!aggregatedLinkReacts[key]) aggregatedLinkReacts[key] = {};
           aggregatedLinkReacts[key][r.emoji] = (aggregatedLinkReacts[key][r.emoji] || 0) + 1;
         });
@@ -1176,8 +1181,11 @@ function App() {
         const followMap = {};
         if (dbFollows) {
            dbFollows.forEach(f => {
-              if (!followMap[f.following_node_id]) followMap[f.following_node_id] = [];
-              followMap[f.following_node_id].push(f.follower_id);
+              const followingId = f.following_node_id || f.following_id || f.target_id;
+              const followerId = f.follower_id || f.user_id;
+              if (!followingId) return;
+              if (!followMap[followingId]) followMap[followingId] = [];
+              followMap[followingId].push(followerId);
            });
         }
         
