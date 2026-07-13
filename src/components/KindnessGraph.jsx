@@ -406,110 +406,110 @@ export default function KindnessGraph({ data, onNodeClick, onLinkClick, onBackgr
             const totalReacts = link.reactions ? Object.values(link.reactions).reduce((a, b) => a + b, 0) : 0;
             const hasLabel = link.helpsCount > 1;
 
-            // FIX: Check applies ANY time reaction logic > 0 exist OR helps count > 1 threshold pops (Solves Emojis Missing on Refresh/Curved arrows forever)
+            const start = link.source;
+            const end = link.target;
+            // Wait until coordinates are calculated by the physics engine
+            if (typeof start !== 'object' || typeof end !== 'object') return;
+            
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+            
+            // 🚀 DRAW CRAZY K-SHOP BEAMS (ALWAYS VISIBLE, REGARDLESS OF LABELS!) 🚀
+            const arrStyle = link.arrowStyle;
+            
+            if (['rainbow', 'dna', 'footprints'].includes(arrStyle)) {
+                ctx.save();
+                
+                // 🔥 ADD UNIVERSAL HOVER GLOW & WIDTH BOOST FOR ALL CUSTOM EDGES
+                if (isHovered) {
+                    ctx.shadowColor = '#f472b6';
+                    ctx.shadowBlur = 20;
+                }
+
+                // 🌈 RAINBOW ROAD
+                if (arrStyle === 'rainbow') {
+                    const grad = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
+                    grad.addColorStop(0, "#ef4444"); grad.addColorStop(0.2, "#f97316"); grad.addColorStop(0.4, "#eab308"); grad.addColorStop(0.6, "#22c55e"); grad.addColorStop(0.8, "#3b82f6"); grad.addColorStop(1, "#a855f7");
+                    ctx.strokeStyle = grad;
+                    ctx.lineWidth = isHovered ? 11 : 6;
+                    ctx.lineCap = 'round';
+                    if (!isHovered) { ctx.shadowColor = '#f472b6'; ctx.shadowBlur = 8; }
+                    ctx.beginPath();
+                    
+                    ctx.moveTo(start.x, start.y); // FIX: The Canvas needs to know where to anchor the brush!
+                    if (link.curvature) {
+                        const cx = start.x + dx/2 - (dy * link.curvature);
+                        const cy = start.y + dy/2 + (dx * link.curvature);
+                        ctx.quadraticCurveTo(cx, cy, end.x, end.y);
+                    } else {
+                        ctx.lineTo(end.x, end.y);
+                    }
+                    ctx.stroke();
+                } 
+                // 🧬 DNA DOUBLE HELIX (Animated!)
+                else if (arrStyle === 'dna') {
+                    ctx.lineWidth = isHovered ? 4.5 : 2.5;
+                    const timeSpeed = Date.now() / 400;
+                    ctx.beginPath();
+                    for (let i = 0; i <= distance; i += 8) {
+                        const t = i / distance;
+                        const px = start.x + dx * t; const py = start.y + dy * t;
+                        const wave = Math.sin(t * Math.PI * 4 + timeSpeed) * (isHovered ? 12 : 8); // Amplitude boost on hover
+                        const perpX = -dy / distance * wave; const perpY = dx / distance * wave;
+                        
+                        // Handle curvature offset if exists
+                        let cx = px, cy = py;
+                        if (link.curvature) { cx += (-dy * link.curvature) * Math.sin(t * Math.PI); cy += (dx * link.curvature) * Math.sin(t * Math.PI); }
+                        
+                        if (i === 0) ctx.moveTo(cx + perpX, cy + perpY); else ctx.lineTo(cx + perpX, cy + perpY);
+                    }
+                    ctx.strokeStyle = '#22c55e'; // Green DNA strand 1
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    for (let i = 0; i <= distance; i += 8) {
+                        const t = i / distance;
+                        const px = start.x + dx * t; const py = start.y + dy * t;
+                        const wave = Math.cos(t * Math.PI * 4 + timeSpeed) * (isHovered ? 12 : 8); // Amplitude boost on hover
+                        const perpX = -dy / distance * wave; const perpY = dx / distance * wave;
+                        
+                        let cx = px, cy = py;
+                        if (link.curvature) { cx += (-dy * link.curvature) * Math.sin(t * Math.PI); cy += (dx * link.curvature) * Math.sin(t * Math.PI); }
+                        
+                        if (i === 0) ctx.moveTo(cx + perpX, cy + perpY); else ctx.lineTo(cx + perpX, cy + perpY);
+                    }
+                    ctx.strokeStyle = '#3b82f6'; // Blue DNA strand 2
+                    ctx.stroke();
+                }
+                // 🐾 ANIMAL FOOTPRINTS
+                else if (arrStyle === 'footprints') {
+                    const steps = Math.floor(distance / 20); // Paw print every 20 pixels
+                    ctx.font = isHovered ? '16px Arial' : '10px Arial';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    
+                    for (let i = 1; i < steps; i++) {
+                        const t = i / steps;
+                        let px = start.x + dx * t; let py = start.y + dy * t;
+                        if (link.curvature) { px += (-dy * link.curvature) * Math.sin(t * Math.PI); py += (dx * link.curvature) * Math.sin(t * Math.PI); }
+                        
+                        const offset = (i % 2 === 0) ? (isHovered ? 10 : 6) : (isHovered ? -10 : -6); // Spread out left/right paw on hover
+                        const perpX = -dy / distance; const perpY = dx / distance;
+                        
+                        ctx.save();
+                        ctx.translate(px + perpX * offset, py + perpY * offset);
+                        // Rotate the paw to face the direction of the arrow!
+                        ctx.rotate(Math.atan2(dy, dx) + Math.PI/2);
+                        ctx.fillText('🐾', 0, 0);
+                        ctx.restore();
+                    }
+                }
+                ctx.restore();
+            }
+
+            // 🏷️ CHECK FOR LABELS AND EMOJIS (Calculates text pills)
             if (hasLabel || totalReacts > 0) {
-              const start = link.source;
-              const end = link.target;
-              // Wait until coordinates are calculated by the physics engine
-              if (typeof start !== 'object' || typeof end !== 'object') return;
-              
-              const dx = end.x - start.x;
-              const dy = end.y - start.y;
-              const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-              
-              // 🚀 DRAW CRAZY K-SHOP BEAMS UNDERNEATH THE LABELS 🚀
-              const arrStyle = link.arrowStyle;
-              
-              if (['rainbow', 'dna', 'footprints'].includes(arrStyle)) {
-                  ctx.save();
-                  
-                  // 🔥 ADD UNIVERSAL HOVER GLOW & WIDTH BOOST FOR ALL CUSTOM EDGES
-                  if (isHovered) {
-                      ctx.shadowColor = '#f472b6';
-                      ctx.shadowBlur = 20;
-                  }
-
-                  // 🌈 RAINBOW ROAD
-                  if (arrStyle === 'rainbow') {
-                      const grad = ctx.createLinearGradient(start.x, start.y, end.x, end.y);
-                      grad.addColorStop(0, "#ef4444"); grad.addColorStop(0.2, "#f97316"); grad.addColorStop(0.4, "#eab308"); grad.addColorStop(0.6, "#22c55e"); grad.addColorStop(0.8, "#3b82f6"); grad.addColorStop(1, "#a855f7");
-                      ctx.strokeStyle = grad;
-                      ctx.lineWidth = isHovered ? 11 : 6;
-                      ctx.lineCap = 'round';
-                      if (!isHovered) { ctx.shadowColor = '#f472b6'; ctx.shadowBlur = 8; }
-                      ctx.beginPath();
-                      
-                      ctx.moveTo(start.x, start.y); // FIX: The Canvas needs to know where to anchor the brush!
-                      if (link.curvature) {
-                          const cx = start.x + dx/2 - (dy * link.curvature);
-                          const cy = start.y + dy/2 + (dx * link.curvature);
-                          ctx.quadraticCurveTo(cx, cy, end.x, end.y);
-                      } else {
-                          ctx.lineTo(end.x, end.y);
-                      }
-                      ctx.stroke();
-                  } 
-                  // 🧬 DNA DOUBLE HELIX (Animated!)
-                  else if (arrStyle === 'dna') {
-                      ctx.lineWidth = isHovered ? 4.5 : 2.5;
-                      const timeSpeed = Date.now() / 400;
-                      ctx.beginPath();
-                      for (let i = 0; i <= distance; i += 8) {
-                          const t = i / distance;
-                          const px = start.x + dx * t; const py = start.y + dy * t;
-                          const wave = Math.sin(t * Math.PI * 4 + timeSpeed) * (isHovered ? 12 : 8); // Amplitude boost on hover
-                          const perpX = -dy / distance * wave; const perpY = dx / distance * wave;
-                          
-                          // Handle curvature offset if exists
-                          let cx = px, cy = py;
-                          if (link.curvature) { cx += (-dy * link.curvature) * Math.sin(t * Math.PI); cy += (dx * link.curvature) * Math.sin(t * Math.PI); }
-                          
-                          if (i === 0) ctx.moveTo(cx + perpX, cy + perpY); else ctx.lineTo(cx + perpX, cy + perpY);
-                      }
-                      ctx.strokeStyle = '#22c55e'; // Green DNA strand 1
-                      ctx.stroke();
-                      
-                      ctx.beginPath();
-                      for (let i = 0; i <= distance; i += 8) {
-                          const t = i / distance;
-                          const px = start.x + dx * t; const py = start.y + dy * t;
-                          const wave = Math.cos(t * Math.PI * 4 + timeSpeed) * (isHovered ? 12 : 8); // Amplitude boost on hover
-                          const perpX = -dy / distance * wave; const perpY = dx / distance * wave;
-                          
-                          let cx = px, cy = py;
-                          if (link.curvature) { cx += (-dy * link.curvature) * Math.sin(t * Math.PI); cy += (dx * link.curvature) * Math.sin(t * Math.PI); }
-                          
-                          if (i === 0) ctx.moveTo(cx + perpX, cy + perpY); else ctx.lineTo(cx + perpX, cy + perpY);
-                      }
-                      ctx.strokeStyle = '#3b82f6'; // Blue DNA strand 2
-                      ctx.stroke();
-                  }
-                  // 🐾 ANIMAL FOOTPRINTS
-                  else if (arrStyle === 'footprints') {
-                      const steps = Math.floor(distance / 20); // Paw print every 20 pixels
-                      ctx.font = isHovered ? '16px Arial' : '10px Arial';
-                      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                      
-                      for (let i = 1; i < steps; i++) {
-                          const t = i / steps;
-                          let px = start.x + dx * t; let py = start.y + dy * t;
-                          if (link.curvature) { px += (-dy * link.curvature) * Math.sin(t * Math.PI); py += (dx * link.curvature) * Math.sin(t * Math.PI); }
-                          
-                          const offset = (i % 2 === 0) ? (isHovered ? 10 : 6) : (isHovered ? -10 : -6); // Spread out left/right paw on hover
-                          const perpX = -dy / distance; const perpY = dx / distance;
-                          
-                          ctx.save();
-                          ctx.translate(px + perpX * offset, py + perpY * offset);
-                          // Rotate the paw to face the direction of the arrow!
-                          ctx.rotate(Math.atan2(dy, dx) + Math.PI/2);
-                          ctx.fillText('🐾', 0, 0);
-                          ctx.restore();
-                      }
-                  }
-                  ctx.restore();
-              }
-
-              // Calculate sraight midpoint base tracking geometry logic standard layout scaling UI elements onto DOM overlay
+              // Calculate straight midpoint base tracking geometry logic standard layout scaling UI elements onto DOM overlay
               let textPos = {
                 x: start.x + dx / 2,
                 y: start.y + dy / 2
