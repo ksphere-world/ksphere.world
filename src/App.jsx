@@ -2113,10 +2113,10 @@ const [isRedirecting, setIsRedirecting] = useState(false);
                       ) : (
                         <div className="bg-white/90 backdrop-blur-md border-2 sm:border-4 border-black rounded-xl sm:rounded-3xl p-3 sm:p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_rgba(0,0,0,1)] transform rotate-1 pointer-events-none">
                           <h1 className="text-xl sm:text-4xl font-black leading-none text-black tracking-tight drop-shadow-sm mb-1.5 sm:mb-3">
-                            Your impact, <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">fully custom.</span>
+                            The Kindness <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500">Chain Reaction.</span>
                           </h1>
-                          <p className="text-slate-700 text-[10px] sm:text-base font-bold leading-relaxed max-w-[160px] sm:max-w-none">
-                            Start a chain of kindness today and leave your unique mark on the world's graph. 🌍
+                          <p className="text-slate-700 text-[10px] sm:text-base font-bold leading-relaxed max-w-[190px] sm:max-w-none">
+                            You help three people. Tell them to help the next three and make your chain visible here globally. Just share your name (K-Tag) with them! 🌍
                           </p>
                         </div>
                       )}
