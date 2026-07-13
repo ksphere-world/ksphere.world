@@ -1480,12 +1480,31 @@ function App() {
 const [isRedirecting, setIsRedirecting] = useState(false);
 
   // 💰 AUTOMATED MULTI-GATEWAY CHECKOUT ENGINE (LEMON SQUEEZY & RAZORPAY)
+  // --> CURRENTLY BYPASSED FOR FREE COINS (PAYMENT GATEWAYS COMMENTED OUT)
   const handleBuyCoins = async (pack, gateway) => {
     playSound('buy');
     setIsRedirecting(true);
     setShopMsg('');
 
     try {
+      // --- NEW: BYPASSED PAYMENT LOGIC (FREE COINS) ---
+      const newBalance = (myPrimaryNode?.coins || 0) + pack.amount;
+      
+      // 1. Update local UI instantly so it feels snappy
+      setGlobalGraph(prev => ({
+        ...prev,
+        nodes: prev.nodes.map(n => n.id === myPrimaryNode.id ? { ...n, coins: newBalance } : n)
+      }));
+
+      // 2. Update Supabase Database directly to save their new balance
+      const { error } = await supabase.from('nodes').update({ karma_coins: newBalance }).eq('id', myPrimaryNode.id);
+      if (error) throw error;
+
+      setShopMsg(`🎉 Claimed ${pack.amount} Free Coins!`);
+      setIsRedirecting(false);
+      fetchGlobalGraph(); // Refresh to ensure sync
+
+      /* --- OLD PAYMENT GATEWAY CODE (COMMENTED OUT FOR FUTURE USE) ---
       if (gateway === 'global') {
         // --- GLOBAL CHECKOUT (LEMON SQUEEZY) ---
         const storeUrl = 'https://ksphere.lemonsqueezy.com/checkout/buy';
@@ -1510,8 +1529,9 @@ const [isRedirecting, setIsRedirecting] = useState(false);
         // Using assign() instead of direct reassignment to bypass React 19 global mutation lint rules
         window.location.assign(data.checkoutUrl);
       }
+      ----------------------------------------------------------------- */
     } catch (err) {
-      setShopMsg(`⚠️ Payment Error: ${err.message}`);
+      setShopMsg(`⚠️ Error: ${err.message}`);
       setIsRedirecting(false);
     }
   };
@@ -1864,7 +1884,7 @@ const [isRedirecting, setIsRedirecting] = useState(false);
 
                         {isRedirecting && (
                           <div className="mb-4 text-center font-black uppercase text-xs bg-yellow-300 p-2 border-4 border-black rounded-xl animate-pulse">
-                            Connecting Secure Portal... 🚀
+                            Claiming Coins... 🎁
                           </div>
                         )}
 
@@ -1876,7 +1896,16 @@ const [isRedirecting, setIsRedirecting] = useState(false);
                               <p className="text-2xl font-black text-lime-600 mb-4 bg-white px-3 py-1 border-2 border-black rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)]">+{pack.amount}</p>
                               
                               <div className="flex flex-col gap-2 w-full mt-2">
-                                {/* Button 1: India UPI */}
+                                {/* --- NEW FREE COIN BUTTON --- */}
+                                <button
+                                  onClick={() => handleBuyCoins(pack)}
+                                  disabled={isRedirecting}
+                                  className="w-full bg-lime-400 hover:bg-lime-300 disabled:opacity-50 text-black border-2 border-black rounded-xl py-2 font-black uppercase text-[11px] sm:text-xs tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-[1px] transition-transform cursor-pointer"
+                                >
+                                  Claim Free 🎁
+                                </button>
+
+                                {/* --- OLD PAYMENT BUTTONS (COMMENTED OUT) ---
                                 <button
                                   onClick={() => handleBuyCoins(pack, 'india')}
                                   disabled={isRedirecting}
@@ -1885,7 +1914,6 @@ const [isRedirecting, setIsRedirecting] = useState(false);
                                   UPI / GPay / PhonePe ({pack.priceStr})
                                 </button>
 
-                                {/* Button 2: International */}
                                 <button
                                   onClick={() => handleBuyCoins(pack, 'global')}
                                   disabled={isRedirecting}
@@ -1893,6 +1921,7 @@ const [isRedirecting, setIsRedirecting] = useState(false);
                                 >
                                   Global PayPal / Card ({pack.priceStr})
                                 </button>
+                                ----------------------------------------------- */}
                               </div>
 
                             </div>
