@@ -612,6 +612,7 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [claimModalUrl, setClaimModalUrl] = useState('');
   const [existingTags, setExistingTags] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -713,14 +714,54 @@ function LogKindnessForm({ onComplete, session, isAuthLoading }) {
             <label className="block text-sm font-black uppercase mb-2">
               {mode === 'helped_me' ? "Who Helped You?" : "Who Did You Help?"}
             </label>
-            <input 
-              type="text" 
-              placeholder="Search or Type their K-Tag..." 
-              value={isAnonymousTarget ? 'ANONYMOUS 🕵️‍♂️' : targetId} 
-              onChange={e => setTargetId(e.target.value.toUpperCase())} 
-              disabled={isAnonymousTarget} 
-              className="w-full border-4 border-black rounded-xl p-3 uppercase font-black bg-white shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)] focus:outline-none" 
-            />
+            <div className="relative">
+              <input 
+                type="text" 
+                placeholder="Search or Type their K-Tag..." 
+                value={isAnonymousTarget ? 'ANONYMOUS 🕵️‍♂️' : targetId} 
+                onChange={e => {
+                  setTargetId(e.target.value.toUpperCase());
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setShowSuggestions(false)}
+                disabled={isAnonymousTarget} 
+                className="w-full border-4 border-black rounded-xl p-3 uppercase font-black bg-white shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)] focus:outline-none" 
+              />
+              
+              {/* GAMIFIED SEARCH SUGGESTIONS DROPDOWN */}
+              {showSuggestions && targetId.trim() && !isAnonymousTarget && (
+                <div className="absolute top-full left-0 w-full bg-white border-4 border-black rounded-xl mt-1 max-h-48 overflow-y-auto shadow-[4px_4px_0px_rgba(0,0,0,1)] z-50">
+                  {existingTags
+                    .filter(t => t.id.includes(targetId.trim()) && t.id !== myId)
+                    .slice(0, 5)
+                    .map(t => (
+                      <div 
+                        key={t.id} 
+                        onMouseDown={() => {
+                          setTargetId(t.id);
+                          setShowSuggestions(false);
+                        }}
+                        className="p-3 border-b-2 border-black last:border-b-0 hover:bg-pink-200 cursor-pointer font-black uppercase text-sm flex justify-between items-center transition-colors"
+                      >
+                        <span>{t.id}</span>
+                        {t.is_claimed ? (
+                          <span className="text-[9px] bg-lime-300 border-2 border-black px-2 py-0.5 rounded-md shadow-[1px_1px_0px_rgba(0,0,0,1)]">CLAIMED</span>
+                        ) : (
+                          <span className="text-[9px] bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md shadow-[1px_1px_0px_rgba(0,0,0,1)]">UNCLAIMED</span>
+                        )}
+                      </div>
+                    ))}
+                  
+                  {/* Show "New Tag" hint if no existing match is found */}
+                  {existingTags.filter(t => t.id.includes(targetId.trim()) && t.id !== myId).length === 0 && (
+                    <div className="p-3 text-xs font-bold text-slate-500 uppercase text-center bg-slate-50">
+                      ✨ New Tag (Will be created)
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             
             <div className="mt-3 flex items-center gap-2">
               <input type="checkbox" id="anon" checked={isAnonymousTarget} onChange={e => { setIsAnonymousTarget(e.target.checked); setTargetId(''); }} className="w-5 h-5 accent-pink-500 border-2 border-black rounded cursor-pointer" />
